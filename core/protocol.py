@@ -7,6 +7,8 @@ import uuid
 
 class Protocol:
 
+    version = "0.1"
+
     @staticmethod
     def block_interval():
         """ Минимальное время между блоками """

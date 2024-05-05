@@ -1,0 +1,4 @@
+port: 5556
+known_peers:
+  - "localhost:5555"
+address: OutAQ43SUK6ZC2HRs5QozEnVqDaC68wtZTD2CocFXeX76Bi6ctsK

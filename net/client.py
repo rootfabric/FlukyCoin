@@ -16,6 +16,8 @@ class Client:
         self.host = host
         self.port = port
         self.is_connected = False
+    def address(self):
+        return f"{self.host}:{self.port}"
 
     def send_request(self, request):
         try:

@@ -11,7 +11,7 @@ import yaml
 import datetime
 from net.server import Server
 from net.client import Client
-from net.peer_manager import PeerManager
+from net.network_manager import NetworkManager
 from tools.time_sync import NTPTimeSynchronizer
 
 from tqdm import tqdm
@@ -20,7 +20,7 @@ from tqdm import tqdm
 class BlockchainNode:
     def __init__(self, config):
 
-        self.known_peers = config.get("known_peers", ["localhost:5555"])
+        self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         self.host = config.get("host", "localhost")
         self.port = config.get("port", "5555")
         self.address = config.get("address")
@@ -31,19 +31,21 @@ class BlockchainNode:
 
         self.time_ntpt = NTPTimeSynchronizer()
 
+        self.running = True
+
     def init_node(self):
         signal.signal(signal.SIGINT, self.signal_handler)  # Установка обработчика сигнала
 
-        self.server = Server(self, port=self.port, host=self.host)
+
+        self.network_manager = NetworkManager(self.running, self.handle_request, host=self.host, port=self.port, initial_peers=self.initial_peers)
+
 
         self.protocol = Protocol()
-        self.uuid = self.protocol.hash_to_uuid(self.server.address)
+        self.uuid = self.protocol.hash_to_uuid(self.network_manager.server.address)
 
-        self.running = True
+        print("Blockchain Node initialized", self.network_manager.server.address, "uuid", self.uuid)
 
-        print("Blockchain Node initialized", self.server.address, "uuid", self.uuid)
 
-        self.peer_manager = PeerManager(self.known_peers, dir=str(self.server.address))
 
         # self.chain = Chain()
         #
@@ -54,10 +56,8 @@ class BlockchainNode:
 
     def stop(self):
         self.running = False
-        if hasattr(self, 'server'):
-            self.server.close()
-        if hasattr(self, 'peer_manager'):
-            self.peer_manager.stop()
+        if hasattr(self, 'network_manager'):
+            self.network_manager.stop()
 
     def handle_request(self, request):
         command = request.get('command')
@@ -74,9 +74,9 @@ class BlockchainNode:
         elif command == 'gettransaction':
             txid = request.get('txid')
             return self.get_transaction(txid)
-        elif command == 'newpeer':
-            peer = request.get('peer')
-            return self.add_peer(peer)
+        # elif command == 'newpeer':
+        #     peer = request.get('peer')
+        #     return self.add_peer(peer)
         elif command == 'newblock':
             block = request.get('block')
             return self.receive_new_block(block)
@@ -89,7 +89,7 @@ class BlockchainNode:
             return {'error': 'Unknown command'}
 
     def send_peers_list(self):
-        return {'peers': self.peer_manager.get_active_peers()}
+        return {'peers': self.network_manager.get_active_peers()}
 
     def send_hello(self, peer):
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
@@ -99,7 +99,7 @@ class BlockchainNode:
         return response
 
     def register_peer(self, peer):
-        if peer not in self.peer_manager.get_active_peers():
+        if peer not in self.network_manager.get_active_peers():
             self.known_peers.append(peer)
             self.broadcast_new_peer(peer)
         return {'status': 'success', 'message': f'Welcome, {peer}, registered successfully'}
@@ -114,15 +114,18 @@ class BlockchainNode:
         client.close()
 
     def broadcast_new_peer(self, new_peer):
-        for peer in self.peer_manager.get_active_peers():
+        for peer in self.network_manager.get_active_peers():
             if peer != new_peer and self.server.address != peer:  # Avoid notifying the new peer about itself
                 client = Client(peer.split(":")[0], int(peer.split(":")[1]))
                 client.send_request({'command': 'newpeer', 'peer': new_peer})
                 client.close()
 
     def get_info(self):
-        return {'synced': f'{self.synced}', 'node': f'{self.server.address}', 'version': '0.1.0',
-                'peers': self.known_peers, 'block_count': self.chain.blocks_count()}
+        return {'synced': f'{self.synced}', 'node': f'{self.network_manager.server.address}',
+                'version': self.protocol.version,
+                # 'peers': self.known_peers,
+                # 'block_count': self.chain.blocks_count()
+                }
 
     def get_block(self, block_number):
         block = self.chain.blocks[block_number]
@@ -135,14 +138,14 @@ class BlockchainNode:
     def get_transaction(self, txid):
         return {'transaction': 'details', 'txid': txid}
 
-    def add_peer(self, peer):
-        if peer not in self.peer_manager.known_peers:
-            print("Add new peer", peer)
-            self.known_peers.append(peer)
-            self.peer_manager.ping_peer(peer)
-            self.broadcast_new_peer(peer)
-
-        return {'status': 'success', 'message': f'Peer {peer} added'}
+    # def add_peer(self, peer):
+    #     if peer not in self.network_manager.known_peers:
+    #         print("Add new peer", peer)
+    #         self.known_peers.append(peer)
+    #         self.network_manager.ping_peer(peer)
+    #         self.broadcast_new_peer(peer)
+    #
+    #     return {'status': 'success', 'message': f'Peer {peer} added'}
 
     def receive_new_block(self, block_json):
 
@@ -157,8 +160,8 @@ class BlockchainNode:
         return {'status': 'fail', 'message': 'Block wrong'}
 
     def distribute_block(self, block):
-        print("distribute_block get_active_peers", self.peer_manager.get_active_peers())
-        for peer in self.peer_manager.get_active_peers():
+        print("distribute_block get_active_peers", self.network_manager.get_active_peers())
+        for peer in self.network_manager.get_active_peers():
 
             # самому себе блок не транслируем
             if peer == self.server.address:
@@ -199,7 +202,7 @@ class BlockchainNode:
         # Проверяем, есть ли у всех известных узлов такое же количество блоков, как и у текущего узла
         current_block_count = len(self.chain.blocks)
         print(f"Checking synchronization status with {len(self.known_peers)} peers...")
-        for peer in self.peer_manager.get_active_peers():
+        for peer in self.network_manager.get_active_peers():
 
             if peer == self.server.address:
                 continue
@@ -223,7 +226,7 @@ class BlockchainNode:
             self.pull_candidat_block_from_peer(peer)
 
 
-        print(f"Synchronization check completed. Nodes count {len(self.peer_manager.get_active_peers())}")
+        print(f"Synchronization check completed. Nodes count {len(self.network_manager.get_active_peers())}")
         print(f"Blocks: {self.chain.blocks_count()}")
         if self.chain.last_block() is not None:
             print(f"{datetime.datetime.fromtimestamp(self.chain.last_block().time)}")
@@ -304,8 +307,8 @@ class BlockchainNode:
         # blockchain_node = BlockchainNode(server)
         self.init_node()
         # self.add_peer(f"{address}:{port}")
-        self.peer_manager.run()
-        self.sync_node()
+        self.network_manager.run()
+        # self.sync_node()
         self.main_loop()
 
 
@@ -313,9 +316,11 @@ class BlockchainNode:
         """ В главный цикл работы попадаем когда нода синхронизованная """
         # Здесь могут быть выполнены задачи по проверке блокчейна, созданию блоков, обновлению состояний и т.д.
 
-        print("Blockchain Node is running...", self.known_peers)
+        print("Blockchain Node is running")
 
         while self.running:
+            time.sleep(1)
+            continue
 
             # сгенегрировать блок, и попробовать добавить его в блокчейн
 
@@ -355,22 +360,4 @@ class BlockchainNode:
 
 if __name__ == "__main__":
 
-    port = "5555"
-    host = "localhost"
-    known_peers = ["localhost:5555"]
-
-    config_path = "node1.yaml"
-    # Загрузка конфигурации из файла, если указан
-    if len(sys.argv) > 1:
-        config_path = sys.argv[1]
-
-    with open(config_path, 'r') as config_file:
-        config = yaml.safe_load(config_file)
-        # port = config.get('port', port)  # Значение по умолчанию - "5555"
-        # known_peers = config.get('known_peers', known_peers)  # Значение по умолчанию - ["localhost:5555"]
-
-    # run_node(port, known_peers)
-    node = BlockchainNode(config)
-    node.run_node()
-
-# start python BlockchainNode.py 5555 localhost:5555
+    """ """

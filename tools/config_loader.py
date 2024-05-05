@@ -5,6 +5,8 @@ class ConfigLoader:
     def __init__(self, config_directory, config_filename):
         self.config_path = os.path.join(config_directory, config_filename)
 
+        self.pause_ping_peers = 10
+
     def load_config(self):
         with open(self.config_path, 'r') as config_file:
             config = yaml.safe_load(config_file)

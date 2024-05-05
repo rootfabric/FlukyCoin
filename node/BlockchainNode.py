@@ -1,28 +1,23 @@
-
-import sys
 import time
 
-from core.chain import Chain
 from core.block import Block
 from core.transaction import Transaction
 from core.protocol import Protocol
+from storage.mempool import Mempool
 import signal
-import yaml
 import datetime
-from net.server import Server
 from net.client import Client
 from net.network_manager import NetworkManager
 from tools.time_sync import NTPTimeSynchronizer
-
-from tqdm import tqdm
 
 
 class BlockchainNode:
     def __init__(self, config):
 
-        self.initial_peers = config.get("initial_peers", ["localhost:5555"])
-        self.host = config.get("host", "localhost")
-        self.port = config.get("port", "5555")
+        self.config = config
+        # self.initial_peers = config.get("initial_peers", ["localhost:5555"])
+        # self.host = config.get("host", "localhost")
+        # self.port = config.get("port", "5555")
         self.address = config.get("address")
         print(f"Blockchain Node address {self.address}")
 
@@ -37,8 +32,11 @@ class BlockchainNode:
         signal.signal(signal.SIGINT, self.signal_handler)  # Установка обработчика сигнала
 
 
-        self.network_manager = NetworkManager(self.running, self.handle_request, host=self.host, port=self.port, initial_peers=self.initial_peers)
 
+
+        self.mempool = Mempool(dir=str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}'))
+
+        self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool)
 
         self.protocol = Protocol()
         self.uuid = self.protocol.hash_to_uuid(self.network_manager.server.address)
@@ -51,8 +49,6 @@ class BlockchainNode:
         #
         # #  простая хранилка
         # self.chain.load_from_disk(dir=str(self.server.address))
-
-
 
     def stop(self):
         self.running = False
@@ -72,11 +68,19 @@ class BlockchainNode:
         elif command == 'getblockcandidate':
             return self.get_block_candidate()
         elif command == 'gettransaction':
-            txid = request.get('txid')
+            txid = request.get('tx_id')
             return self.get_transaction(txid)
         elif command == 'newpeer':
             peer = request.get('peer')
             return self.add_peer(peer)
+        elif command == 'inv':
+            return self.new_inv(request)
+        elif command == 'tx':
+            tx_data = request.get('tx_data')
+            return self.add_transaction(tx_data)
+        elif command == 'mempool':
+            print("mempool", self.mempool.get_hashes())
+            return {"mempool_hashes": self.mempool.get_hashes()}
         elif command == 'newblock':
             block = request.get('block')
             return self.receive_new_block(block)
@@ -87,6 +91,28 @@ class BlockchainNode:
             return self.send_peers_list()
         else:
             return {'error': 'Unknown command'}
+
+    def new_inv(self, request):
+        """ новый хеш """
+
+        tx_hash = request.get("tx")
+        if tx_hash is not None:
+            # сообщение с хешем транзакции , надо проверить на наличие
+            if not self.mempool.chech_hash_transaction(tx_hash):
+                # транзакции нет
+                return {"status": "get"}
+            else:
+                return {"status": "ok"}
+
+    def add_transaction(self, transaction_data):
+        """ Добавление транзакции """
+        tx = Transaction.from_json(transaction_data['tx_json'])
+        tx.sign = tx.sign_from_str(transaction_data['tx_sign'])
+        tx.make_hash()
+
+        if self.mempool.add_transaction(tx):
+            print("Добавлена транзакция")
+            self.network_manager.list_need_broadcast_transaction.append(tx)
 
     def send_peers_list(self):
         return {'peers': self.network_manager.active_peers()}
@@ -129,7 +155,8 @@ class BlockchainNode:
         return {'block_candidate': block_candidate.to_json()}
 
     def get_transaction(self, txid):
-        return {'transaction': 'details', 'txid': txid}
+        tx= self.mempool.transactions.get(txid)
+        return {'command': 'tx', 'tx_data': {'tx_json': tx.to_json(), 'tx_sign': tx.sign}}
 
     def add_peer(self, peer):
         if peer not in self.network_manager.known_peers:
@@ -166,7 +193,7 @@ class BlockchainNode:
 
     def pull_candidat_block_from_peer(self, peer):
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-        #отдельно берем кандидата
+        # отдельно берем кандидата
         answer = client.send_request({'command': 'getblockcandidate'})
 
         blockcandidate_json = answer.get("block_candidate")
@@ -175,6 +202,7 @@ class BlockchainNode:
             if self.chain.add_block_candidate(blockcandidate):
                 print("Добавлен кандидат с ноды", blockcandidate.hash)
         client.close()
+
     def pull_blocks_from_peer(self, peer, start_block, end_block):
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
         # Запрашиваем блоки, которые отсутствуют
@@ -218,7 +246,6 @@ class BlockchainNode:
 
             self.pull_candidat_block_from_peer(peer)
 
-
         print(f"Synchronization check completed. Nodes count {len(self.network_manager.get_active_peers())}")
         print(f"Blocks: {self.chain.blocks_count()}")
         if self.chain.last_block() is not None:
@@ -230,7 +257,6 @@ class BlockchainNode:
         print('Ctrl+C captured, stopping server and shutting down...')
         self.stop()  # Ваш метод для остановки сервера и закрытия потоков
 
-
     def create_block(self):
         """ """
 
@@ -239,13 +265,13 @@ class BlockchainNode:
 
         block = Block(previousHash)
 
-        last_block_time =self.chain.last_block().time if self.chain.last_block() is not None else self.chain.time()
+        last_block_time = self.chain.last_block().time if self.chain.last_block() is not None else self.chain.time()
 
         last_block_date = datetime.datetime.fromtimestamp(last_block_time)
 
-        time_candidat = last_block_time+Protocol.block_interval()
+        time_candidat = last_block_time + Protocol.block_interval()
         # синхронизированное время цепи
-        block.time = time_candidat if time_candidat>self.chain.time_ntpt.get_corrected_time() else self.chain.time_ntpt.get_corrected_time()
+        block.time = time_candidat if time_candidat > self.chain.time_ntpt.get_corrected_time() else self.chain.time_ntpt.get_corrected_time()
 
         # print(f"Create time: last_block_date{last_block_date}  candidat:{datetime.datetime.fromtimestamp(block.time)}")
 
@@ -273,27 +299,26 @@ class BlockchainNode:
 
         # если блок не ключевой, чекаем, есть ли мы в транзакциях
         if not is_key_block:
-
             # if self.address not in self.chain.transaction_storage.balances:
             #     return None
 
             # addrs = self.chain.transaction_storage.balances.keys()
             # if self.address in addrs:
 
-                seq_hash = self.protocol.sequence(block.previousHash)
+            seq_hash = self.protocol.sequence(block.previousHash)
 
-                reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
+            reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
 
-                tr = Transaction("0000000000000000000000000000000000", self.address, reward)
-                block.add_transaction(tr)
-                # print(tr.to_json())
+            tr = Transaction("0000000000000000000000000000000000", self.address, reward)
+            block.add_transaction(tr)
+            # print(tr.to_json())
 
-                block.winer_ratio = ratio
-                block.winer_address = self.address
+            block.winer_ratio = ratio
+            block.winer_address = self.address
 
-                block.hash_block()
+            block.hash_block()
 
-                return block
+            return block
 
     def run_node(self):
 
@@ -304,7 +329,6 @@ class BlockchainNode:
         # self.sync_node()
         self.main_loop()
 
-
     def main_loop(self):
         """ В главный цикл работы попадаем когда нода синхронизованная """
         # Здесь могут быть выполнены задачи по проверке блокчейна, созданию блоков, обновлению состояний и т.д.
@@ -312,7 +336,8 @@ class BlockchainNode:
         print("Blockchain Node is running")
 
         while self.running:
-            time.sleep(1)
+            print("mempool", len(self.mempool.transactions))
+            time.sleep(5)
             continue
 
             # сгенегрировать блок, и попробовать добавить его в блокчейн
@@ -320,7 +345,8 @@ class BlockchainNode:
             new_block = self.create_block()
 
             if self.chain.add_block_candidate(new_block):
-                print( f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash, new_block.datetime())
+                print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
+                      new_block.datetime())
                 self.distribute_block(self.chain.block_candidate)
             # else:
             #     print("Собственный Блок ниже по уровню")
@@ -347,10 +373,8 @@ class BlockchainNode:
             # Добавляем задержку в секундах (преобразуем миллисекунды в секунды)
             time.sleep(milliseconds_to_wait / 1000.0)
 
-
             # print(f"Chain {len(self.chain.blocks)} blocks")
 
 
 if __name__ == "__main__":
-
     """ """

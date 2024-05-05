@@ -74,9 +74,9 @@ class BlockchainNode:
         elif command == 'gettransaction':
             txid = request.get('txid')
             return self.get_transaction(txid)
-        # elif command == 'newpeer':
-        #     peer = request.get('peer')
-        #     return self.add_peer(peer)
+        elif command == 'newpeer':
+            peer = request.get('peer')
+            return self.add_peer(peer)
         elif command == 'newblock':
             block = request.get('block')
             return self.receive_new_block(block)
@@ -89,7 +89,7 @@ class BlockchainNode:
             return {'error': 'Unknown command'}
 
     def send_peers_list(self):
-        return {'peers': self.network_manager.get_active_peers()}
+        return {'peers': self.network_manager.active_peers()}
 
     def send_hello(self, peer):
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
@@ -113,17 +113,10 @@ class BlockchainNode:
                 self.known_peers.append(p)
         client.close()
 
-    def broadcast_new_peer(self, new_peer):
-        for peer in self.network_manager.get_active_peers():
-            if peer != new_peer and self.server.address != peer:  # Avoid notifying the new peer about itself
-                client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-                client.send_request({'command': 'newpeer', 'peer': new_peer})
-                client.close()
-
     def get_info(self):
         return {'synced': f'{self.synced}', 'node': f'{self.network_manager.server.address}',
                 'version': self.protocol.version,
-                # 'peers': self.known_peers,
+                'peers': self.network_manager.known_peers,
                 # 'block_count': self.chain.blocks_count()
                 }
 
@@ -138,14 +131,14 @@ class BlockchainNode:
     def get_transaction(self, txid):
         return {'transaction': 'details', 'txid': txid}
 
-    # def add_peer(self, peer):
-    #     if peer not in self.network_manager.known_peers:
-    #         print("Add new peer", peer)
-    #         self.known_peers.append(peer)
-    #         self.network_manager.ping_peer(peer)
-    #         self.broadcast_new_peer(peer)
-    #
-    #     return {'status': 'success', 'message': f'Peer {peer} added'}
+    def add_peer(self, peer):
+        if peer not in self.network_manager.known_peers:
+            print("Add new peer", peer)
+            self.network_manager.add_known_peer(peer)
+
+        # self.network_manager.list_need_broadcast_peers.append(peer)
+
+        return {'status': 'success', 'message': f'Peer {peer} added'}
 
     def receive_new_block(self, block_json):
 

@@ -9,7 +9,7 @@ if __name__ == '__main__':
     # print(t.get_data_hash().hexdigest())
     print(t.hash)
 
-    client = Client(port = 5557)
+    client = Client(port = 5555)
 
     response = client.send_request(
         {'command': 'tx', 'tx_data': {'tx_json':t.to_json(), 'tx_sign':t.sign}})

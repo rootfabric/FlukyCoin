@@ -1,4 +1,4 @@
 port: 5555
-known_peers:
-  - "localhost:5555"
+initial_peers:
+  - "api.robotsimulator.ru:9333"
 address: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRvcoU

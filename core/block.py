@@ -7,7 +7,7 @@ import os, json
 import random
 from storage.transaction_storage import TransactionStorage, TransactionGenerator
 import base64
-from crypto.xmss import *
+# from crypto.xmss import *
 
 
 class Block:

@@ -103,7 +103,7 @@ class NetworkManager:
         if os.path.exists(full_path):
             with open(full_path, 'r') as file:
                 try:
-                    self.known_peers = json.load(file)
+                    self.known_peers += json.load(file)
                 except:
                     self.known_peers = []
         else:
@@ -206,6 +206,8 @@ class NetworkManager:
             if 'error' not in response:
 
                 mem_hashes = response.get("mempool_hashes")
+                if mem_hashes is None:
+                    return False
 
                 for h in mem_hashes:
                     if not self.mempool.chech_hash_transaction(h):
@@ -247,7 +249,7 @@ class NetworkManager:
             return False
 
         print(f"Broadcast to {peer_to_broadcast}")
-        for client in self.peers.values():
+        for client in list(self.peers.values()):
             # if peer != new_peer and self.server.address != peer:  # Avoid notifying the new peer about itself
             if client.is_connected:
                 answer = client.send_request({'command': 'newpeer', 'peer': peer_to_broadcast})
@@ -263,7 +265,7 @@ class NetworkManager:
             return False
 
         print(f"Broadcast to {tx_to_broadcast}")
-        for client in self.peers.values():
+        for client in list(self.peers.values()):
             # if peer != new_peer and self.server.address != peer:  # Avoid notifying the new peer about itself
             if client.is_connected:
                 response = client.send_request({'command': 'inv', 'tx': tx_to_broadcast.hash})

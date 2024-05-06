@@ -1,6 +1,5 @@
 port: 9333
 host: 192.168.0.2
 initial_peers:
-  - "localhost:5555"
   - "95.154.71.53:9333"
 address: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRvcoU

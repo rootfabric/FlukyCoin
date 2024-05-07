@@ -2,7 +2,7 @@ import datetime
 
 from core.block import Block
 import base64
-from crypto.xmss import *
+# from crypto.xmss import *
 # # Пример использования класса
 from storage.transaction_storage import TransactionStorage
 from core.protocol import Protocol
@@ -15,7 +15,7 @@ class Chain():
     def __init__(self, time_ntpt = None):
         self.blocks: Block = []
         self.transaction_storage = TransactionStorage()
-        self.nodes_rating = {}
+
         self.protocol = Protocol()
 
         self.block_candidate: Block = None

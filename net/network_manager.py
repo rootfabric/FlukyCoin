@@ -2,6 +2,7 @@ from net.server import Server
 from net.client import Client
 from core.protocol import Protocol
 from core.transaction import Transaction
+from core.block import Block
 import os
 import pickle
 import threading
@@ -45,6 +46,7 @@ class NetworkManager:
 
         self.list_need_broadcast_peers = []
         self.list_need_broadcast_transaction = []
+        self.blocks_to_broadcast = {}
 
     def run(self):
         # Запуск фонового потока для периодической проверки узлов
@@ -162,6 +164,9 @@ class NetworkManager:
         if client is None:
             # если клиента нет, выполняем подключение
             print(f"Ошибка клиента {address}")
+            # пир не отвечает, удаляем из активных
+            if address in self.peers:
+                del self.peers[address]
             return False
 
         # try:
@@ -209,9 +214,15 @@ class NetworkManager:
                 if mem_hashes is None:
                     return False
 
+                # если есть транзакция, которой нет у клиента, пополняем на бродкаст
+                #
+                for t in self.mempool.transactions:
+                    if t not in mem_hashes:
+                        self.list_need_broadcast_transaction.append(self.mempool.transactions[t])
+
                 for h in mem_hashes:
                     if not self.mempool.chech_hash_transaction(h):
-                        response = client.send_request({'command': 'gettransaction', 'tx_id':h})
+                        response = client.send_request({'command': 'gettransaction', 'tx_id': h})
                         self.handle_request_node(response)
 
                 return True
@@ -260,24 +271,68 @@ class NetworkManager:
     def broadcast_new_transaction(self, tx_to_broadcast: Transaction):
         """ передать всем клиентам информацию о новом пире """
 
-        # сами себе не бродкастим
-        if self.server.address == tx_to_broadcast:
-            return False
-
         print(f"Broadcast to {tx_to_broadcast}")
         for client in list(self.peers.values()):
-            # if peer != new_peer and self.server.address != peer:  # Avoid notifying the new peer about itself
+
+            if self.server.address == client.address():
+                # сами себе не бродкастим
+                continue
+
             if client.is_connected:
-                response = client.send_request({'command': 'inv', 'tx': tx_to_broadcast.hash})
+                response = client.send_request({'command': 'invt', 'tx': tx_to_broadcast.hash})
                 if response.get('status') == 'ok':
                     if tx_to_broadcast in self.list_need_broadcast_transaction:
                         self.list_need_broadcast_transaction.remove(tx_to_broadcast)
 
                 if response.get('status') == 'get':
-                    #клиенту нужна эта транзакция
+                    # клиенту нужна эта транзакция
                     response = client.send_request(
-                        {'command': 'tx', 'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.sign}})
+                        {'command': 'tx',
+                         'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.sign}})
                     print(response)
+
+    def distribute_block(self, block):
+        print("distribute_block get_active_peers", self.active_peers())
+        # заготовка на рассылку блоков клиентам
+        for peer in self.active_peers():
+            if peer == self.server.address:
+                continue
+            blocks_to_brodcast = self.blocks_to_broadcast.get(peer,[])
+            blocks_to_brodcast.append(block)
+            self.blocks_to_broadcast[peer] = blocks_to_brodcast
+
+    def broadcast_blocks(self):
+        """ передать всем клиентам информацию о новом блоке """
+
+        # print(f"Broadcast new block {self.block_to_brodcast.hash}")
+
+        for adress in list(self.blocks_to_broadcast):
+            if adress in self.peers:
+                blocks = self.blocks_to_broadcast.get(adress)
+
+                block_to_brodcast: Block = None
+                if len(blocks) > 0:
+                    block_to_brodcast = blocks.pop(0)
+                else:
+                    del self.blocks_to_broadcast[adress]
+                    continue
+
+                client = self.peers[adress]
+                if client.is_connected:
+                    response = client.send_request({'command': 'invb', 'tx': block_to_brodcast.hash})
+                    if response.get('status') == 'ok':
+
+                        if len(blocks) > 0:
+                            self.blocks_to_broadcast[adress] = blocks
+
+                    if response.get('status') == 'get':
+                        # клиенту нужен блок
+                        response = client.send_request(
+                            {'command': 'block',
+                             'block_data': block_to_brodcast.to_json()})
+                        print(response)
+
+
 
     def check_peers(self):
         """ Проверка доступных нод, выбор ближайших соседей """
@@ -293,6 +348,9 @@ class NetworkManager:
             if len(self.list_need_broadcast_transaction) > 0:
                 for tx in self.list_need_broadcast_transaction:
                     self.broadcast_new_transaction(tx)
+
+            if len(self.blocks_to_broadcast) > 0:
+                self.broadcast_blocks()
 
             if time.time() - t > 10:
                 self._ping_all_peers_and_save()

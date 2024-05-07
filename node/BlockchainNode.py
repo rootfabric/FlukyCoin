@@ -4,6 +4,7 @@ from core.block import Block
 from core.transaction import Transaction
 from core.protocol import Protocol
 from storage.mempool import Mempool
+from storage.chain import Chain
 import signal
 import datetime
 from net.client import Client
@@ -36,6 +37,8 @@ class BlockchainNode:
 
         self.mempool = Mempool(dir=str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}'))
 
+        self.chain = Chain()
+
         self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool)
 
         self.protocol = Protocol()
@@ -45,7 +48,7 @@ class BlockchainNode:
 
 
 
-        # self.chain = Chain()
+
         #
         # #  простая хранилка
         # self.chain.load_from_disk(dir=str(self.server.address))
@@ -73,8 +76,8 @@ class BlockchainNode:
         elif command == 'newpeer':
             peer = request.get('peer')
             return self.add_peer(peer)
-        elif command == 'inv':
-            return self.new_inv(request)
+        elif command == 'invt':
+            return self.new_inv_transaction(request)
         elif command == 'tx':
             tx_data = request.get('tx_data')
             return self.add_transaction(tx_data)
@@ -82,7 +85,7 @@ class BlockchainNode:
             print("mempool", self.mempool.get_hashes())
             return {"mempool_hashes": self.mempool.get_hashes()}
         elif command == 'newblock':
-            block = request.get('block')
+            block = request.get('block_data')
             return self.receive_new_block(block)
         elif command == 'peerhello':
             peer = request.get('peer')
@@ -92,7 +95,7 @@ class BlockchainNode:
         else:
             return {'error': 'Unknown command'}
 
-    def new_inv(self, request):
+    def new_inv_transaction(self, request):
         """ новый хеш """
 
         tx_hash = request.get("tx")
@@ -168,28 +171,17 @@ class BlockchainNode:
         return {'status': 'success', 'message': f'Peer {peer} added'}
 
     def receive_new_block(self, block_json):
-
+        """ Проверка блока """
         block = Block.from_json(block_json)
         if self.chain.add_block_candidate(block):
             if self.chain.add_block_candidate(block):
                 print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
-                self.distribute_block(block)
+                self.network_manager.distribute_block(block)
 
                 return {'status': 'success', 'message': 'New block received and distributed'}
 
         return {'status': 'fail', 'message': 'Block wrong'}
 
-    def distribute_block(self, block):
-        print("distribute_block get_active_peers", self.network_manager.get_active_peers())
-        for peer in self.network_manager.get_active_peers():
-
-            # самому себе блок не транслируем
-            if peer == self.server.address:
-                continue
-            client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-            print("distribute_block ", peer)
-            client.send_request({'command': 'newblock', 'block': block.to_json()})
-            client.close()
 
     def pull_candidat_block_from_peer(self, peer):
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
@@ -337,6 +329,7 @@ class BlockchainNode:
 
         while self.running:
             print("mempool", len(self.mempool.transactions))
+            print("candidat", self.chain.block_candidate)
             time.sleep(5)
             continue
 

@@ -28,7 +28,7 @@ class NetworkManager:
         # валидные сообщения с сервера приходят в ноду:
         self.handle_request_node = handle_request
 
-        self.known_peers = self.initial_peers
+        self.known_peers = set(self.initial_peers)
 
         self.server = Server(self.handle_request, host=self.host, port=self.port)
 
@@ -37,6 +37,8 @@ class NetworkManager:
 
         self.load_from_disk()
 
+        self.known_peers = list(self.known_peers)
+
         self.running = True
 
         self.peers = {}
@@ -44,7 +46,8 @@ class NetworkManager:
         # добавляем самого себя
         self.add_known_peer(self.server.address, ping=False)
 
-        self.list_need_broadcast_peers = []
+        # self.list_need_broadcast_peers = []
+        self.peers_to_broadcast = {}
         self.list_need_broadcast_transaction = []
         self.blocks_to_broadcast = {}
 
@@ -57,7 +60,10 @@ class NetworkManager:
 
         # print(f"New peer to known_peers")
         if new_address not in self.known_peers:
-            self.known_peers.append(new_address)
+            self.known_peers = set(self.known_peers)
+            self.known_peers.add(new_address)
+
+            self.known_peers = list(self.known_peers)
         if ping:
             self.ping_peer(new_address)
             # self.broadcast_new_peer(new_address)
@@ -69,21 +75,36 @@ class NetworkManager:
     def handle_request(self, request, client_id):
         """ Сообщение с сервера сначала попадает сюда """
         command = request.get('command')
-        print("Server command", command)
+
 
         if command == 'version':
+            print("Server connect", command)
             new_address = request.get('address')
             self.server.clients[client_id] = new_address
             self.add_known_peer(new_address, False)
 
             # новый адрес, отправить всем активным пирам
-            self.list_need_broadcast_peers.append(new_address)
+            self.distribute_peer(new_address)
 
             print("New server connect", new_address)
             return {'connected': True}
 
+        if client_id not in self.server.clients:
+            return {"error":"need authorisation"}
+
+        print("Server command", command, self.server.clients[client_id])
         # работа ноды на входящее сообщение
         return self.handle_request_node(request)
+
+    def distribute_peer(self, new_address):
+        print("distribute_peer get_active_peers", self.active_peers())
+        # заготовка на рассылку блоков клиентам
+        for peer in self.active_peers():
+            if peer == self.server.address:
+                continue
+            peers_to_brodcast = self.peers_to_broadcast.get(peer,[])
+            peers_to_brodcast.append(new_address)
+            self.peers_to_broadcast[peer] = peers_to_brodcast
 
     def save_to_disk(self, filename='peers.json'):
 
@@ -105,9 +126,10 @@ class NetworkManager:
         if os.path.exists(full_path):
             with open(full_path, 'r') as file:
                 try:
-                    self.known_peers += json.load(file)
+                    a  = set(json.load(file))
+                    self.known_peers = self.known_peers | a
                 except:
-                    self.known_peers = []
+                    pass
         else:
             print(f"No data file found at {full_path}. Starting with an empty list of peers.")
 
@@ -163,13 +185,15 @@ class NetworkManager:
 
         if client is None:
             # если клиента нет, выполняем подключение
-            print(f"Ошибка клиента {address}")
+            # print(f"Ошибка клиента {address}")
             # пир не отвечает, удаляем из активных
             if address in self.peers:
                 del self.peers[address]
             return False
 
         # try:
+        s =json.dumps({'command': 'getinfo'}).encode('utf-8')
+
         response = client.send_request({'command': 'getinfo'})
         if response is not None:
             if 'error' not in response:
@@ -202,7 +226,7 @@ class NetworkManager:
 
         if client is None:
             # если клиента нет, выполняем подключение
-            print(f"Ошибка клиента {address}")
+            # print(f"Ошибка клиента {address}")
             return False
 
         # try:
@@ -252,21 +276,22 @@ class NetworkManager:
     # def _send_message_to_peer(self, peer, message):
     #     """ отправка сообщения конкретной ноде """
 
-    def broadcast_new_peer(self, peer_to_broadcast):
+    def broadcast_new_peer(self):
         """ передать всем клиентам информацию о новом пире """
+        print("distribute_block get_active_peers", self.active_peers())
 
-        # сами себе не бродкастим
-        if self.server.address == peer_to_broadcast:
-            return False
+        for adress in list(self.peers_to_broadcast):
+            if adress in self.peers:
+                peers = self.peers_to_broadcast.get(adress)
 
-        print(f"Broadcast to {peer_to_broadcast}")
-        for client in list(self.peers.values()):
-            # if peer != new_peer and self.server.address != peer:  # Avoid notifying the new peer about itself
-            if client.is_connected:
-                answer = client.send_request({'command': 'newpeer', 'peer': peer_to_broadcast})
-                if answer.get('status') == 'success':
-                    if peer_to_broadcast in self.list_need_broadcast_peers:
-                        self.list_need_broadcast_peers.remove(peer_to_broadcast)
+                for peer_to_broadcast in peers:
+                    client = self.peers[adress]
+                    if client.is_connected:
+                        answer = client.send_request({'command': 'newpeer', 'peer': peer_to_broadcast})
+                        if answer.get('status') == 'success':
+                            print(f"Broadcast peer to {peer_to_broadcast}")
+
+            del self.peers_to_broadcast[adress]
 
     def broadcast_new_transaction(self, tx_to_broadcast: Transaction):
         """ передать всем клиентам информацию о новом пире """
@@ -319,7 +344,8 @@ class NetworkManager:
 
                 client = self.peers[adress]
                 if client.is_connected:
-                    response = client.send_request({'command': 'invb', 'tx': block_to_brodcast.hash})
+                    req = {'command': 'invb', 'block_hash': block_to_brodcast.hash_block()}
+                    response = client.send_request(req)
                     if response.get('status') == 'ok':
 
                         if len(blocks) > 0:
@@ -328,7 +354,7 @@ class NetworkManager:
                     if response.get('status') == 'get':
                         # клиенту нужен блок
                         response = client.send_request(
-                            {'command': 'block',
+                            {'command': 'newblock',
                              'block_data': block_to_brodcast.to_json()})
                         print(response)
 
@@ -341,13 +367,12 @@ class NetworkManager:
         pause_mempool = time.time()
         while self.running:
             # with self.lock:
-            if len(self.list_need_broadcast_peers) > 0:
-                for peer in self.list_need_broadcast_peers:
-                    self.broadcast_new_peer(peer)
+            if len(self.peers_to_broadcast) > 0:
+                    self.broadcast_new_peer()
 
-            if len(self.list_need_broadcast_transaction) > 0:
-                for tx in self.list_need_broadcast_transaction:
-                    self.broadcast_new_transaction(tx)
+            # if len(self.list_need_broadcast_transaction) > 0:
+            #     for tx in self.list_need_broadcast_transaction:
+            #         self.broadcast_new_transaction(tx)
 
             if len(self.blocks_to_broadcast) > 0:
                 self.broadcast_blocks()
@@ -357,10 +382,10 @@ class NetworkManager:
 
                 t = time.time()
 
-            if time.time() - pause_mempool > 10:
-                for peer in self.known_peers:
-                    self.take_mempool(peer)
-
-                pause_mempool = time.time()
+            # if time.time() - pause_mempool > 10:
+            #     for peer in list(self.active_peers()):
+            #         self.take_mempool(peer)
+            #
+            #     pause_mempool = time.time()
 
             time.sleep(0.1)  # Пауза перед следующей проверкой

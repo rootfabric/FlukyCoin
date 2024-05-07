@@ -78,6 +78,8 @@ class BlockchainNode:
             return self.add_peer(peer)
         elif command == 'invt':
             return self.new_inv_transaction(request)
+        elif command == 'invb':
+            return self.new_inv_block(request)
         elif command == 'tx':
             tx_data = request.get('tx_data')
             return self.add_transaction(tx_data)
@@ -102,6 +104,18 @@ class BlockchainNode:
         if tx_hash is not None:
             # сообщение с хешем транзакции , надо проверить на наличие
             if not self.mempool.chech_hash_transaction(tx_hash):
+                # транзакции нет
+                return {"status": "get"}
+            else:
+                return {"status": "ok"}
+    def new_inv_block(self, request):
+        """ новый хеш """
+
+        block_hash = request.get("block_hash")
+        if block_hash is not None:
+            # сообщение с хешем  , надо проверить на наличие
+
+            if not self.chain.check_hach(block_hash):
                 # транзакции нет
                 return {"status": "get"}
             else:

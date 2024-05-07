@@ -91,7 +91,9 @@ class Block:
 
     def hash_block(self):
         """ Формирование блока"""
-        self.hash = self.calculate_hash()
+        if self.hash is None:
+            self.hash = self.calculate_hash()
+        return self.hash
 
     def add_new_node(self, node, node_parrent):
         # формирование транзекций новой ноды

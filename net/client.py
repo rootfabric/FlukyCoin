@@ -26,7 +26,7 @@ class Client:
             self.is_connected = True
             return json.loads(response.decode('utf-8'))
         except zmq.error.Again:
-            print(f"Timeout occurred when connecting to {self.host}:{self.port}")
+            # print(f"Timeout occurred when connecting to {self.host}:{self.port}")
             self.is_connected = False
             return {'error': 'Timeout occurred'}
         except Exception as e:

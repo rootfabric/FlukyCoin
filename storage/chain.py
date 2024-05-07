@@ -9,7 +9,7 @@ from core.protocol import Protocol
 import copy
 import time
 from tools.time_sync import NTPTimeSynchronizer
-
+import os
 
 class Chain():
     def __init__(self, time_ntpt = None):
@@ -25,6 +25,12 @@ class Chain():
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
+    def check_hach(self, block_hash):
+        """"""
+        # TODO нужно смотреть блоки в цепи
+        if self.block_candidate is not None and block_hash ==self.block_candidate.hash_block():
+            return True
+        return False
     def save_to_disk(self, dir="", filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
         dir = dir.replace(":", "_")

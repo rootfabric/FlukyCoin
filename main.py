@@ -4,7 +4,7 @@ import faulthandler
 import os
 import yaml
 
-from node.BlockchainNode import BlockchainNode
+from node.blockchain_node import BlockchainNode
 from tools.config_loader import ConfigLoader
 
 

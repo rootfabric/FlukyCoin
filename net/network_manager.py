@@ -346,12 +346,13 @@ class NetworkManager:
                 if client.is_connected:
                     req = {'command': 'invb', 'block_hash': block_to_brodcast.hash_block()}
                     response = client.send_request(req)
-                    if response.get('status') == 'ok':
+
+                    if response is not None and response.get('status') == 'ok':
 
                         if len(blocks) > 0:
                             self.blocks_to_broadcast[adress] = blocks
 
-                    if response.get('status') == 'get':
+                    if response is not None and response.get('status') == 'get':
                         # клиенту нужен блок
                         response = client.send_request(
                             {'command': 'newblock',
@@ -382,10 +383,11 @@ class NetworkManager:
 
                 t = time.time()
 
-            # if time.time() - pause_mempool > 10:
-            #     for peer in list(self.active_peers()):
-            #         self.take_mempool(peer)
-            #
-            #     pause_mempool = time.time()
+            if time.time() - pause_mempool > 10:
+                for peer in list(self.active_peers()):
+                    if self.server.address!= peer:
+                        self.take_mempool(peer)
+
+                pause_mempool = time.time()
 
             time.sleep(0.1)  # Пауза перед следующей проверкой

@@ -1,5 +1,7 @@
 from core.transaction import Transaction
 from net.client import Client
+from core.protocol import Protocol
+
 import random
 if __name__ == '__main__':
     """ """
@@ -9,7 +11,12 @@ if __name__ == '__main__':
     # print(t.get_data_hash().hexdigest())
     print(t.hash)
 
-    client = Client(port = 5555)
+    client = Client(host = "127.0.0.1", port = 9333)
+
+    response = client.send_request(
+        {'command': 'version', 'ver': Protocol.version, 'address': "127.0.0.1:888"})
+    print(response)
 
     response = client.send_request(
         {'command': 'tx', 'tx_data': {'tx_json':t.to_json(), 'tx_sign':t.sign}})
+    print(response)

@@ -39,7 +39,7 @@ class BlockchainNode:
 
         self.chain = Chain()
 
-        self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool)
+        self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool, chain=self.chain)
 
         self.protocol = Protocol()
         self.uuid = self.protocol.hash_to_uuid(self.network_manager.server.address)
@@ -58,7 +58,7 @@ class BlockchainNode:
         if hasattr(self, 'network_manager'):
             self.network_manager.stop()
 
-    def handle_request(self, request):
+    def handle_request(self, request, client_id):
         command = request.get('command')
 
         # print(f"Command: {request}")
@@ -88,7 +88,7 @@ class BlockchainNode:
             return {"mempool_hashes": self.mempool.get_hashes()}
         elif command == 'newblock':
             block = request.get('block_data')
-            return self.receive_new_block(block)
+            return self.receive_new_block(block, client_id)
         elif command == 'peerhello':
             peer = request.get('peer')
             return self.register_peer(peer)
@@ -160,7 +160,8 @@ class BlockchainNode:
         return {'synced': f'{self.synced}', 'node': f'{self.network_manager.server.address}',
                 'version': self.protocol.version,
                 'peers': self.network_manager.known_peers,
-                # 'block_count': self.chain.blocks_count()
+                'block_count': self.chain.blocks_count(),
+                'block_candidat': self.chain.block_candidate_hash
                 }
 
     def get_block(self, block_number):
@@ -184,15 +185,15 @@ class BlockchainNode:
 
         return {'status': 'success', 'message': f'Peer {peer} added'}
 
-    def receive_new_block(self, block_json):
+    def receive_new_block(self, block_json, client_id):
         """ Проверка блока """
         block = Block.from_json(block_json)
         if self.chain.add_block_candidate(block):
-            if self.chain.add_block_candidate(block):
                 print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
                 self.network_manager.distribute_block(block)
 
                 return {'status': 'success', 'message': 'New block received and distributed'}
+        print(f"Кандидат из другой ноды не подходит:{block.datetime()} {block.hash}")
 
         return {'status': 'fail', 'message': 'Block wrong'}
 
@@ -292,7 +293,7 @@ class BlockchainNode:
             reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
             # print("seq_hash", seq_hash)
 
-            tr = Transaction("0000000000000000000000000000000000", self.address, reward)
+            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000", toAddress=self.address, amount=reward)
             block.add_transaction(tr)
             # print(tr.to_json())
 
@@ -315,7 +316,7 @@ class BlockchainNode:
 
             reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
 
-            tr = Transaction("0000000000000000000000000000000000", self.address, reward)
+            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000", toAddress=self.address, amount=reward)
             block.add_transaction(tr)
             # print(tr.to_json())
 
@@ -343,9 +344,8 @@ class BlockchainNode:
 
         while self.running:
             print("mempool", len(self.mempool.transactions))
-            print("candidat", self.chain.block_candidate)
-            time.sleep(5)
-            continue
+
+            # continue
 
             # сгенегрировать блок, и попробовать добавить его в блокчейн
 
@@ -354,19 +354,23 @@ class BlockchainNode:
             if self.chain.add_block_candidate(new_block):
                 print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
                       new_block.datetime())
-                self.distribute_block(self.chain.block_candidate)
+                self.network_manager.distribute_block(self.chain.block_candidate)
             # else:
             #     print("Собственный Блок ниже по уровню")
 
             needClose = self.chain.need_close_block()
 
             if needClose and self.chain.block_candidate is not None:
-                print("Нужно закрывать блок: ", needClose)
+                print("*******************")
+                print("*******************")
+                print("*******************")
+                print("*******************")
+                print("Время закрывать блок: ", needClose)
                 self.chain.close_block()
                 print(f"Chain {len(self.chain.blocks)} blocks , последний: ", self.chain.last_block().hash,
                       self.chain.last_block().winer_address)
 
-                self.chain.save_to_disk(dir=str(self.server.address))
+                self.chain.save_to_disk(dir=str(self.network_manager.server.address))
 
                 print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
             #

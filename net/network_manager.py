@@ -17,13 +17,14 @@ import time
 
 
 class NetworkManager:
-    def __init__(self, handle_request, config, mempool):
+    def __init__(self, handle_request, config, mempool,  chain):
 
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         self.host = config.get("host", "localhost")
         self.port = config.get("port", "5555")
 
         self.mempool = mempool
+        self.chain = chain
 
         # валидные сообщения с сервера приходят в ноду:
         self.handle_request_node = handle_request
@@ -94,7 +95,7 @@ class NetworkManager:
 
         print("Server command", command, self.server.clients[client_id])
         # работа ноды на входящее сообщение
-        return self.handle_request_node(request)
+        return self.handle_request_node(request, client_id)
 
     def distribute_peer(self, new_address):
         print("distribute_peer get_active_peers", self.active_peers())
@@ -169,6 +170,11 @@ class NetworkManager:
 
             client.send_request({'command': 'newpeer', 'peer': address})
 
+            # при первом коннекте шлем своего кандидата
+            self.distribute_block(self.chain.block_candidate, address)
+            # client.send_request(req = {'command': 'invb', 'block_hash': self.chain.block_candidate.hash_block()}
+
+
             return client
 
         except Exception as e:
@@ -192,8 +198,6 @@ class NetworkManager:
             return False
 
         # try:
-        s =json.dumps({'command': 'getinfo'}).encode('utf-8')
-
         response = client.send_request({'command': 'getinfo'})
         if response is not None:
             if 'error' not in response:
@@ -205,6 +209,8 @@ class NetworkManager:
                 new_peers = response.get('peers', [])
                 for new_peer in new_peers:
                     self.add_known_peer(new_peer, ping=False)
+
+
 
                 return True
 
@@ -264,17 +270,7 @@ class NetworkManager:
         self.running = False
         self.background_thread.join()  # Дожидаемся завершения фонового потока
 
-    # def send_message(self, message):
-    #     """ Рассылка сообщениц в ноды """
-    #
-    #     # тут должна быть добавлена логика отсылки не всем подряд, а только части.
-    #
-    #     # потом разбить на мультипоток
-    #     for peer in self.get_active_peers():
-    #         self._send_message_to_peer(peer, message)
-    #
-    # def _send_message_to_peer(self, peer, message):
-    #     """ отправка сообщения конкретной ноде """
+
 
     def broadcast_new_peer(self):
         """ передать всем клиентам информацию о новом пире """
@@ -316,11 +312,14 @@ class NetworkManager:
                          'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.sign}})
                     print(response)
 
-    def distribute_block(self, block):
+    def distribute_block(self, block, address=None):
         print("distribute_block get_active_peers", self.active_peers())
         # заготовка на рассылку блоков клиентам
         for peer in self.active_peers():
             if peer == self.server.address:
+                continue
+            if address is not None and address!=peer:
+                # задан конеретный адрес куда отослать
                 continue
             blocks_to_brodcast = self.blocks_to_broadcast.get(peer,[])
             blocks_to_brodcast.append(block)
@@ -367,7 +366,12 @@ class NetworkManager:
         t = time.time() - 11
         pause_mempool = time.time()
         while self.running:
-            # with self.lock:
+
+            if time.time() - t > 10:
+                self._ping_all_peers_and_save()
+                t = time.time()
+
+
             if len(self.peers_to_broadcast) > 0:
                     self.broadcast_new_peer()
 
@@ -378,10 +382,6 @@ class NetworkManager:
             if len(self.blocks_to_broadcast) > 0:
                 self.broadcast_blocks()
 
-            if time.time() - t > 10:
-                self._ping_all_peers_and_save()
-
-                t = time.time()
 
             if time.time() - pause_mempool > 10:
                 for peer in list(self.active_peers()):

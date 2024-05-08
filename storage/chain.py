@@ -10,7 +10,7 @@ import copy
 import time
 from tools.time_sync import NTPTimeSynchronizer
 import os
-
+import pickle
 class Chain():
     def __init__(self, time_ntpt = None):
         self.blocks: Block = []
@@ -24,6 +24,10 @@ class Chain():
 
     def time(self):
         return self.time_ntpt.get_corrected_time()
+
+    @property
+    def block_candidate_hash(self):
+        return self.block_candidate.hash_block() if self.block_candidate is not None else None
 
     def check_hach(self, block_hash):
         """"""
@@ -141,29 +145,32 @@ class Chain():
         if block is None:
             return False
 
+        # первый блок
+        if self.last_block() is None and self.block_candidate is None:
+            self.block_candidate = copy.deepcopy(block)
+            print("New candidat", self.block_candidate.hash, self.block_candidate.winer_address)
+            return True
+
         # print("Исходный block:", block)
         if self.block_candidate is None:
             self.block_candidate = copy.deepcopy(block)
             return True
 
-        # первый блок
-        if self.last_block() is None:
-            self.block_candidate = copy.deepcopy(block)
-            print("New candidat", self.block_candidate.hash, self.block_candidate.winer_address)
-            return True
 
-        is_key_block = self.protocol.is_key_block(self.last_block().hash)
+        self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if self.last_block() is None else self.last_block().hash
+
+        is_key_block = self.protocol.is_key_block(self.previousHash)
         # print(f"Key block: {is_key_block}")
 
         # при ключевом блоке проверяем, не является ли адрем новым
-        if is_key_block:
+        if not is_key_block:
 
-            addrs = self.chain.transaction_storage.balances.keys()
+            addrs = self.transaction_storage.balances.keys()
             if self.block_candidate.winer_address in addrs and block.winer_address not in addrs:
                 """ кандидат не в списках майнеров """
                 return False
 
-        self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if self.last_block() is None else self.last_block().hash
+
 
         win_address = self.protocol.winner(self.block_candidate.winer_address, block.winer_address,
                                            self.protocol.sequence(self.previousHash))
@@ -189,7 +196,7 @@ class Chain():
 
         if self.block_candidate is None:
             return False
-        # print(f"Check:  block_candidate: {self.block_candidate.datetime()} time:{self.time_ntpt.get_corrected_datetime()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time()}")
+        print(f"Check:  block_candidate: {self.block_candidate.datetime()} time:{self.time_ntpt.get_corrected_datetime()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time()}  {self.block_candidate.hash_block()}")
 
         if self.block_candidate.time >self.time_ntpt.get_corrected_time():
 

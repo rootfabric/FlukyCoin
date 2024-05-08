@@ -8,6 +8,7 @@ import pickle
 import threading
 import json
 import time
+import datetime
 
 """
 
@@ -22,6 +23,9 @@ class NetworkManager:
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         self.host = config.get("host", "localhost")
         self.port = config.get("port", "5555")
+
+        # синхронизирована нода с блокчейном
+        self.synced = False
 
         self.mempool = mempool
         self.chain = chain
@@ -356,9 +360,63 @@ class NetworkManager:
                         response = client.send_request(
                             {'command': 'newblock',
                              'block_data': block_to_brodcast.to_json()})
+
+                        if "block_candidate" in response:
+                            candidate_json = response.get("block_candidate")
+                            candidate = Block.from_json(candidate_json)
+                            if self.chain.add_block_candidate(candidate):
+                                print(f"Блок от {adress} верный. Добавляем в цепь")
+
                         print(response)
 
+    def sync_node(self):
+        # Проверяем, есть ли у всех известных узлов такое же количество блоков, как и у текущего узла
+        current_block_count = len(self.chain.blocks)
+        print(f"Checking synchronization status with {len(self.active_peers())} peers...")
+        for peer in self.active_peers():
 
+            if peer == self.server.address:
+                continue
+
+            client = self.peers.get(peer)
+
+            if client is None:
+                continue
+
+            response = client.send_request({'command': 'newpeer', 'peer': self.server.address})
+            if "error" in response:
+                continue
+            print(response)
+
+            response = client.send_request({'command': 'getinfo'})
+            peer_block_count = response.get('block_count', 0)
+            client.close()
+
+            # Если количество блоков различается, начинаем процесс синхронизации
+            if peer_block_count != current_block_count:
+                print(f"Synchronization needed with {peer}.")
+                self.pull_blocks_from_peer(peer, current_block_count, peer_block_count)
+            else:
+                print(f"{peer} is synchronized.")
+
+            # self.pull_candidat_block_from_peer(peer)
+
+        print(f"Synchronization check completed. Nodes count {len(self.active_peers())}")
+        print(f"Blocks: {self.chain.blocks_count()}")
+        if self.chain.last_block() is not None:
+            print(f"{datetime.datetime.fromtimestamp(self.chain.last_block().time)}")
+
+    def pull_candidat_block_from_peer(self, peer):
+        client = Client(peer.split(":")[0], int(peer.split(":")[1]))
+        # отдельно берем кандидата
+        answer = client.send_request({'command': 'getblockcandidate'})
+
+        blockcandidate_json = answer.get("block_candidate")
+        if blockcandidate_json is not None:
+            blockcandidate = Block.from_json(blockcandidate_json)
+            if self.chain.add_block_candidate(blockcandidate):
+                print("Добавлен кандидат с ноды", blockcandidate.hash)
+        client.close()
 
     def check_peers(self):
         """ Проверка доступных нод, выбор ближайших соседей """

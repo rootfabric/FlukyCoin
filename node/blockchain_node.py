@@ -22,9 +22,6 @@ class BlockchainNode:
         self.address = config.get("address")
         print(f"Blockchain Node address {self.address}")
 
-        # синхронизирована нода с блокчейном
-        self.synced = False
-
         self.time_ntpt = NTPTimeSynchronizer()
 
         self.running = True
@@ -157,7 +154,7 @@ class BlockchainNode:
         client.close()
 
     def get_info(self):
-        return {'synced': f'{self.synced}', 'node': f'{self.network_manager.server.address}',
+        return {'synced': f'{self.network_manager.synced}', 'node': f'{self.network_manager.server.address}',
                 'version': self.protocol.version,
                 'peers': self.network_manager.known_peers,
                 'block_count': self.chain.blocks_count(),
@@ -195,20 +192,10 @@ class BlockchainNode:
                 return {'status': 'success', 'message': 'New block received and distributed'}
         print(f"Кандидат из другой ноды не подходит:{block.datetime()} {block.hash}")
 
-        return {'status': 'fail', 'message': 'Block wrong'}
+        return {'status': 'fail', 'message': 'Block wrong', "block_candidate":self.chain.block_candidate.to_json()}
 
 
-    def pull_candidat_block_from_peer(self, peer):
-        client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-        # отдельно берем кандидата
-        answer = client.send_request({'command': 'getblockcandidate'})
 
-        blockcandidate_json = answer.get("block_candidate")
-        if blockcandidate_json is not None:
-            blockcandidate = Block.from_json(blockcandidate_json)
-            if self.chain.add_block_candidate(blockcandidate):
-                print("Добавлен кандидат с ноды", blockcandidate.hash)
-        client.close()
 
     def pull_blocks_from_peer(self, peer, start_block, end_block):
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
@@ -226,39 +213,7 @@ class BlockchainNode:
 
         client.close()
 
-    def sync_node(self):
-        # Проверяем, есть ли у всех известных узлов такое же количество блоков, как и у текущего узла
-        current_block_count = len(self.chain.blocks)
-        print(f"Checking synchronization status with {len(self.known_peers)} peers...")
-        for peer in self.network_manager.get_active_peers():
 
-            if peer == self.server.address:
-                continue
-
-            client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-
-            response = client.send_request({'command': 'newpeer', 'peer': self.server.address})
-            print(response)
-
-            response = client.send_request({'command': 'getinfo'})
-            peer_block_count = response.get('block_count', 0)
-            client.close()
-
-            # Если количество блоков различается, начинаем процесс синхронизации
-            if peer_block_count != current_block_count:
-                print(f"Synchronization needed with {peer}.")
-                self.pull_blocks_from_peer(peer, current_block_count, peer_block_count)
-            else:
-                print(f"{peer} is synchronized.")
-
-            self.pull_candidat_block_from_peer(peer)
-
-        print(f"Synchronization check completed. Nodes count {len(self.network_manager.get_active_peers())}")
-        print(f"Blocks: {self.chain.blocks_count()}")
-        if self.chain.last_block() is not None:
-            print(f"{datetime.datetime.fromtimestamp(self.chain.last_block().time)}")
-
-        self.synced = True  # Обновляем статус синхронизации
 
     def signal_handler(self, signal, frame):
         print('Ctrl+C captured, stopping server and shutting down...')
@@ -271,6 +226,8 @@ class BlockchainNode:
         previousHash = None if last_block is None else last_block.hash
 
         block = Block(previousHash)
+
+        block.winer_address = self.address
 
         last_block_time = self.chain.last_block().time if self.chain.last_block() is not None else self.chain.time()
 
@@ -333,7 +290,9 @@ class BlockchainNode:
         self.init_node()
         # self.add_peer(f"{address}:{port}")
         self.network_manager.run()
-        # self.sync_node()
+
+        self.network_manager.sync_node()
+
         self.main_loop()
 
     def main_loop(self):

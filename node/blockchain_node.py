@@ -201,16 +201,15 @@ class BlockchainNode:
         """ """
 
         last_block = self.chain.last_block()
-        previousHash = None if last_block is None else last_block.hash
+        previousHash = None if last_block is None else last_block.hash_block()
 
         block = Block(previousHash)
 
-        block.winer_address = self.address
         block.signer = self.address
 
         last_block_time = self.chain.last_block().time if self.chain.last_block() is not None else self.chain.time()
 
-        last_block_date = datetime.datetime.fromtimestamp(last_block_time)
+        # last_block_date = datetime.datetime.fromtimestamp(last_block_time)
 
         time_candidat = last_block_time + Protocol.block_interval()
         # синхронизированное время цепи
@@ -218,52 +217,25 @@ class BlockchainNode:
 
         # print(f"Create time: last_block_date{last_block_date}  candidat:{datetime.datetime.fromtimestamp(block.time)}")
 
-        is_key_block = self.protocol.is_key_block(block.previousHash)
+        # is_key_block = self.protocol.is_key_block(block.previousHash)
         # print(f"Key block: {is_key_block}")
 
-        if is_key_block:
-            # создание блока со своим адресом
 
-            seq_hash = self.protocol.sequence(block.previousHash)
+        # создание блока со своим адресом
 
-            reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
-            # print("seq_hash", seq_hash)
+        seq_hash = self.protocol.sequence(block.previousHash)
 
-            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000",
-                             toAddress=self.address, amount=reward)
-            block.add_transaction(tr)
-            # print(tr.to_json())
+        reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
+        # print("seq_hash", seq_hash)
 
-            block.winer_ratio = ratio
-            block.winer_address = self.address
+        tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000",
+                         toAddress=self.address, amount=reward)
+        block.add_transaction(tr)
 
-            block.hash_block()
+        block.hash_block()
 
-            return block
+        return block
 
-        # если блок не ключевой, чекаем, есть ли мы в транзакциях
-        if not is_key_block:
-            # if self.address not in self.chain.transaction_storage.balances:
-            #     return None
-
-            # addrs = self.chain.transaction_storage.balances.keys()
-            # if self.address in addrs:
-
-            seq_hash = self.protocol.sequence(block.previousHash)
-
-            reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
-
-            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000",
-                             toAddress=self.address, amount=reward)
-            block.add_transaction(tr)
-            # print(tr.to_json())
-
-            block.winer_ratio = ratio
-            block.winer_address = self.address
-
-            block.hash_block()
-
-            return block
 
     def run_node(self):
 
@@ -309,9 +281,6 @@ class BlockchainNode:
 
             if needClose and self.chain.block_candidate is not None:
                 print("*******************")
-                print("*******************")
-                print("*******************")
-                print("*******************")
                 print("Время закрывать блок: ", needClose)
                 self.chain.close_block()
                 print(f"Chain {len(self.chain.blocks)} blocks , последний: ", self.chain.last_block().hash,
@@ -320,6 +289,10 @@ class BlockchainNode:
                 self.chain.save_to_disk(dir=str(self.network_manager.server.address))
 
                 print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
+                if self.protocol.is_key_block(self.chain.last_block().hash):
+                    print("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
+                print("*******************")
+                continue
             #
             # if needClose and self.chain.block_candidate is not None:
             #     self.chain.close_block()

@@ -11,7 +11,7 @@ from tools.config_loader import ConfigLoader
 def parse_arguments():
     parser = argparse.ArgumentParser(description='FluckyCoin node')
     parser.add_argument('--config', '-c', type=str, required=False,
-                        default='node_config.yaml', help="Node host")
+                        default='node_config2.yaml', help="Node host")
     # parser.add_argument('--host', '-h', type=str, required=False,
     #                     default='localhost', help="Node host")
     # parser.add_argument('--port', '-p', type=str ,required=False,

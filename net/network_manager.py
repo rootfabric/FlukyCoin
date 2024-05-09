@@ -118,19 +118,28 @@ class NetworkManager:
     def save_to_disk(self, filename='peers.json'):
 
         # print("no save peers")
-        # return
+        # retur
         dir = self.dir.replace(":", "_")  # Замена недопустимых символов в имени директории
-        full_path = os.path.join(dir, filename)
 
-        if not os.path.exists(dir):
-            os.makedirs(dir)  # Создание директории, если необходимо
+        base_dir = "node_data"
+        dir_path = os.path.join(base_dir, dir)
+
+        full_path = os.path.join(dir_path, filename)
+
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)  # Создание директории, если необходимо
 
         with open(full_path, 'w') as file:
             json.dump(self.known_peers, file, indent=4)
 
     def load_from_disk(self, filename='peers.json'):
         dir = self.dir.replace(":", "_")
-        full_path = os.path.join(dir, filename)
+
+        base_dir = "node_data"
+        dir_path = os.path.join(base_dir, dir)
+
+
+        full_path = os.path.join(dir_path, filename)
 
         if os.path.exists(full_path):
             with open(full_path, 'r') as file:
@@ -459,6 +468,7 @@ class NetworkManager:
                 print("Добавлен кандидат с ноды", blockcandidate.hash)
             else:
                 print("Кандидат с ноды не подходит", blockcandidate.hash)
+                self.distribute_block(self.chain.block_candidate, peer)
 
 
     def check_synk_with_peers(self):

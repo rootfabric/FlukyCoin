@@ -23,6 +23,9 @@ class Chain():
         self.time_ntpt = NTPTimeSynchronizer() if time_ntpt is None else time_ntpt
 
         self.miners = set()
+
+        # self.load_from_disk()
+
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -147,6 +150,9 @@ class Chain():
     def validate_candidate(self, block:Block):
         """ Является ли блок кандидатом """
 
+        if self.last_block() is None:
+            return True
+
         if block.previousHash != self.last_block().hash_block():
             print("Chain: ошибка проверки кандидата, хеш не подходит")
             return False
@@ -165,7 +171,7 @@ class Chain():
         # первый блок
         if self.last_block() is None and self.block_candidate is None:
             self.block_candidate = copy.deepcopy(block)
-            print("New candidat", self.block_candidate.hash, self.block_candidate.winer_address)
+            print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
             return True
 
         # print("Исходный block:", block)
@@ -188,13 +194,17 @@ class Chain():
         # при ключевом блоке проверяем, не является ли адрем новым
         if not is_key_block:
 
-            if self.check_miners(self.block_candidate.signer) and self.check_miners(block.signer):
+            if self.check_miners(self.block_candidate.signer) and not self.check_miners(block.signer):
                 """ кандидат не в списках майнеров """
-                print("кандидат не в списках майнеров")
+                print(f"Текущий майнер {self.block_candidate.signer}, кандидат не в списках майнеров", block.signer, self.miners)
                 return False
 
-
-
+            if not self.check_miners(self.block_candidate.signer) and self.check_miners(block.signer):
+                """ кандидат в списках майнеров, а текущий нет """
+                print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
+                self.block_candidate = copy.deepcopy(block)
+                print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+                return True
 
         win_address = self.protocol.winner(self.block_candidate.signer, block.signer,
                                            self.protocol.sequence(self.previousHash))

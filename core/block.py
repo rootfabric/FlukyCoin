@@ -17,7 +17,7 @@ class Block:
         self.time = time.time()
         self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if previousHash is None else previousHash
         # self.previousHash = "3b6c2c7aa4d45aa89fcad9568208270fb73dd954a0c62b33d5e47355d4157ff1" if previousHash is None else previousHash
-        self.transactions = []
+
         self.hash = None
         # self.new_nodes = {}
 
@@ -32,8 +32,10 @@ class Block:
         # технические параметры, для симулятора, ускоряющие работу
 
         # уровень победителя и его адрес
-        self.winer_ratio = 0
-        self.winer_address = None
+        # self.winer_ratio = 0
+        # self.winer_address = None
+
+        self.transactions = []
 
     def to_json_for_sign(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON
@@ -56,11 +58,11 @@ class Block:
             'time': self.time,
             'transactions': [tr.to_json() for tr in self.transactions],
             'hash': self.hash,
-            'diff_key_block': self.diff_key_block,
+            # 'diff_key_block': self.diff_key_block,
             'signer': self.signer,
             'sign': self.sign,
-            'winer_ratio': self.winer_ratio,
-            'winer_address': self.winer_address
+            # 'winer_ratio': self.winer_ratio,
+            # 'winer_address': self.winer_address
         }
         return json.dumps(block_dict)
 
@@ -73,11 +75,11 @@ class Block:
         block.time = block_dict['time']
         block.transactions = [Transaction.from_json(t) for t in block_dict['transactions']]
         block.hash = block_dict['hash']
-        block.diff_key_block = block_dict['diff_key_block']
+        # block.diff_key_block = block_dict['diff_key_block']
         block.signer = block_dict['signer']
         block.sign = block_dict['sign']
-        block.winer_ratio = block_dict['winer_ratio']
-        block.winer_address = block_dict['winer_address']
+        # block.winer_ratio = block_dict['winer_ratio']
+        # block.winer_address = block_dict['winer_address']
         return block
 
     # def as_dict(self):
@@ -111,7 +113,7 @@ class Block:
         text_transaction = " ".join([t.to_json() for t in self.transactions])
 
         data = str(self.previousHash) + str(text_transaction)
-        data += str(self.signer) + str(self.winer_address)
+        data += str(self.signer)
 
         result = hashlib.sha256(data.encode())
         return result.hexdigest()

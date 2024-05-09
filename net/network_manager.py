@@ -18,7 +18,7 @@ import datetime
 
 
 class NetworkManager:
-    def __init__(self, handle_request, config, mempool,  chain):
+    def __init__(self, handle_request, config, mempool,  chain, time_ntpt):
 
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         self.host = config.get("host", "localhost")
@@ -29,6 +29,7 @@ class NetworkManager:
 
         self.mempool = mempool
         self.chain = chain
+        self.time_ntpt = time_ntpt
 
         # валидные сообщения с сервера приходят в ноду:
         self.handle_request_node = handle_request
@@ -46,7 +47,7 @@ class NetworkManager:
 
         self.running = True
 
-        self.peers = {}
+        self.peers: {Client: dict} = {}
 
         # добавляем самого себя
         self.add_known_peer(self.server.address, ping=False)
@@ -56,6 +57,9 @@ class NetworkManager:
         self.list_need_broadcast_transaction = []
         self.blocks_to_broadcast = {}
 
+        self.start_time = self.time_ntpt.get_corrected_time()
+
+        self.num_blocks_need_load=[]
     def run(self):
         # Запуск фонового потока для периодической проверки узлов
         self.background_thread = threading.Thread(target=self.check_peers)
@@ -175,9 +179,8 @@ class NetworkManager:
             client.send_request({'command': 'newpeer', 'peer': address})
 
             # при первом коннекте шлем своего кандидата
-            self.distribute_block(self.chain.block_candidate, address)
+            # self.distribute_block(self.chain.block_candidate, address)
             # client.send_request(req = {'command': 'invb', 'block_hash': self.chain.block_candidate.hash_block()}
-
 
             return client
 
@@ -214,7 +217,8 @@ class NetworkManager:
                 for new_peer in new_peers:
                     self.add_known_peer(new_peer, ping=False)
 
-
+                # Ответ клиента несет самую важную информацию для синхронизации
+                client.info = response
 
                 return True
 
@@ -317,6 +321,9 @@ class NetworkManager:
                     print(response)
 
     def distribute_block(self, block, address=None):
+
+        if block is None:
+            return
         print("distribute_block get_active_peers", self.active_peers())
         # заготовка на рассылку блоков клиентам
         for peer in self.active_peers():
@@ -328,6 +335,22 @@ class NetworkManager:
             blocks_to_brodcast = self.blocks_to_broadcast.get(peer,[])
             blocks_to_brodcast.append(block)
             self.blocks_to_broadcast[peer] = blocks_to_brodcast
+
+    def pull_blocks_from_peer(self, peer, start_block, end_block):
+        client = self.peers[peer]
+        # Запрашиваем блоки, которые отсутствуют
+        for block_number in range(start_block, end_block):
+            response = client.send_request({'command': 'getblock', 'block_number': block_number})
+            block_data = response.get('block')
+            if block_data:
+                # Проверяем и добавляем блок в локальную цепочку
+                block = Block.from_json(block_data)
+                if self.chain.validate_and_add_block(block):
+                    print(f"Block {block_number} added from {peer}. {block.hash}")
+                else:
+                    print(f"Invalid block {block_number} received from {peer}.")
+
+        client.close()
 
     def broadcast_blocks(self):
         """ передать всем клиентам информацию о новом блоке """
@@ -366,48 +389,66 @@ class NetworkManager:
                             candidate = Block.from_json(candidate_json)
                             if self.chain.add_block_candidate(candidate):
                                 print(f"Блок от {adress} верный. Добавляем в цепь")
+                            else:
+                                print("!!!!!!!!!!!!!!!!!!!!!!!!!")
+                                print("Нода считает верным блок", candidate.hash_block() )
+                                self.chain.add_block_candidate(candidate)
+                        # print(response)
 
-                        print(response)
 
-    def sync_node(self):
-        # Проверяем, есть ли у всех известных узлов такое же количество блоков, как и у текущего узла
-        current_block_count = len(self.chain.blocks)
-        print(f"Checking synchronization status with {len(self.active_peers())} peers...")
-        for peer in self.active_peers():
 
-            if peer == self.server.address:
-                continue
-
-            client = self.peers.get(peer)
-
-            if client is None:
-                continue
-
-            response = client.send_request({'command': 'newpeer', 'peer': self.server.address})
-            if "error" in response:
-                continue
-            print(response)
-
-            response = client.send_request({'command': 'getinfo'})
-            peer_block_count = response.get('block_count', 0)
-            client.close()
-
-            # Если количество блоков различается, начинаем процесс синхронизации
-            if peer_block_count != current_block_count:
-                print(f"Synchronization needed with {peer}.")
-                self.pull_blocks_from_peer(peer, current_block_count, peer_block_count)
-            else:
-                print(f"{peer} is synchronized.")
-
-            # self.pull_candidat_block_from_peer(peer)
-
-        print(f"Synchronization check completed. Nodes count {len(self.active_peers())}")
-        print(f"Blocks: {self.chain.blocks_count()}")
-        if self.chain.last_block() is not None:
-            print(f"{datetime.datetime.fromtimestamp(self.chain.last_block().time)}")
+    # def sync_node(self):
+    #     # Проверяем, есть ли у всех известных узлов такое же количество блоков, как и у текущего узла
+    #     current_block_count = len(self.chain.blocks)
+    #     print(f"Checking synchronization status with {len(self.active_peers())} peers...")
+    #     for peer in self.active_peers():
+    #
+    #         if peer == self.server.address:
+    #             continue
+    #
+    #         client = self.peers.get(peer)
+    #
+    #         if client is None:
+    #             continue
+    #
+    #         response = client.send_request({'command': 'newpeer', 'peer': self.server.address})
+    #         if "error" in response:
+    #             continue
+    #         print(response)
+    #
+    #         response = client.send_request({'command': 'getinfo'})
+    #         peer_block_count = response.get('block_count', 0)
+    #         client.close()
+    #
+    #         # Если количество блоков различается, начинаем процесс синхронизации
+    #         if peer_block_count != current_block_count:
+    #             print(f"Synchronization needed with {peer}.")
+    #             self.pull_blocks_from_peer(peer, current_block_count, peer_block_count)
+    #
+    #             # берем очередной блок которого нет в ноде
+    #             block_num = self.chain.blocks_count()
+    #             response = client.send_request({'command': 'getblock', 'block_number': block_num})
+    #             block_data = response.get('block')
+    #             if block_data:
+    #                 # Проверяем и добавляем блок в локальную цепочку
+    #                 block = Block.from_json(block_data)
+    #                 if self.chain.validate_and_add_block(block):
+    #                     print(f"Block {block.block_num} added from {peer}. {block.hash}")
+    #                 else:
+    #                     print(f"Invalid block {block_num} received from {peer}.")
+    #
+    #         else:
+    #             print(f"{peer} is synchronized.")
+    #
+    #         # self.pull_candidat_block_from_peer(peer)
+    #
+    #     print(f"Synchronization check completed. Nodes count {len(self.active_peers())}")
+    #     print(f"Blocks: {self.chain.blocks_count()}")
+    #     if self.chain.last_block() is not None:
+    #         print(f"{datetime.datetime.fromtimestamp(self.chain.last_block().time)}")
 
     def pull_candidat_block_from_peer(self, peer):
-        client = Client(peer.split(":")[0], int(peer.split(":")[1]))
+        client = self.peers[peer]
         # отдельно берем кандидата
         answer = client.send_request({'command': 'getblockcandidate'})
 
@@ -416,7 +457,64 @@ class NetworkManager:
             blockcandidate = Block.from_json(blockcandidate_json)
             if self.chain.add_block_candidate(blockcandidate):
                 print("Добавлен кандидат с ноды", blockcandidate.hash)
-        client.close()
+            else:
+                print("Кандидат с ноды не подходит", blockcandidate.hash)
+
+
+    def check_synk_with_peers(self):
+        """ Проверка синхронности с пирами """
+
+        count_peers = 0
+
+        block_sync = True
+        for client in self.peers.values():
+
+            # себя не смотрим
+            if client.address() == self.server.address:
+                continue
+
+            count_peers+=1
+            peer_info = client.info
+            if peer_info is not None:
+                if peer_info['synced']:
+                    # print("Узел синхронный, проверяем состояние")
+                    # print(peer_info)
+                    if peer_info['block_count']>self.chain.blocks_count():
+
+                        print("На узле блоков больше, подгружаем")
+                        block_sync = False
+                        # берем очередной блок которого нет в ноде
+                        block_num = self.chain.blocks_count()
+                        response = client.send_request({'command': 'getblock', 'block_number': block_num})
+                        block_data = response.get('block')
+                        if block_data:
+                            # Проверяем и добавляем блок в локальную цепочку
+                            block = Block.from_json(block_data)
+                            if self.chain.validate_and_add_block(block):
+                                print(f"Block {block_num} added from {client.address()}. {block.hash}")
+                            else:
+                                print(f"Invalid block {block_num} received from {client.address()}.")
+                        continue
+
+                    if peer_info['block_count'] == self.chain.blocks_count():
+                        if self.chain.block_candidate_hash is not None and peer_info['block_candidat'] is not None:
+                            if peer_info['block_candidat'] != self.chain.block_candidate_hash:
+                                print("Не совпадает кандидат, требуется обмен")
+                                self.pull_candidat_block_from_peer(client.address())
+
+            if block_sync and not self.synced:
+                print("Блоки синхронизированные:", self.chain.blocks_count())
+                self.synced = True
+
+
+
+        # print("Всего активныйх пиров", count_peers)
+
+        if count_peers==0:
+            if self.time_ntpt.get_corrected_time() > self.start_time+Protocol.wait_active_peers_before_start:
+                if not self.synced:
+                    print("Ноды не обнаружены, включаем синхронизацию")
+                    self.synced = True
 
     def check_peers(self):
         """ Проверка доступных нод, выбор ближайших соседей """
@@ -424,6 +522,8 @@ class NetworkManager:
         t = time.time() - 11
         pause_mempool = time.time()
         while self.running:
+
+            self.check_synk_with_peers()
 
             if time.time() - t > 10:
                 self._ping_all_peers_and_save()
@@ -433,7 +533,11 @@ class NetworkManager:
             if len(self.peers_to_broadcast) > 0:
                     self.broadcast_new_peer()
 
-            # if len(self.list_need_broadcast_transaction) > 0:
+            if not self.synced:
+                time.sleep(0.1)
+                continue
+
+                # if len(self.list_need_broadcast_transaction) > 0:
             #     for tx in self.list_need_broadcast_transaction:
             #         self.broadcast_new_transaction(tx)
 
@@ -448,4 +552,4 @@ class NetworkManager:
 
                 pause_mempool = time.time()
 
-            time.sleep(0.1)  # Пауза перед следующей проверкой
+            time.sleep(0.5)  # Пауза перед следующей проверкой

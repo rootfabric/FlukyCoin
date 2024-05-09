@@ -29,22 +29,17 @@ class BlockchainNode:
     def init_node(self):
         signal.signal(signal.SIGINT, self.signal_handler)  # Установка обработчика сигнала
 
-
-
-
         self.mempool = Mempool(dir=str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}'))
 
         self.chain = Chain()
 
-        self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool, chain=self.chain)
+        self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool,
+                                              chain=self.chain, time_ntpt = self.time_ntpt)
 
         self.protocol = Protocol()
         self.uuid = self.protocol.hash_to_uuid(self.network_manager.server.address)
 
         print("Blockchain Node initialized", self.network_manager.server.address, "uuid", self.uuid)
-
-
-
 
         #
         # #  простая хранилка
@@ -105,6 +100,7 @@ class BlockchainNode:
                 return {"status": "get"}
             else:
                 return {"status": "ok"}
+
     def new_inv_block(self, request):
         """ новый хеш """
 
@@ -163,14 +159,16 @@ class BlockchainNode:
 
     def get_block(self, block_number):
         block = self.chain.blocks[block_number]
-        return {'block': block.to_json()}
+        mess = {'block': block.to_json()}
+        return mess
 
     def get_block_candidate(self):
         block_candidate = self.chain.block_candidate
-        return {'block_candidate': block_candidate.to_json()}
+        mess = {'block_candidate': block_candidate.to_json() if block_candidate is not None else None}
+        return mess
 
     def get_transaction(self, txid):
-        tx= self.mempool.transactions.get(txid)
+        tx = self.mempool.transactions.get(txid)
         return {'command': 'tx', 'tx_data': {'tx_json': tx.to_json(), 'tx_sign': tx.sign}}
 
     def add_peer(self, peer):
@@ -186,33 +184,13 @@ class BlockchainNode:
         """ Проверка блока """
         block = Block.from_json(block_json)
         if self.chain.add_block_candidate(block):
-                print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
-                self.network_manager.distribute_block(block)
+            print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
+            self.network_manager.distribute_block(block)
 
-                return {'status': 'success', 'message': 'New block received and distributed'}
+            return {'status': 'success', 'message': 'New block received and distributed'}
         print(f"Кандидат из другой ноды не подходит:{block.datetime()} {block.hash}")
 
-        return {'status': 'fail', 'message': 'Block wrong', "block_candidate":self.chain.block_candidate.to_json()}
-
-
-
-
-    def pull_blocks_from_peer(self, peer, start_block, end_block):
-        client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-        # Запрашиваем блоки, которые отсутствуют
-        for block_number in range(start_block, end_block):
-            response = client.send_request({'command': 'getblock', 'block_number': block_number})
-            block_data = response.get('block')
-            if block_data:
-                # Проверяем и добавляем блок в локальную цепочку
-                block = Block.from_json(block_data)
-                if self.chain.validate_and_add_block(block):
-                    print(f"Block {block_number} added from {peer}. {block.hash}")
-                else:
-                    print(f"Invalid block {block_number} received from {peer}.")
-
-        client.close()
-
+        return {'status': 'fail', 'message': 'Block wrong', "block_candidate": self.chain.block_candidate.to_json()}
 
 
     def signal_handler(self, signal, frame):
@@ -228,6 +206,7 @@ class BlockchainNode:
         block = Block(previousHash)
 
         block.winer_address = self.address
+        block.signer = self.address
 
         last_block_time = self.chain.last_block().time if self.chain.last_block() is not None else self.chain.time()
 
@@ -250,7 +229,8 @@ class BlockchainNode:
             reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
             # print("seq_hash", seq_hash)
 
-            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000", toAddress=self.address, amount=reward)
+            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000",
+                             toAddress=self.address, amount=reward)
             block.add_transaction(tr)
             # print(tr.to_json())
 
@@ -273,7 +253,8 @@ class BlockchainNode:
 
             reward, ratio, lcs = self.protocol.reward(self.address, seq_hash)
 
-            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000", toAddress=self.address, amount=reward)
+            tr = Transaction(tx_type="coinbase", fromAddress="0000000000000000000000000000000000",
+                             toAddress=self.address, amount=reward)
             block.add_transaction(tr)
             # print(tr.to_json())
 
@@ -291,7 +272,7 @@ class BlockchainNode:
         # self.add_peer(f"{address}:{port}")
         self.network_manager.run()
 
-        self.network_manager.sync_node()
+        # self.network_manager.sync_node()
 
         self.main_loop()
 
@@ -302,7 +283,14 @@ class BlockchainNode:
         print("Blockchain Node is running")
 
         while self.running:
-            print("mempool", len(self.mempool.transactions))
+
+            # не работаем без синхронизации
+            if not self.network_manager.synced:
+                time.sleep(5)
+                print("Node not sync!")
+                continue
+
+            # print("mempool", len(self.mempool.transactions))
 
             # continue
 
@@ -327,7 +315,7 @@ class BlockchainNode:
                 print("Время закрывать блок: ", needClose)
                 self.chain.close_block()
                 print(f"Chain {len(self.chain.blocks)} blocks , последний: ", self.chain.last_block().hash,
-                      self.chain.last_block().winer_address)
+                      self.chain.last_block().signer)
 
                 self.chain.save_to_disk(dir=str(self.network_manager.server.address))
 

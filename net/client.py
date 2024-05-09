@@ -16,6 +16,8 @@ class Client:
         self.host = host
         self.port = port
         self.is_connected = False
+
+        self.info = {}
     def address(self):
         return f"{self.host}:{self.port}"
 

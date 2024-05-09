@@ -9,10 +9,13 @@ class Protocol:
 
     version = "0.1"
 
+    # ожидание подсоединения активных пиров
+    wait_active_peers_before_start = 5
+
     @staticmethod
     def block_interval():
         """ Минимальное время между блоками """
-        return 60
+        return 10
 
     @staticmethod
     def find_longest_common_substring(s1, s2):
@@ -99,7 +102,7 @@ class Protocol:
 
         rev = self.is_reverse(sequence)
 
-        sorted_list = sorted([a1, a2], key=lambda x: x[0], reverse=rev)
+        sorted_list = sorted([a1, a2], reverse=rev)
 
         return sorted_list[0]
 

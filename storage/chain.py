@@ -22,6 +22,7 @@ class Chain():
 
         self.time_ntpt = NTPTimeSynchronizer() if time_ntpt is None else time_ntpt
 
+        self.miners = set()
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -97,6 +98,8 @@ class Chain():
             # if transaction.fromAddress == '0000000000000000000000000000000000':
             #     self.nodes_rating[transaction.toAddress] = self.nodes_rating.get(transaction.toAddress, 0)+1
 
+        self.miners.add(block.signer)
+
     def blocks_count(self):
         return len(self.blocks)
 
@@ -138,7 +141,21 @@ class Chain():
     #         return block1
     #     if XMSSPublicKey.from_bytes(base64.b64decode(block2.signer)).generate_address() == winner['address']:
     #         return block2
+    def check_miners(self, addr):
+        return addr in self.miners
 
+    def validate_candidate(self, block:Block):
+        """ Является ли блок кандидатом """
+
+        if block.previousHash != self.last_block().hash_block():
+            print("Chain: ошибка проверки кандидата, хеш не подходит")
+            return False
+
+        if block.time<self.last_block().time:
+            print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
+            return False
+
+        return True
     def add_block_candidate(self, block: Block):
         """  В цепи лежит блок, который является доминирующим"""
 
@@ -156,6 +173,12 @@ class Chain():
             self.block_candidate = copy.deepcopy(block)
             return True
 
+        if block.hash_block() == self.block_candidate.hash_block():
+            return False
+
+        # валидация в цепи.
+        if not self.validate_candidate(block):
+            return False
 
         self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if self.last_block() is None else self.last_block().hash
 
@@ -165,21 +188,25 @@ class Chain():
         # при ключевом блоке проверяем, не является ли адрем новым
         if not is_key_block:
 
-            addrs = self.transaction_storage.balances.keys()
-            if self.block_candidate.winer_address in addrs and block.winer_address not in addrs:
+            if self.check_miners(self.block_candidate.signer) and self.check_miners(block.signer):
                 """ кандидат не в списках майнеров """
+                print("кандидат не в списках майнеров")
                 return False
 
 
 
-        win_address = self.protocol.winner(self.block_candidate.winer_address, block.winer_address,
-                                           self.protocol.sequence(self.previousHash))
 
-        if win_address == self.block_candidate.winer_address:
+        win_address = self.protocol.winner(self.block_candidate.signer, block.signer,
+                                           self.protocol.sequence(self.previousHash))
+        # print("---------------------------------------------", self.protocol.sequence(self.previousHash))
+        # print(self.block_candidate.signer)
+        # print(block.signer)
+        # print("win_address", win_address)
+        if win_address == self.block_candidate.signer:
             return False
         # новый победитель
         self.block_candidate = copy.deepcopy(block)
-        print("New candidat", self.block_candidate.hash, self.block_candidate.winer_address)
+        print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
 
         return True
 

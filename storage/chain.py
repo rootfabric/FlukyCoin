@@ -77,16 +77,20 @@ class Chain():
             print(f"Failed to load blockchain: {e}")
 
     def validate_block(self, block):
-
+        if block.previousHash != self.last_block_hash():
+            return False
         return True
 
     def validate_and_add_block(self, block):
+
+        if block is None:
+            return False
 
         if self.validate_block(block):
             self.add_block(block)
             return True
 
-
+        return False
     def add_block(self, block):
         """  """
         self.blocks.append(block)
@@ -112,6 +116,8 @@ class Chain():
         #         self.nodes_rating[new_node] = 0
 
         return self.nodes_rating
+    def last_block_hash(self) -> Block:
+        return self.blocks[-1].hash_block() if len(self.blocks) > 0 else "0000000000000000000000000000000000000000000000000000000000000000"
 
     def last_block(self) -> Block:
 
@@ -154,11 +160,11 @@ class Chain():
             return True
 
         if block.previousHash != self.last_block().hash_block():
-            print("Chain: ошибка проверки кандидата, хеш не подходит")
+            # print("Chain: ошибка проверки кандидата, хеш не подходит")
             return False
 
         if block.time<self.last_block().time:
-            print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
+            # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
             return False
 
         return True
@@ -196,14 +202,14 @@ class Chain():
 
             if self.check_miners(self.block_candidate.signer) and not self.check_miners(block.signer):
                 """ кандидат не в списках майнеров """
-                print(f"Текущий майнер {self.block_candidate.signer}, кандидат не в списках майнеров", block.signer, self.miners)
+                # print(f"Текущий майнер {self.block_candidate.signer}, кандидат не в списках майнеров", block.signer, self.miners)
                 return False
 
             if not self.check_miners(self.block_candidate.signer) and self.check_miners(block.signer):
                 """ кандидат в списках майнеров, а текущий нет """
-                print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
+                # print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
                 self.block_candidate = copy.deepcopy(block)
-                print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+                # print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
                 return True
 
         win_address = self.protocol.winner(self.block_candidate.signer, block.signer,
@@ -222,10 +228,11 @@ class Chain():
 
     def close_block(self):
         """ Берем блок кандидата как верный """
-        if self.block_candidate is not None:
-            self.add_block(copy.deepcopy(self.block_candidate))
 
-        self.block_candidate = None
+        if self.validate_and_add_block(copy.deepcopy(self.block_candidate)):
+            self.block_candidate = None
+        else:
+            print("Не валидный блок для закрытия")
 
     def need_close_block(self):
         """ Если со времни появления последнего блока прошло более минуты, можно закреплять блок """

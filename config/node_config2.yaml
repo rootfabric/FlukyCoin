@@ -2,4 +2,5 @@ port: 9334
 host: 127.0.0.1
 initial_peers:
     - "127.0.0.1:9333"
+    - "95.154.71.53:9333"
 address: OutAQ43SUK6ZC2HRs5QozEnVqDaC68wtZTD2CocFXeX76Bi6ctsK

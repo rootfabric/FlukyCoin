@@ -28,7 +28,7 @@ class NTPTimeSynchronizer:
             # return ctime(corrected_timestamp)
             return corrected_timestamp
         else:
-            print("Время не было синхронизировано. Возвращение системного времени.")
+            # print("Время не было синхронизировано. Возвращение системного времени.")
             return time()
     def get_corrected_datetime(self):
         """Получение корректированной даты на основе сохраненной дельты."""

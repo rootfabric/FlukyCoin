@@ -76,7 +76,7 @@ class BlockchainNode:
             tx_data = request.get('tx_data')
             return self.add_transaction(tx_data)
         elif command == 'mempool':
-            print("mempool", self.mempool.get_hashes())
+            # print("mempool", self.mempool.get_hashes())
             return {"mempool_hashes": self.mempool.get_hashes()}
         elif command == 'newblock':
             block = request.get('block_data')
@@ -95,7 +95,7 @@ class BlockchainNode:
         tx_hash = request.get("tx")
         if tx_hash is not None:
             # сообщение с хешем транзакции , надо проверить на наличие
-            if not self.mempool.chech_hash_transaction(tx_hash):
+            if not self.mempool.chech_hash_transaction(tx_hash) and self.network_manager.synced:
                 # транзакции нет
                 return {"status": "get"}
             else:
@@ -154,7 +154,8 @@ class BlockchainNode:
                 'version': self.protocol.version,
                 'peers': self.network_manager.known_peers,
                 'block_count': self.chain.blocks_count(),
-                'block_candidat': self.chain.block_candidate_hash
+                'block_candidat': self.chain.block_candidate_hash,
+                'last_block_hash': self.chain.last_block_hash()
                 }
 
     def get_block(self, block_number):
@@ -184,11 +185,11 @@ class BlockchainNode:
         """ Проверка блока """
         block = Block.from_json(block_json)
         if self.chain.add_block_candidate(block):
-            print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
+            # print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
             self.network_manager.distribute_block(block)
 
             return {'status': 'success', 'message': 'New block received and distributed'}
-        print(f"Кандидат из другой ноды не подходит:{block.datetime()} {block.hash}")
+        # print(f"Кандидат из другой ноды не подходит:{block.datetime()} {block.hash}")
 
         return {'status': 'fail', 'message': 'Block wrong', "block_candidate": self.chain.block_candidate.to_json()}
 
@@ -258,8 +259,8 @@ class BlockchainNode:
 
             # не работаем без синхронизации
             if not self.network_manager.synced:
-                time.sleep(5)
-                print("Node not sync!")
+                time.sleep(0.1)
+                # print("Node not sync!")
                 continue
 
             # print("mempool", len(self.mempool.transactions))
@@ -280,10 +281,10 @@ class BlockchainNode:
             needClose = self.chain.need_close_block()
 
             if needClose and self.chain.block_candidate is not None:
-                print("*******************")
+                print("*******************", self.network_manager.active_peers())
                 print("Время закрывать блок: ", needClose)
                 self.chain.close_block()
-                print(f"Chain {len(self.chain.blocks)} blocks , последний: ", self.chain.last_block().hash,
+                print(f"Chain {len(self.chain.blocks)} blocks , последний: ", self.chain.last_block().hash_block(),
                       self.chain.last_block().signer)
 
                 self.chain.save_to_disk(dir=str(self.network_manager.server.address))

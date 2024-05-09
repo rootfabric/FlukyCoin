@@ -1,5 +1,7 @@
 port: 9333
 host: 192.168.0.2
 initial_peers:
-  - "95.154.71.53:9333"
-address: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRvcoU
+#  - "95.154.71.53:9333"
+  - "192.168.0.26:9336"
+  - "192.168.0.26:9333"
+address: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRvcoS

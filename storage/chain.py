@@ -12,7 +12,7 @@ from tools.time_sync import NTPTimeSynchronizer
 import os
 import pickle
 class Chain():
-    def __init__(self, time_ntpt = None):
+    def __init__(self, config = None, time_ntpt = None):
         self.blocks: Block = []
         self.transaction_storage = TransactionStorage()
 
@@ -24,7 +24,11 @@ class Chain():
 
         self.miners = set()
 
-        # self.load_from_disk()
+        if config is not None:
+            host = config.get("host", "localhost")
+            port = config.get("port", "5555")
+            dir = f"{host}_{port}"
+            self.load_from_disk(dir=dir)
 
     def time(self):
         return self.time_ntpt.get_corrected_time()
@@ -72,7 +76,7 @@ class Chain():
         try:
             with open(full_path, 'rb') as file:
                 self.blocks, self.transaction_storage, self.block_candidate = pickle.load(file)
-            print("Blockchain loaded from disk.")
+            print(f"Blockchain loaded from disk. {self.blocks_count()}")
         except FileNotFoundError:
             print("No blockchain file found.")
         except Exception as e:

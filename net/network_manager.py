@@ -311,8 +311,8 @@ class NetworkManager:
                     client = self.peers[adress]
                     if client.is_connected:
                         answer = client.send_request({'command': 'newpeer', 'peer': peer_to_broadcast})
-                        if answer.get('status') == 'success':
-                            print(f"Broadcast peer to {peer_to_broadcast}")
+                        # if answer.get('status') == 'success':
+                        #     print(f"Broadcast peer to {peer_to_broadcast}")
 
             del self.peers_to_broadcast[adress]
 
@@ -481,7 +481,7 @@ class NetworkManager:
                 print("Добавлен кандидат с ноды", blockcandidate.hash)
                 self.distribute_block(self.chain.block_candidate, peer)
             else:
-                print("Кандидат с ноды не подходит", blockcandidate.hash)
+                # print("Кандидат с ноды не подходит", blockcandidate.hash)
                 self.distribute_block(self.chain.block_candidate, peer)
 
     def check_synk_with_peers(self):
@@ -534,6 +534,12 @@ class NetworkManager:
                                 print(f"Block {block_num} added from {client.address()}. {block.hash}")
                             else:
                                 print(f"Invalid block {block_num} received from {client.address()}.")
+                                "Возникает ситуация, когда своя цепочка не соподает с присылаемой"
+                                "Тут надо делать более сложный форк"
+                                "Пока просто откатываемся на несколько блоков назад"
+                                "Нужна правильная отработка отката транзакций"
+                                self.chain.blocks =self.chain.blocks[:-10]
+                                self.chain.reset_block_candidat()
                         continue
 
                     # если количество блоков равно, доп проверки
@@ -551,15 +557,14 @@ class NetworkManager:
                         #     self.distribute_block(self.chain.block_candidate)
 
         if  block_sync and not self.synced and self.chain.blocks_count() ==chain_size and chain_size!=0:
-            print("Блоки синхронизированные:", self.chain.blocks_count())
-            print(self.chain.last_block_hash())
 
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
             if   self.time_ntpt.get_corrected_time() - self.chain.last_block().time < 1:
+                print("Блоки синхронизированные:", self.chain.blocks_count())
+                print(self.chain.last_block_hash())
+
                 self.synced = True
                 print("Нода синхронизированна!")
-            # else:
-            #     print("Блок близок к закрытию, ждем очередной")
 
         # print("Всего активныйх пиров", count_peers)
         if self.synced and self.chain.blocks_count()< chain_size and chain_size != 0:

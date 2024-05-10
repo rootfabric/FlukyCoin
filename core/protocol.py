@@ -15,7 +15,7 @@ class Protocol:
     @staticmethod
     def block_interval():
         """ Минимальное время между блоками """
-        return 10
+        return 5
 
     @staticmethod
     def find_longest_common_substring(s1, s2):

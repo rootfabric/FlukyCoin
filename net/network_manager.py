@@ -10,6 +10,7 @@ import json
 import time
 import datetime
 from tools.time_sync import NTPTimeSynchronizer
+import signal
 
 """
 
@@ -62,8 +63,13 @@ class NetworkManager:
 
         self.num_blocks_need_load = []
 
+    def signal_handler(self, signal, frame):
+        print('Ctrl+C captured, stopping server and shutting down...')
+        self.stop()  # Ваш метод для остановки сервера и закрытия потоков
+
     def run(self):
         # Запуск фонового потока для периодической проверки узлов
+        signal.signal(signal.SIGINT, self.signal_handler)
         self.background_thread = threading.Thread(target=self.check_peers)
         self.background_thread.start()
 
@@ -295,7 +301,7 @@ class NetworkManager:
 
     def broadcast_new_peer(self):
         """ передать всем клиентам информацию о новом пире """
-        print("distribute_block get_active_peers", self.active_peers())
+        # print("distribute_block get_active_peers", self.active_peers())
 
         for adress in list(self.peers_to_broadcast):
             if adress in self.peers:
@@ -337,7 +343,7 @@ class NetworkManager:
 
         if block is None:
             return
-        print("distribute_block get_active_peers", self.active_peers())
+        # print("distribute_block get_active_peers", self.active_peers())
         # заготовка на рассылку блоков клиентам
         for peer in self.active_peers():
             if peer == self.server.address:
@@ -402,6 +408,7 @@ class NetworkManager:
                             candidate = Block.from_json(candidate_json)
                             if self.chain.add_block_candidate(candidate):
                                 print(f"Блок от {adress} верный. Добавляем в цепь")
+                                self.distribute_block(self.chain.block_candidate, adress)
                             # else:
                             # print("!!!!!!!!!!!!!!!!!!!!!!!!!")
                             # print("Нода считает верным блок", candidate.hash_block() )
@@ -472,6 +479,7 @@ class NetworkManager:
             blockcandidate = Block.from_json(blockcandidate_json)
             if self.chain.add_block_candidate(blockcandidate):
                 print("Добавлен кандидат с ноды", blockcandidate.hash)
+                self.distribute_block(self.chain.block_candidate, peer)
             else:
                 print("Кандидат с ноды не подходит", blockcandidate.hash)
                 self.distribute_block(self.chain.block_candidate, peer)
@@ -546,14 +554,18 @@ class NetworkManager:
             print("Блоки синхронизированные:", self.chain.blocks_count())
             print(self.chain.last_block_hash())
 
-            if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
-                    self.time_ntpt.get_corrected_time() - self.chain.last_block().time < 5):
+            # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
+            if   self.time_ntpt.get_corrected_time() - self.chain.last_block().time < 1:
                 self.synced = True
                 print("Нода синхронизированна!")
             # else:
             #     print("Блок близок к закрытию, ждем очередной")
 
         # print("Всего активныйх пиров", count_peers)
+        if self.synced and self.chain.blocks_count()< chain_size and chain_size != 0:
+            self.synced = False
+            print("Нода потеряла синхронизацию!")
+
 
         if count_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.wait_active_peers_before_start:

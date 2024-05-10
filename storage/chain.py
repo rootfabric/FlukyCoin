@@ -33,6 +33,8 @@ class Chain():
     def block_candidate_hash(self):
         return self.block_candidate.hash_block() if self.block_candidate is not None else None
 
+    def reset_block_candidat(self):
+        self.block_candidate = None
     def check_hach(self, block_hash):
         """"""
         # TODO нужно смотреть блоки в цепи
@@ -76,21 +78,23 @@ class Chain():
         except Exception as e:
             print(f"Failed to load blockchain: {e}")
 
-    def validate_block(self, block):
+    def validate_block_hash(self, block):
         if block.previousHash != self.last_block_hash():
+            print("validateblock.previousHash != self.last_block_hash()")
             return False
         return True
 
     def validate_and_add_block(self, block):
 
         if block is None:
+            print("validate block is None")
             return False
 
-        if self.validate_block(block):
-            self.add_block(block)
-            return True
+        if not self.validate_block_hash(block):
+            return False
 
-        return False
+        self.add_block(block)
+        return True
     def add_block(self, block):
         """  """
         self.blocks.append(block)
@@ -167,6 +171,10 @@ class Chain():
             # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
             return False
 
+        if block.time<self.last_block().time:
+            # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
+            return False
+
         return True
     def add_block_candidate(self, block: Block):
         """  В цепи лежит блок, который является доминирующим"""
@@ -230,9 +238,13 @@ class Chain():
         """ Берем блок кандидата как верный """
 
         if self.validate_and_add_block(copy.deepcopy(self.block_candidate)):
-            self.block_candidate = None
+            self.reset_block_candidat()
+            return True
         else:
             print("Не валидный блок для закрытия")
+            self.reset_block_candidat()
+            return False
+
 
     def need_close_block(self):
         """ Если со времни появления последнего блока прошло более минуты, можно закреплять блок """

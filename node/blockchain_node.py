@@ -251,7 +251,7 @@ class BlockchainNode:
 
     def main_loop(self):
         """ В главный цикл работы попадаем когда нода синхронизованная """
-        # Здесь могут быть выполнены задачи по проверке блокчейна, созданию блоков, обновлению состояний и т.д.
+        signal.signal(signal.SIGINT, self.signal_handler)
 
         print("Blockchain Node is running")
 
@@ -275,15 +275,18 @@ class BlockchainNode:
                 print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
                       new_block.datetime())
                 self.network_manager.distribute_block(self.chain.block_candidate)
-            # else:
-            #     print("Собственный Блок ниже по уровню")
+
 
             needClose = self.chain.need_close_block()
 
             if needClose and self.chain.block_candidate is not None:
                 print("*******************", self.network_manager.active_peers())
-                print("Время закрывать блок: ", needClose)
-                self.chain.close_block()
+                print(f"Время закрывать блок: {self.chain.blocks_count()}")
+                if not self.chain.close_block():
+                    print("last_block", self.chain.last_block_hash())
+                    print("candidat", self.chain.block_candidate_hash)
+                    self.chain.reset_block_candidat
+                    time.sleep(0.45)
                 print(f"Chain {len(self.chain.blocks)} blocks , последний: ", self.chain.last_block().hash_block(),
                       self.chain.last_block().signer)
 
@@ -294,18 +297,29 @@ class BlockchainNode:
                     print("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
                 print("*******************")
                 continue
-            #
+
             # if needClose and self.chain.block_candidate is not None:
             #     self.chain.close_block()
             #     print("Закрываем блок", self.chain.last_block().hash)
 
-            current_datetime = self.time_ntpt.get_corrected_datetime()
-            # Вычисляем, сколько миллисекунд осталось до следующей секунды
-            milliseconds_to_wait = 1000 - (current_datetime.microsecond // 1000)
-            # Добавляем задержку в секундах (преобразуем миллисекунды в секунды)
-            time.sleep(milliseconds_to_wait / 1000.0)
+            # current_datetime = self.time_ntpt.get_corrected_datetime()
 
-            # print(f"Chain {len(self.chain.blocks)} blocks")
+            time_to_close = 1
+            if self.chain.last_block() is not None:
+                time_block = self.chain.last_block().time
+                time_to_close_block = time_block -self.time_ntpt.get_corrected_time()
+                if time_to_close_block<1 and time_to_close_block>0:
+                    time_to_close = time_to_close_block
+
+            time.sleep(time_to_close)
+
+            #
+            # # Вычисляем, сколько миллисекунд осталось до следующей секунды
+            # milliseconds_to_wait = 1000 - (current_datetime.microsecond // 1000)
+            # # Добавляем задержку в секундах (преобразуем миллисекунды в секунды)
+            # time.sleep(milliseconds_to_wait / 1000.0)
+            #
+            # # print(f"Chain {len(self.chain.blocks)} blocks")
 
 
 if __name__ == "__main__":

@@ -287,10 +287,12 @@ class BlockchainNode:
                     print("candidat", self.chain.block_candidate_hash)
                     self.chain.reset_block_candidat
                     time.sleep(0.45)
-                print(f"Chain {len(self.chain.blocks)} blocks , последний: ", self.chain.last_block().hash_block(),
-                      self.chain.last_block().signer)
+                last_block = self.chain.last_block()
+                if last_block is not None:
+                    print(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
+                          last_block.signer)
 
-                self.chain.save_to_disk(dir=str(self.network_manager.server.address))
+                self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
 
                 print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
                 if self.protocol.is_key_block(self.chain.last_block().hash):

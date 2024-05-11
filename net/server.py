@@ -21,11 +21,13 @@ class Server:
 
     def listen(self):
         while self.is_work:
-            client_id, message = self.socket.recv_multipart()
-            request = json.loads(message.decode('utf-8'))
-            response = self.handle_request(request, client_id)
-            self.socket.send_multipart([client_id, json.dumps(response).encode('utf-8')])
-
+            try:
+                client_id, message = self.socket.recv_multipart()
+                request = json.loads(message.decode('utf-8'))
+                response = self.handle_request(request, client_id)
+                self.socket.send_multipart([client_id, json.dumps(response).encode('utf-8')])
+            except Exception as e:
+                print("Error Server listen", e)
     def close(self):
         self.is_work = False
         self.socket.close()

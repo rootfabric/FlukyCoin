@@ -45,7 +45,7 @@ class Chain():
         if self.block_candidate is not None and block_hash ==self.block_candidate.hash_block():
             return True
         return False
-    def save_to_disk(self, dir="", filename='blockchain.db'):
+    def save_chain_to_disk(self, dir="", filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
         dir = dir.replace(":", "_")
         base_dir = "node_data"
@@ -114,6 +114,8 @@ class Chain():
             #     self.nodes_rating[transaction.toAddress] = self.nodes_rating.get(transaction.toAddress, 0)+1
 
         self.miners.add(block.signer)
+
+        # self.save_to_disk()
 
     def blocks_count(self):
         return len(self.blocks)

@@ -2,6 +2,7 @@ from net.server import Server
 from net.client import Client
 from core.protocol import Protocol
 from core.transaction import Transaction
+from storage.chain import Chain
 from core.block import Block
 import os
 import pickle
@@ -20,7 +21,7 @@ import signal
 
 
 class NetworkManager:
-    def __init__(self, handle_request, config, mempool, chain, time_ntpt):
+    def __init__(self, handle_request, config, mempool, chain: Chain, time_ntpt):
 
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         self.host = config.get("host", "localhost")
@@ -62,6 +63,7 @@ class NetworkManager:
         self.start_time = self.time_ntpt.get_corrected_time()
 
         self.num_blocks_need_load = []
+        print("Start networc manager", self.known_peers)
 
     def signal_handler(self, signal, frame):
         print('Ctrl+C captured, stopping server and shutting down...')
@@ -159,7 +161,12 @@ class NetworkManager:
 
     def ping_all_peers(self):
         for peer in list(self.known_peers):
-            self.ping_peer(peer)
+
+            thread = threading.Thread(target=self.ping_peer, args=(peer, ))
+            thread.daemon = True
+            thread.start()
+
+            # self.ping_peer(peer)
 
     def ping_active_peers(self):
         for peer in list(self.peers.values()):
@@ -169,15 +176,24 @@ class NetworkManager:
         return [peer for peer in self.peers]
 
     def _ping_all_peers_and_save(self):
-        self.ping_all_peers()
-        self.save_to_disk()
-        # print(self.active_peers())
+        while self.running:
+            try:
+                self.ping_all_peers()
+                self.save_to_disk()
+                # print(self.active_peers())
+            except Exception as e:
+                print(" Error _ping_all_peers_and_save", e)
+
+            time.sleep(60)
 
     def _connect_to_address(self, address):
         try:
             client = Client(address.split(":")[0], int(address.split(":")[1]))
             if client is not None:
                 self.peers[address] = client
+
+            else:
+                return None
 
             response = client.send_request(
                 {'command': 'version', 'ver': Protocol.version, 'address': self.server.address})
@@ -210,46 +226,50 @@ class NetworkManager:
 
     def ping_peer(self, address):
         """ установка связи и проверка соединеня """
+        try:
+            client = self.peers.get(address)
+            if client is None:
+                client = self._connect_to_address(address)
 
-        client = self.peers.get(address)
-        if client is None:
-            client = self._connect_to_address(address)
+            if client is None:
+                # если клиента нет, выполняем подключение
+                # print(f"Ошибка клиента {address}")
+                # пир не отвечает, удаляем из активных
+                if address in self.peers:
+                    del self.peers[address]
+                return False
 
-        if client is None:
-            # если клиента нет, выполняем подключение
-            # print(f"Ошибка клиента {address}")
-            # пир не отвечает, удаляем из активных
-            if address in self.peers:
+            # try:
+            # response = client.send_request({'command': 'getinfo'})
+            response = client.get_info()
+
+            # print(f"{address} ping response ", response)
+            if response is not None:
+                if 'error' not in response:
+
+                    if address not in self.known_peers:
+                        self.add_known_peer(address, False)
+                        print(f"New active peer {address}")
+
+                    new_peers = response.get('peers', [])
+                    for new_peer in new_peers:
+                        self.add_known_peer(new_peer, ping=False)
+
+                    # Ответ клиента несет самую важную информацию для синхронизации
+                    client.info = response
+
+                    return True
+
+                print(f"Error send: {response}")
                 del self.peers[address]
-            return False
+                return False
 
-        # try:
-        response = client.send_request({'command': 'getinfo'})
-        if response is not None:
-            if 'error' not in response:
-
-                if address not in self.known_peers:
-                    self.add_known_peer(address, False)
-                    print(f"New active peer {address}")
-
-                new_peers = response.get('peers', [])
-                for new_peer in new_peers:
-                    self.add_known_peer(new_peer, ping=False)
-
-                # Ответ клиента несет самую важную информацию для синхронизации
-                client.info = response
-
-                return True
-
-            print(f"Error send: {response}")
-            del self.peers[address]
-            return False
-
-        else:
-            print(f"Failed to connect to {address}")
-            del self.peers[address]
-            return False
-
+            else:
+                print(f"Failed to connect to {address}")
+                del self.peers[address]
+                return False
+        except Exception as e:
+            print("Error ping_peer!", e)
     def take_mempool(self, address):
         """ установка связи и проверка соединеня """
 
@@ -355,21 +375,23 @@ class NetworkManager:
             blocks_to_brodcast.append(block)
             self.blocks_to_broadcast[peer] = blocks_to_brodcast
 
-    def pull_blocks_from_peer(self, peer, start_block, end_block):
-        client = self.peers[peer]
-        # Запрашиваем блоки, которые отсутствуют
-        for block_number in range(start_block, end_block):
-            response = client.send_request({'command': 'getblock', 'block_number': block_number})
-            block_data = response.get('block')
-            if block_data:
-                # Проверяем и добавляем блок в локальную цепочку
-                block = Block.from_json(block_data)
-                if self.chain.validate_and_add_block(block):
-                    print(f"Block {block_number} added from {peer}. {block.hash}")
-                else:
-                    print(f"Invalid block {block_number} received from {peer}.")
-
-        client.close()
+    # def pull_blocks_from_peer(self, peer, start_block, end_block):
+    #     client = self.peers[peer]
+    #     # Запрашиваем блоки, которые отсутствуют
+    #     for block_number in range(start_block, end_block):
+    #         response = client.send_request({'command': 'getblock', 'block_number': block_number})
+    #         block_data = response.get('block')
+    #         if block_data:
+    #             # Проверяем и добавляем блок в локальную цепочку
+    #             block = Block.from_json(block_data)
+    #             if self.chain.validate_and_add_block(block):
+    #                 print(f"Block {block_number} added from {peer}. {block.hash}")
+    #                 if int(block_number)%100==0:
+    #                     self.chain.save_to_disk()
+    #             else:
+    #                 print(f"Invalid block {block_number} received from {peer}.")
+    #
+    #     client.close()
 
     def broadcast_blocks(self):
         """ передать всем клиентам информацию о новом блоке """
@@ -505,7 +527,8 @@ class NetworkManager:
             count_peers += 1
 
 
-            client.info = client.send_request({'command': 'getinfo'})
+            # client.info = client.send_request({'command': 'getinfo'})
+            client.get_info()
 
             peer_info = client.info
             # print("peer_info", peer_info)
@@ -532,13 +555,16 @@ class NetworkManager:
                             block = Block.from_json(block_data)
                             if self.chain.validate_and_add_block(block):
                                 print(f"Block {block_num} added from {client.address()}. {block.hash}")
+                                if int(block_num)%100==0:
+                                    self.chain.save_chain_to_disk(dir=str(self.server.address))
+
                             else:
                                 print(f"Invalid block {block_num} received from {client.address()}.")
                                 "Возникает ситуация, когда своя цепочка не соподает с присылаемой"
                                 "Тут надо делать более сложный форк"
                                 "Пока просто откатываемся на несколько блоков назад"
                                 "Нужна правильная отработка отката транзакций"
-                                self.chain.blocks =self.chain.blocks[:-10]
+                                self.chain.blocks =self.chain.blocks[:-1]
                                 self.chain.reset_block_candidat()
                         continue
 
@@ -584,14 +610,21 @@ class NetworkManager:
         t = time.time() - 11
         pause_mempool = time.time()
         pause_synced = time.time()
+
+        thread = threading.Thread(target=self._ping_all_peers_and_save)
+        thread.daemon = True
+        thread.start()
+
+
         while self.running:
 
 
-            if time.time() - t > 10:
-                thread = threading.Thread(target=self._ping_all_peers_and_save)
-                thread.start()
-                # self._ping_all_peers_and_save()
-                t = time.time()
+            # if time.time() - t > 10:
+            #     # thread = threading.Thread(target=self._ping_all_peers_and_save)
+            #     # thread.daemon = True
+            #     # thread.start()
+            #     self._ping_all_peers_and_save()
+            #     t = time.time()
 
             if len(self.peers_to_broadcast) > 0:
                 self.broadcast_new_peer()

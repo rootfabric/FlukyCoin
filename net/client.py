@@ -1,10 +1,12 @@
+import datetime
+import time
 
 import zmq
 import json
 
 
 class Client:
-    def __init__(self, host="localhost", port=5555, timeout=1000):
+    def __init__(self, host="localhost", port=5555, timeout=500):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.DEALER)
         self.socket.connect(f"tcp://{host}:{port}")
@@ -18,8 +20,19 @@ class Client:
         self.is_connected = False
 
         self.info = {}
+
+        self.last_time_info = 0
     def address(self):
         return f"{self.host}:{self.port}"
+
+    def get_info(self):
+        """Опрос клиента, но не спам """
+        if time.time() - self.last_time_info>1:
+            self.info = self.send_request({'command': 'getinfo'})
+            # print(datetime.datetime.now(), self.info)
+            self.last_time_info = time.time()
+        return self.info
+
 
     def send_request(self, request):
         try:

@@ -10,7 +10,7 @@ class Protocol:
     version = "0.1"
 
     # ожидание подсоединения активных пиров
-    wait_active_peers_before_start = 10
+    wait_active_peers_before_start = 100
 
     @staticmethod
     def block_interval():

@@ -177,11 +177,8 @@ class Chain():
             # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
             return False
 
-        if block.time<self.last_block().time:
-            # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
-            return False
-
         return True
+
     def add_block_candidate(self, block: Block):
         """  В цепи лежит блок, который является доминирующим"""
 

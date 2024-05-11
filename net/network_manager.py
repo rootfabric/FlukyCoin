@@ -585,7 +585,7 @@ class NetworkManager:
         if  block_sync and not self.synced and self.chain.blocks_count() ==chain_size and chain_size!=0:
 
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
-            if   self.time_ntpt.get_corrected_time() - self.chain.last_block().time < 1:
+            if   self.time_ntpt.get_corrected_time() - self.chain.last_block().time < 2:
                 print("Блоки синхронизированные:", self.chain.blocks_count())
                 print(self.chain.last_block_hash())
 

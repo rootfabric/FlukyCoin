@@ -287,6 +287,7 @@ class BlockchainNode:
                     print("candidat", self.chain.block_candidate_hash)
                     self.chain.reset_block_candidat
                     time.sleep(0.45)
+                    continue
                 last_block = self.chain.last_block()
                 if last_block is not None:
                     print(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),

@@ -19,7 +19,7 @@ class Client:
         self.port = port
         self.is_connected = False
         self.server_address = ""
-
+        self.last_broadcast_block = None
         self.info = {}
 
         self.last_time_info = 0

@@ -39,7 +39,7 @@ class Chain():
 
     def reset_block_candidat(self):
         self.block_candidate = None
-    def check_hach(self, block_hash):
+    def check_hash(self, block_hash):
         """"""
         # TODO нужно смотреть блоки в цепи
         if self.block_candidate is not None and block_hash ==self.block_candidate.hash_block():

@@ -362,7 +362,7 @@ class NetworkManager:
                          'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.sign}})
                     print(response)
 
-    def distribute_block(self, block, address=None):
+    def distribute_block(self, block, address=None, ban_address = None):
 
         if block is None:
             return
@@ -373,6 +373,9 @@ class NetworkManager:
                 continue
             if address is not None and address != peer:
                 # задан конеретный адрес куда отослать
+                continue
+            if ban_address is not None and ban_address == peer:
+                # задан конеретный адрес куда не надо отослать
                 continue
             blocks_to_brodcast = self.blocks_to_broadcast.get(peer, [])
             blocks_to_brodcast.append(block)
@@ -406,10 +409,10 @@ class NetworkManager:
 
                 blocks = self.blocks_to_broadcast.get(adress)
 
-                if (len(blocks) > 0 and
-                        self.time_ntpt.get_corrected_time() - (blocks[0].time -Protocol.BLOCK_TIME_INTERVAL) < Protocol.BLOCK_TIME_INTERVAL / 10):
+                # if (len(blocks) > 0 and
+                #         self.time_ntpt.get_corrected_time() - (blocks[0].time -Protocol.BLOCK_TIME_INTERVAL) < Protocol.BLOCK_TIME_INTERVAL / 10):
                 #     # выжидаем некоторое время перед рассылкой блока, чтобы все пири закрылись
-                     continue
+                #      continue
 
 
                 block_to_brodcast: Block = None
@@ -419,15 +422,24 @@ class NetworkManager:
                     del self.blocks_to_broadcast[adress]
                     continue
 
-                print(f"Broadcast new block {block_to_brodcast.hash_block()}")
+
+
 
                 client = self.peers[adress]
+
+                # if client.last_broadcast_block ==  block_to_brodcast.hash_block():
+                #     """ Блок клиенту уже кидали """
+                #     continue
+
+
+
+
                 if client.is_connected:
                     req = {'command': 'invb', 'block_hash': block_to_brodcast.hash_block()}
                     response = client.send_request(req)
 
                     if response is not None and response.get('status') == 'ok':
-
+                        client.last_broadcast_block == block_to_brodcast.hash_block()
                         if len(blocks) > 0:
                             self.blocks_to_broadcast[adress] = blocks
 
@@ -437,12 +449,14 @@ class NetworkManager:
                             {'command': 'newblock',
                              'block_data': block_to_brodcast.to_json()})
 
+                        # print(f"Broadcast new block {block_to_brodcast.hash_block()}")
+
                         if "block_candidate" in response:
                             candidate_json = response.get("block_candidate")
                             candidate = Block.from_json(candidate_json)
                             if self.chain.add_block_candidate(candidate):
                                 print(f"Блок от {adress} верный. Добавляем в цепь")
-                                self.distribute_block(self.chain.block_candidate, adress)
+                                self.distribute_block(self.chain.block_candidate, ban_address=adress)
                             # else:
                             # print("!!!!!!!!!!!!!!!!!!!!!!!!!")
                             # print("Нода считает верным блок", candidate.hash_block() )
@@ -513,10 +527,10 @@ class NetworkManager:
             blockcandidate = Block.from_json(blockcandidate_json)
             if self.chain.add_block_candidate(blockcandidate):
                 print("Добавлен кандидат с ноды", blockcandidate.hash)
-                self.distribute_block(self.chain.block_candidate, peer)
+                self.distribute_block(self.chain.block_candidate, ban_address=peer)
             else:
                 # print("Кандидат с ноды не подходит", blockcandidate.hash)
-                self.distribute_block(self.chain.block_candidate, peer)
+                self.distribute_block(self.chain.block_candidate, address=peer)
 
     def check_synk_with_peers(self):
         """ Проверка синхронности с пирами """
@@ -592,7 +606,7 @@ class NetworkManager:
                         if self.chain.block_candidate_hash is not None and peer_info['block_candidat'] is not None:
                             if peer_info['block_candidat'] != self.chain.block_candidate_hash:
                                 # print("!!! Не совпадает кандидат, требуется обмен")
-                                self.distribute_block(self.chain.block_candidate)
+                                self.distribute_block(self.chain.block_candidate, address=client.address())
                                 self.pull_candidat_block_from_peer(client.address())
 
                         # if peer_info['last_block_hash'] != self.chain.last_block_hash():

@@ -6,7 +6,7 @@ import json
 
 
 class Client:
-    def __init__(self, host="localhost", port=5555, timeout=500):
+    def __init__(self, host="localhost", port=5555, timeout=1000):
         self.context = zmq.Context()
         self.socket = self.context.socket(zmq.DEALER)
         self.socket.connect(f"tcp://{host}:{port}")
@@ -18,6 +18,7 @@ class Client:
         self.host = host
         self.port = port
         self.is_connected = False
+        self.server_address = ""
 
         self.info = {}
 

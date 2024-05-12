@@ -105,7 +105,7 @@ class NetworkManager:
             self.distribute_peer(new_address)
 
             print("New server connect", new_address)
-            return {'connected': True}
+            return {'connected': True, "address": self.server.address}
 
         if client_id not in self.server.clients:
             return {"error": "need authorisation"}
@@ -196,7 +196,7 @@ class NetworkManager:
                 return None
 
             response = client.send_request(
-                {'command': 'version', 'ver': Protocol.version, 'address': self.server.address})
+                {'command': 'version', 'ver': Protocol.VERSION, 'address': self.server.address})
             if response is None:
                 del self.peers[address]
                 return None
@@ -210,8 +210,11 @@ class NetworkManager:
                     print(f"wrong version {address}")
                     del self.peers[address]
                     return None
+                # сервер возвращает свой реальный адрес.
+                client.server_address = response.get('address')
+                print("connet to ", address)
 
-            client.send_request({'command': 'newpeer', 'peer': address})
+            client.send_request({'command': 'newpeer', 'peer': self.server.address})
 
             # при первом коннекте шлем своего кандидата
             # self.distribute_block(self.chain.block_candidate, address)
@@ -396,11 +399,18 @@ class NetworkManager:
     def broadcast_blocks(self):
         """ передать всем клиентам информацию о новом блоке """
 
-        # print(f"Broadcast new block {self.block_to_brodcast.hash}")
+
 
         for adress in list(self.blocks_to_broadcast):
             if adress in self.peers:
+
                 blocks = self.blocks_to_broadcast.get(adress)
+
+                if (len(blocks) > 0 and
+                        self.time_ntpt.get_corrected_time() - (blocks[0].time -Protocol.BLOCK_TIME_INTERVAL) < Protocol.BLOCK_TIME_INTERVAL / 10):
+                #     # выжидаем некоторое время перед рассылкой блока, чтобы все пири закрылись
+                     continue
+
 
                 block_to_brodcast: Block = None
                 if len(blocks) > 0:
@@ -408,6 +418,8 @@ class NetworkManager:
                 else:
                     del self.blocks_to_broadcast[adress]
                     continue
+
+                print(f"Broadcast new block {block_to_brodcast.hash_block()}")
 
                 client = self.peers[adress]
                 if client.is_connected:
@@ -521,7 +533,7 @@ class NetworkManager:
         for client in list(self.peers.values()):
 
             # себя не смотрим
-            if client.address() == self.server.address:
+            if client.address() == self.server.address or client.server_address== self.server.address:
                 continue
 
             count_peers += 1
@@ -536,15 +548,15 @@ class NetworkManager:
 
 
             if peer_info is not None and "synced" in peer_info:
-                # print(peer_info)
-                if peer_info['synced'] == "True":
 
+                if peer_info['synced'] == "True":
+                    # print(peer_info)
                     chain_size = max(chain_size, peer_info['block_count'])
                     # print("Узел синхронный, проверяем состояние")
                     # print(peer_info)
                     if peer_info['block_count'] > self.chain.blocks_count():
 
-                        # print("На узле блоков больше, подгружаем")
+                        # print(f"На узле {client.address()} блоков больше, подгружаем")
                         block_sync = False
                         # берем очередной блок которого нет в ноде
                         block_num = self.chain.blocks_count()
@@ -567,6 +579,12 @@ class NetworkManager:
                                 self.chain.blocks =self.chain.blocks[:-1]
                                 self.chain.reset_block_candidat()
                         continue
+                    if peer_info['block_count'] < self.chain.blocks_count():
+                        print("На синхронной ноде меньше блоков чем на текущей!")
+                        """ тут требуется более глубокий синхрон """
+                        """ Как временное решение срубание блоков """
+                        self.chain.blocks = self.chain.blocks[:-1]
+                        self.chain.reset_block_candidat()
 
                     # если количество блоков равно, доп проверки
                     if peer_info['block_count'] == self.chain.blocks_count():
@@ -585,7 +603,8 @@ class NetworkManager:
         if  block_sync and not self.synced and self.chain.blocks_count() ==chain_size and chain_size!=0:
 
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
-            if   self.time_ntpt.get_corrected_time() - self.chain.last_block().time < 2:
+            # если блок близок к закрытию, то ждем следующий
+            if  self.time_ntpt.get_corrected_time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL/5:
                 print("Блоки синхронизированные:", self.chain.blocks_count())
                 print(self.chain.last_block_hash())
 
@@ -599,7 +618,7 @@ class NetworkManager:
 
 
         if count_peers == 0:
-            if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.wait_active_peers_before_start:
+            if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:
                 if not self.synced:
                     print("Ноды не обнаружены, включаем синхронизацию")
                     self.synced = True

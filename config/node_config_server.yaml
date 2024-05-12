@@ -2,6 +2,9 @@ port: 9333
 host: 192.168.0.2
 initial_peers:
 #  - "95.154.71.53:9333"
-  - "192.168.0.26:9336"
-  - "192.168.0.26:9333"
-address: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRvcoS
+    - "5.35.98.126:9333"
+    - "yglamazdin.fvds.ru:9333"
+    - "95.154.71.53:9333"
+    - "api.robotsimulator.ru:9333"
+    - "api.robotsimulator.ru:9334"
+address: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRSERV1

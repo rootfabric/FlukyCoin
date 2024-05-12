@@ -151,7 +151,7 @@ class BlockchainNode:
 
     def get_info(self):
         return {'synced': f'{self.network_manager.synced}', 'node': f'{self.network_manager.server.address}',
-                'version': self.protocol.version,
+                'version': Protocol.VERSION,
                 'peers': self.network_manager.known_peers,
                 'block_count': self.chain.blocks_count(),
                 'block_candidat': self.chain.block_candidate_hash,
@@ -212,7 +212,7 @@ class BlockchainNode:
 
         # last_block_date = datetime.datetime.fromtimestamp(last_block_time)
 
-        time_candidat = last_block_time + Protocol.block_interval()
+        time_candidat = last_block_time + Protocol.BLOCK_TIME_INTERVAL
         # синхронизированное время цепи
         block.time = time_candidat if time_candidat > self.chain.time_ntpt.get_corrected_time() else self.chain.time_ntpt.get_corrected_time()
 
@@ -279,28 +279,30 @@ class BlockchainNode:
 
             needClose = self.chain.need_close_block()
 
-            if needClose and self.chain.block_candidate is not None:
-                print("*******************", self.network_manager.active_peers())
-                print(f"Время закрывать блок: {self.chain.blocks_count()}")
-                if not self.chain.close_block():
-                    print("last_block", self.chain.last_block_hash())
-                    print("candidat", self.chain.block_candidate_hash)
-                    self.chain.reset_block_candidat
-                    time.sleep(0.45)
+            try:
+                if needClose and self.chain.block_candidate is not None:
+                    print("*******************", self.network_manager.active_peers())
+                    print(f"Время закрывать блок: {self.chain.blocks_count()}")
+                    if not self.chain.close_block():
+                        print("last_block", self.chain.last_block_hash())
+                        print("candidat", self.chain.block_candidate_hash)
+                        self.chain.reset_block_candidat
+                        time.sleep(0.45)
+                        continue
+                    last_block = self.chain.last_block()
+                    if last_block is not None:
+                        print(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
+                              last_block.signer)
+
+                    self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
+
+                    print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
+                    if self.protocol.is_key_block(self.chain.last_block().hash):
+                        print("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
+                    print("*******************")
                     continue
-                last_block = self.chain.last_block()
-                if last_block is not None:
-                    print(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
-                          last_block.signer)
-
-                self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
-
-                print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
-                if self.protocol.is_key_block(self.chain.last_block().hash):
-                    print("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
-                print("*******************")
-                continue
-
+            except Exception as e:
+                print("Ошибка основного цикла", e)
             # if needClose and self.chain.block_candidate is not None:
             #     self.chain.close_block()
             #     print("Закрываем блок", self.chain.last_block().hash)

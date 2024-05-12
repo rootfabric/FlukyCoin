@@ -5,17 +5,16 @@ import base58
 import math
 import uuid
 
+
+
+
 class Protocol:
-
-    version = "0.1"
-
+    VERSION = "0.1"
     # ожидание подсоединения активных пиров
-    wait_active_peers_before_start = 100
+    WAIT_ACTIVE_PEERS_BEFORE_START = 10
 
-    @staticmethod
-    def block_interval():
-        """ Минимальное время между блоками """
-        return 5
+    BLOCK_TIME_INTERVAL = 30
+
 
     @staticmethod
     def find_longest_common_substring(s1, s2):

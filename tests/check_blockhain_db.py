@@ -13,8 +13,10 @@ if __name__ == '__main__':
 
     print("Все балансы:", chain.transaction_storage.get_all_balances())
 
+
     for b in chain.transaction_storage.get_addresses_sorted_by_balance():
         print(b[0], b[1]/100000000)
+
 
     list_time =[]
     for i, block in enumerate(chain.blocks):
@@ -29,6 +31,6 @@ if __name__ == '__main__':
             t = b1.time - b0.time
             list_time.append(t)
 
-            print(b0.hash, b1.previousHash, t)
+            # print(b0.hash, b1.previousHash, t)
 
     print(list_time)

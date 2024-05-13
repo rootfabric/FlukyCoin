@@ -256,76 +256,77 @@ class BlockchainNode:
         print("Blockchain Node is running")
 
         while self.running:
-
-            # не работаем без синхронизации
-            if not self.network_manager.synced:
-                time.sleep(0.1)
-                # print("Node not sync!")
-                continue
-
-            # print("mempool", len(self.mempool.transactions))
-
-            # continue
-
-            # сгенегрировать блок, и попробовать добавить его в блокчейн
-
-            new_block = self.create_block()
-
-            if self.chain.add_block_candidate(new_block):
-                print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
-                      new_block.datetime())
-                self.network_manager.distribute_block(self.chain.block_candidate)
-
-
-            needClose = self.chain.need_close_block()
-
             try:
-                if needClose and self.chain.block_candidate is not None:
-                    print("*******************", self.network_manager.active_peers())
-                    print(f"Время закрывать блок: {self.chain.blocks_count()}")
-                    if not self.chain.close_block():
-                        print("last_block", self.chain.last_block_hash())
-                        print("candidat", self.chain.block_candidate_hash)
-                        self.chain.reset_block_candidat
-                        time.sleep(0.45)
-                        continue
-                    last_block = self.chain.last_block()
-                    if last_block is not None:
-                        print(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
-                              last_block.signer)
-
-                    self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
-
-                    print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
-                    if self.protocol.is_key_block(self.chain.last_block().hash):
-                        print("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
-                    print("*******************")
+                # не работаем без синхронизации
+                if not self.network_manager.synced:
+                    time.sleep(0.1)
+                    # print("Node not sync!")
                     continue
+
+                # print("mempool", len(self.mempool.transactions))
+
+                # continue
+
+                # сгенегрировать блок, и попробовать добавить его в блокчейн
+
+                new_block = self.create_block()
+
+                if self.chain.add_block_candidate(new_block):
+                    print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
+                          new_block.datetime())
+                    self.network_manager.distribute_block(self.chain.block_candidate)
+
+
+                needClose = self.chain.need_close_block()
+
+                try:
+                    if needClose and self.chain.block_candidate is not None:
+                        print("*******************", self.network_manager.active_peers())
+                        print(f"Время закрывать блок: {self.chain.blocks_count()}")
+                        if not self.chain.close_block():
+                            print("last_block", self.chain.last_block_hash())
+                            print("candidat", self.chain.block_candidate_hash)
+                            self.chain.reset_block_candidat
+                            time.sleep(0.45)
+                            continue
+                        last_block = self.chain.last_block()
+                        if last_block is not None:
+                            print(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
+                                  last_block.signer)
+
+                        self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
+
+                        print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
+                        if self.protocol.is_key_block(self.chain.last_block().hash):
+                            print("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
+                        print("*******************")
+                        continue
+                except Exception as e:
+                    print("Ошибка основного цикла", e)
+                # if needClose and self.chain.block_candidate is not None:
+                #     self.chain.close_block()
+                #     print("Закрываем блок", self.chain.last_block().hash)
+
+                # current_datetime = self.time_ntpt.get_corrected_datetime()
+
+                time_to_close = Protocol.BLOCK_TIME_INTERVAL_LOG
+                if self.chain.last_block() is not None:
+                    time_block = self.chain.last_block().time
+                    time_to_close_block = self.time_ntpt.get_corrected_time() -time_block
+                    if time_to_close_block<time_to_close and time_to_close_block>0:
+                        time_to_close = time_to_close -time_to_close_block
+
+                time.sleep(time_to_close)
+
+                #
+                # # Вычисляем, сколько миллисекунд осталось до следующей секунды
+                # milliseconds_to_wait = 1000 - (current_datetime.microsecond // 1000)
+                # # Добавляем задержку в секундах (преобразуем миллисекунды в секунды)
+                # time.sleep(milliseconds_to_wait / 1000.0)
+                #
+                # # print(f"Chain {len(self.chain.blocks)} blocks")
             except Exception as e:
-                print("Ошибка основного цикла", e)
-            # if needClose and self.chain.block_candidate is not None:
-            #     self.chain.close_block()
-            #     print("Закрываем блок", self.chain.last_block().hash)
-
-            # current_datetime = self.time_ntpt.get_corrected_datetime()
-
-            time_to_close = 1
-            if self.chain.last_block() is not None:
-                time_block = self.chain.last_block().time
-                time_to_close_block = time_block -self.time_ntpt.get_corrected_time()
-                if time_to_close_block<1 and time_to_close_block>0:
-                    time_to_close = time_to_close_block
-
-            time.sleep(time_to_close)
-
-            #
-            # # Вычисляем, сколько миллисекунд осталось до следующей секунды
-            # milliseconds_to_wait = 1000 - (current_datetime.microsecond // 1000)
-            # # Добавляем задержку в секундах (преобразуем миллисекунды в секунды)
-            # time.sleep(milliseconds_to_wait / 1000.0)
-            #
-            # # print(f"Chain {len(self.chain.blocks)} blocks")
-
+                print("error main loop ", e)
 
 if __name__ == "__main__":
     """ """

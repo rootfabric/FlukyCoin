@@ -30,6 +30,8 @@ class Chain():
             dir = f"{host}_{port}"
             self.load_from_disk(dir=dir)
 
+        self.history_hash = set()
+
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -42,6 +44,13 @@ class Chain():
     def check_hash(self, block_hash):
         """"""
         # TODO нужно смотреть блоки в цепи
+
+        # Все хеши блоков храним, чтобы потом не брать уже полученный
+        if block_hash in self.history_hash:
+            return True
+
+        self.history_hash.add(block_hash)
+
         if self.block_candidate is not None and block_hash ==self.block_candidate.hash_block():
             return True
         return False
@@ -115,6 +124,7 @@ class Chain():
 
         self.miners.add(block.signer)
 
+        self.history_hash.add(block.hash_block())
         # self.save_to_disk()
 
     def blocks_count(self):
@@ -255,7 +265,7 @@ class Chain():
 
         if self.block_candidate is None:
             return False
-        print(f"Check:  block_candidate: {self.block_candidate.datetime()} time:{self.time_ntpt.get_corrected_datetime()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time()}  {self.block_candidate.hash_block()}")
+        print(f"Check: {self.blocks_count()} block_candidate time: {self.block_candidate.datetime()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time()}  {self.block_candidate.hash_block()}")
 
         if self.block_candidate.time >self.time_ntpt.get_corrected_time():
 

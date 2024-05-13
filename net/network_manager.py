@@ -1,3 +1,5 @@
+import copy
+
 from net.server import Server
 from net.client import Client
 from core.protocol import Protocol
@@ -96,7 +98,7 @@ class NetworkManager:
         command = request.get('command')
 
         if command == 'version':
-            print("Server connect", command)
+            # print("Server connect", command)
             new_address = request.get('address')
             self.server.clients[client_id] = new_address
             self.add_known_peer(new_address, False)
@@ -104,7 +106,7 @@ class NetworkManager:
             # новый адрес, отправить всем активным пирам
             self.distribute_peer(new_address)
 
-            print("New server connect", new_address)
+            # print("New server connect", new_address)
             return {'connected': True, "address": self.server.address}
 
         if client_id not in self.server.clients:
@@ -115,8 +117,8 @@ class NetworkManager:
         return self.handle_request_node(request, client_id)
 
     def distribute_peer(self, new_address):
-        print("distribute_peer get_active_peers", self.active_peers())
-        # заготовка на рассылку блоков клиентам
+        # print("distribute_peer get_active_peers", self.active_peers())
+        # заготов ка на рассылку блоков клиентам
         for peer in self.active_peers():
             if peer == self.server.address:
                 continue
@@ -212,7 +214,7 @@ class NetworkManager:
                     return None
                 # сервер возвращает свой реальный адрес.
                 client.server_address = response.get('address')
-                print("connet to ", address)
+                # print("connect to ", address)
 
             client.send_request({'command': 'newpeer', 'peer': self.server.address})
 
@@ -378,7 +380,7 @@ class NetworkManager:
                 # задан конеретный адрес куда не надо отослать
                 continue
             blocks_to_brodcast = self.blocks_to_broadcast.get(peer, [])
-            blocks_to_brodcast.append(block)
+            blocks_to_brodcast.append(copy.deepcopy(block))
             self.blocks_to_broadcast[peer] = blocks_to_brodcast
 
     # def pull_blocks_from_peer(self, peer, start_block, end_block):
@@ -401,8 +403,6 @@ class NetworkManager:
 
     def broadcast_blocks(self):
         """ передать всем клиентам информацию о новом блоке """
-
-
 
         for adress in list(self.blocks_to_broadcast):
             if adress in self.peers:
@@ -593,12 +593,12 @@ class NetworkManager:
                                 self.chain.blocks =self.chain.blocks[:-1]
                                 self.chain.reset_block_candidat()
                         continue
-                    if peer_info['block_count'] < self.chain.blocks_count():
-                        print("На синхронной ноде меньше блоков чем на текущей!")
-                        """ тут требуется более глубокий синхрон """
-                        """ Как временное решение срубание блоков """
-                        self.chain.blocks = self.chain.blocks[:-1]
-                        self.chain.reset_block_candidat()
+                    # if peer_info['block_count'] < self.chain.blocks_count():
+                    #     print("На синхронной ноде меньше блоков чем на текущей!")
+                    #     """ тут требуется более глубокий синхрон """
+                    #     """ Как временное решение срубание блоков """
+                    #     self.chain.blocks = self.chain.blocks[:-1]
+                    #     self.chain.reset_block_candidat()
 
                     # если количество блоков равно, доп проверки
                     if peer_info['block_count'] == self.chain.blocks_count():
@@ -606,8 +606,9 @@ class NetworkManager:
                         if self.chain.block_candidate_hash is not None and peer_info['block_candidat'] is not None:
                             if peer_info['block_candidat'] != self.chain.block_candidate_hash:
                                 # print("!!! Не совпадает кандидат, требуется обмен")
-                                self.distribute_block(self.chain.block_candidate, address=client.address())
                                 self.pull_candidat_block_from_peer(client.address())
+                                # self.distribute_block(self.chain.block_candidate, address=client.address())
+
 
                         # if peer_info['last_block_hash'] != self.chain.last_block_hash():
                         #     # print("!!! Не совпадает последний блок", peer_info['last_block_hash'])
@@ -662,27 +663,35 @@ class NetworkManager:
             if len(self.peers_to_broadcast) > 0:
                 self.broadcast_new_peer()
 
-            if not self.synced:
-                self.check_synk_with_peers()
-                time.sleep(0.01)
-                continue
-
             if time.time() - pause_synced > 1:
                 # если засинхрились, то проверка реже
                 pause_synced = time.time()
                 self.check_synk_with_peers()
+
+
+            if not self.synced:
+                # self.check_synk_with_peers()
+                time.sleep(0.1)
+                continue
+
 
                 # if len(self.list_need_broadcast_transaction) > 0:
             #     for tx in self.list_need_broadcast_transaction:
             #         self.broadcast_new_transaction(tx)
 
             if len(self.blocks_to_broadcast) > 0:
-                self.broadcast_blocks()
+                try:
+                    self.broadcast_blocks()
+                except Exception as e:
+                    print("blocks_to_broadcast", e)
 
             if time.time() - pause_mempool > 10:
                 for peer in list(self.active_peers()):
                     if self.server.address != peer:
-                        self.take_mempool(peer)
+                        try:
+                            self.take_mempool(peer)
+                        except Exception as e:
+                            print(e)
 
                 pause_mempool = time.time()
 

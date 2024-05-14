@@ -6,13 +6,14 @@ class NTPTimeSynchronizer:
     def __init__(self, ntp_server="pool.ntp.org"):
         self.ntp_server = ntp_server
         self.time_delta = None
-        self.ntp_client = ntplib.NTPClient()
+        # self.ntp_client = ntplib.NTPClient()
         self.synchronize_time()
 
     def synchronize_time(self):
         """Синхронизация времени с NTP-сервером и расчет дельты времени."""
         try:
-            response = self.ntp_client.request(self.ntp_server, version=3)
+            ntp_client = ntplib.NTPClient()
+            response = ntp_client.request(self.ntp_server, version=3)
             ntp_timestamp = response.tx_time
             system_timestamp = time()
             self.time_delta = ntp_timestamp - system_timestamp

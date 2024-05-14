@@ -163,13 +163,15 @@ class NetworkManager:
             print(f"No data file found at {full_path}. Starting with an empty list of peers.")
 
     def ping_all_peers(self):
-        for peer in list(self.known_peers):
+        try:
+            for peer in list(self.known_peers):
 
-            thread = threading.Thread(target=self.ping_peer, args=(peer, ))
-            thread.daemon = True
-            thread.start()
+                thread = threading.Thread(target=self.ping_peer, args=(peer, ))
+                thread.daemon = True
+                thread.start()
+        except Exception as e:
+            print("error ping_all_peers", e)
 
-            # self.ping_peer(peer)
 
     def ping_active_peers(self):
         for peer in list(self.peers.values()):
@@ -637,6 +639,29 @@ class NetworkManager:
         if self.synced and self.chain.blocks_count()< chain_size and chain_size != 0:
             self.synced = False
             print("Нода потеряла синхронизацию!")
+
+        # примерный алгоритм отслеживания синхронизации сети
+        count_s = 0
+        all_peers = 0
+        for client in list(self.peers.values()):
+            if client.info['synced'] != "True":
+                continue
+            # себя не смотрим
+            if client.address() == self.server.address or client.server_address== self.server.address:
+                continue
+
+            all_peers+=1
+            if client.info['block_count'] == self.chain.blocks_count():
+                if client.info['last_block_hash'] ==self.chain.last_block_hash():
+                    count_s+=1
+        # простая проверка, количества нод с которыми совпадают блоки
+        if count_s<all_peers:
+            print(f"в сети есть рассинхрон {count_s} из {all_peers}")
+            if  all_peers >1 and count_s==1:
+                print(f"Текущая цепь в меньшинстве")
+                print("Нода потеряла синхронизацию!")
+                self.synced = False
+
 
 
         if count_peers == 0:

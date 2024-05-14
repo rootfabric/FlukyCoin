@@ -165,13 +165,11 @@ class NetworkManager:
     def ping_all_peers(self):
         try:
             for peer in list(self.known_peers):
-
-                thread = threading.Thread(target=self.ping_peer, args=(peer, ))
+                thread = threading.Thread(target=self.ping_peer, args=(peer,))
                 thread.daemon = True
                 thread.start()
         except Exception as e:
             print("error ping_all_peers", e)
-
 
     def ping_active_peers(self):
         for peer in list(self.peers.values()):
@@ -278,6 +276,7 @@ class NetworkManager:
                 return False
         except Exception as e:
             print("Error ping_peer!", e)
+
     def take_mempool(self, address):
         """ установка связи и проверка соединеня """
 
@@ -367,7 +366,7 @@ class NetworkManager:
                          'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.sign}})
                     print(response)
 
-    def distribute_block(self, block, address=None, ban_address = None):
+    def distribute_block(self, block, address=None, ban_address=None):
 
         if block is None:
             return
@@ -417,7 +416,6 @@ class NetworkManager:
                 #     # выжидаем некоторое время перед рассылкой блока, чтобы все пири закрылись
                 #      continue
 
-
                 block_to_brodcast: Block = None
                 if len(blocks) > 0:
                     block_to_brodcast = blocks.pop(0)
@@ -425,17 +423,11 @@ class NetworkManager:
                     del self.blocks_to_broadcast[adress]
                     continue
 
-
-
-
                 client = self.peers[adress]
 
                 # if client.last_broadcast_block ==  block_to_brodcast.hash_block():
                 #     """ Блок клиенту уже кидали """
                 #     continue
-
-
-
 
                 if client.is_connected:
                     req = {'command': 'invb', 'block_hash': block_to_brodcast.hash_block()}
@@ -550,11 +542,10 @@ class NetworkManager:
         for client in list(self.peers.values()):
 
             # себя не смотрим
-            if client.address() == self.server.address or client.server_address== self.server.address:
+            if client.address() == self.server.address or client.server_address == self.server.address:
                 continue
 
             count_peers += 1
-
 
             # client.info = client.send_request({'command': 'getinfo'})
             client.get_info()
@@ -562,8 +553,8 @@ class NetworkManager:
             peer_info = client.info
             # print("peer_info", peer_info)
 
-
-
+            if peer_info is None:
+                continue
 
             if peer_info is not None and "synced" in peer_info:
 
@@ -590,7 +581,7 @@ class NetworkManager:
                             block = Block.from_json(block_data)
                             if self.chain.validate_and_add_block(block):
                                 print(f"Block {block_num} added from {client.address()}. {block.hash}")
-                                if int(block_num)%100==0:
+                                if int(block_num) % 100 == 0:
                                     self.chain.save_chain_to_disk(dir=str(self.server.address))
 
                             else:
@@ -599,7 +590,7 @@ class NetworkManager:
                                 "Тут надо делать более сложный форк"
                                 "Пока просто откатываемся на несколько блоков назад"
                                 "Нужна правильная отработка отката транзакций"
-                                self.chain.blocks =self.chain.blocks[:-1]
+                                self.chain.blocks = self.chain.blocks[:-1]
                                 self.chain.reset_block_candidat()
                         continue
                     # if peer_info['block_count'] < self.chain.blocks_count():
@@ -618,17 +609,16 @@ class NetworkManager:
                                 self.pull_candidat_block_from_peer(client.address())
                                 # self.distribute_block(self.chain.block_candidate, address=client.address())
 
-
                         # if peer_info['last_block_hash'] != self.chain.last_block_hash():
                         #     # print("!!! Не совпадает последний блок", peer_info['last_block_hash'])
                         #     # self.ping_peer(client.address())
                         #     self.distribute_block(self.chain.block_candidate)
 
-        if  block_sync and not self.synced and self.chain.blocks_count() ==chain_size and chain_size!=0:
+        if block_sync and not self.synced and self.chain.blocks_count() == chain_size and chain_size != 0:
 
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
             # если блок близок к закрытию, то ждем следующий
-            if  self.time_ntpt.get_corrected_time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL/5:
+            if self.time_ntpt.get_corrected_time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL / 5:
                 print("Блоки синхронизированные:", self.chain.blocks_count())
                 print(self.chain.last_block_hash())
 
@@ -636,7 +626,7 @@ class NetworkManager:
                 print("Нода синхронизированна!")
 
         # print("Всего активныйх пиров", count_peers)
-        if self.synced and self.chain.blocks_count()< chain_size and chain_size != 0:
+        if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
             self.synced = False
             print("Нода потеряла синхронизацию!")
 
@@ -644,25 +634,27 @@ class NetworkManager:
         count_s = 0
         all_peers = 0
         for client in list(self.peers.values()):
+
+            if client.info is None:
+                continue
+
             if client.info['synced'] != "True":
                 continue
             # себя не смотрим
-            if client.address() == self.server.address or client.server_address== self.server.address:
+            if client.address() == self.server.address or client.server_address == self.server.address:
                 continue
 
-            all_peers+=1
+            all_peers += 1
             if client.info['block_count'] == self.chain.blocks_count():
-                if client.info['last_block_hash'] ==self.chain.last_block_hash():
-                    count_s+=1
+                if client.info['last_block_hash'] == self.chain.last_block_hash():
+                    count_s += 1
         # простая проверка, количества нод с которыми совпадают блоки
-        if count_s<all_peers:
+        if time.time() - self.chain.last_block().time > 10 and count_s < all_peers:
             print(f"в сети есть рассинхрон {count_s} из {all_peers}")
-            if  all_peers >1 and count_s==1:
+            if all_peers > 1 and count_s == 1:
                 print(f"Текущая цепь в меньшинстве")
                 print("Нода потеряла синхронизацию!")
                 self.synced = False
-
-
 
         if count_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:
@@ -680,7 +672,6 @@ class NetworkManager:
         thread = threading.Thread(target=self._ping_all_peers_and_save)
         thread.daemon = True
         thread.start()
-
 
         while self.running:
 
@@ -701,12 +692,10 @@ class NetworkManager:
                     pause_synced = time.time()
                     self.check_synk_with_peers()
 
-
                 if not self.synced:
                     # self.check_synk_with_peers()
                     time.sleep(0.1)
                     continue
-
 
                     # if len(self.list_need_broadcast_transaction) > 0:
                 #     for tx in self.list_need_broadcast_transaction:

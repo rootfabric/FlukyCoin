@@ -558,7 +558,7 @@ class NetworkManager:
 
             if peer_info is not None and "synced" in peer_info:
 
-                if peer_info['synced'] == "True":
+                if peer_info.get('synced') == "True":
                     # print(peer_info)
                     chain_size = max(chain_size, peer_info['block_count'])
                     # print("Узел синхронный, проверяем состояние")
@@ -638,7 +638,7 @@ class NetworkManager:
             if client.info is None:
                 continue
 
-            if client.info['synced'] != "True":
+            if client.info.get('synced') != "True":
                 continue
             # себя не смотрим
             if client.address() == self.server.address or client.server_address == self.server.address:

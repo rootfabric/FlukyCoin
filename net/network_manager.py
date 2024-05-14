@@ -651,7 +651,7 @@ class NetworkManager:
         # простая проверка, количества нод с которыми совпадают блоки
         if time.time() - self.chain.last_block().time > 10 and count_s < all_peers:
             print(f"в сети есть рассинхрон {count_s} из {all_peers}")
-            if all_peers > 1 and count_s == 1:
+            if all_peers > 1 and count_s == 0:
                 print(f"Текущая цепь в меньшинстве")
                 print("Нода потеряла синхронизацию!")
                 self.synced = False

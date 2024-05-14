@@ -44,7 +44,7 @@ class Mempool:
         with open(full_path, 'wb') as file:
             pickle.dump(self.transactions, file)
 
-        print(f"Blockchain saved to disk at {full_path}.")
+        # print(f"Blockchain saved to disk at {full_path}.")
 
     def load_transactions(self, dir="", filename='mempool.db'):
         # Нормализация имени директории и формирование пути

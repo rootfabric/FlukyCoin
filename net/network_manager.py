@@ -75,6 +75,7 @@ class NetworkManager:
         # Запуск фонового потока для периодической проверки узлов
         signal.signal(signal.SIGINT, self.signal_handler)
         self.background_thread = threading.Thread(target=self.check_peers)
+        self.background_thread.daemon = True
         self.background_thread.start()
 
     def add_known_peer(self, new_address, ping=True):
@@ -561,6 +562,7 @@ class NetworkManager:
 
 
 
+
             if peer_info is not None and "synced" in peer_info:
 
                 if peer_info['synced'] == "True":
@@ -568,6 +570,11 @@ class NetworkManager:
                     chain_size = max(chain_size, peer_info['block_count'])
                     # print("Узел синхронный, проверяем состояние")
                     # print(peer_info)
+
+                    # нода синхронна
+                    if self.synced:
+                        continue
+
                     if peer_info['block_count'] > self.chain.blocks_count():
 
                         # print(f"На узле {client.address()} блоков больше, подгружаем")
@@ -652,47 +659,50 @@ class NetworkManager:
 
         while self.running:
 
+            try:
 
-            # if time.time() - t > 10:
-            #     # thread = threading.Thread(target=self._ping_all_peers_and_save)
-            #     # thread.daemon = True
-            #     # thread.start()
-            #     self._ping_all_peers_and_save()
-            #     t = time.time()
+                # if time.time() - t > 10:
+                #     # thread = threading.Thread(target=self._ping_all_peers_and_save)
+                #     # thread.daemon = True
+                #     # thread.start()
+                #     self._ping_all_peers_and_save()
+                #     t = time.time()
 
-            if len(self.peers_to_broadcast) > 0:
-                self.broadcast_new_peer()
+                if len(self.peers_to_broadcast) > 0:
+                    self.broadcast_new_peer()
 
-            if time.time() - pause_synced > 1:
-                # если засинхрились, то проверка реже
-                pause_synced = time.time()
-                self.check_synk_with_peers()
-
-
-            if not self.synced:
-                # self.check_synk_with_peers()
-                time.sleep(0.1)
-                continue
+                if time.time() - pause_synced > 1:
+                    # если засинхрились, то проверка реже
+                    pause_synced = time.time()
+                    self.check_synk_with_peers()
 
 
-                # if len(self.list_need_broadcast_transaction) > 0:
-            #     for tx in self.list_need_broadcast_transaction:
-            #         self.broadcast_new_transaction(tx)
+                if not self.synced:
+                    # self.check_synk_with_peers()
+                    time.sleep(0.1)
+                    continue
 
-            if len(self.blocks_to_broadcast) > 0:
-                try:
-                    self.broadcast_blocks()
-                except Exception as e:
-                    print("blocks_to_broadcast", e)
 
-            if time.time() - pause_mempool > 10:
-                for peer in list(self.active_peers()):
-                    if self.server.address != peer:
-                        try:
-                            self.take_mempool(peer)
-                        except Exception as e:
-                            print(e)
+                    # if len(self.list_need_broadcast_transaction) > 0:
+                #     for tx in self.list_need_broadcast_transaction:
+                #         self.broadcast_new_transaction(tx)
 
-                pause_mempool = time.time()
+                if len(self.blocks_to_broadcast) > 0:
+                    try:
+                        self.broadcast_blocks()
+                    except Exception as e:
+                        print("blocks_to_broadcast", e)
 
-            time.sleep(0.1)  # Пауза перед следующей проверкой
+                if time.time() - pause_mempool > 10:
+                    for peer in list(self.active_peers()):
+                        if self.server.address != peer:
+                            try:
+                                self.take_mempool(peer)
+                            except Exception as e:
+                                print(e)
+
+                    pause_mempool = time.time()
+
+                time.sleep(0.1)  # Пауза перед следующей проверкой
+            except Exception as e:
+                print("check_peers", e)

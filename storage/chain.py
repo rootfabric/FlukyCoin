@@ -71,7 +71,7 @@ class Chain():
         with open(full_path, 'wb') as file:
             pickle.dump([self.blocks, self.transaction_storage, self.block_candidate], file)
 
-        print(f"Blockchain saved to disk at {full_path}.")
+        # print(f"Blockchain saved to disk at {full_path}.")
 
     def load_from_disk(self, dir="", filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
@@ -204,6 +204,7 @@ class Chain():
         # print("Исходный block:", block)
         if self.block_candidate is None:
             self.block_candidate = copy.deepcopy(block)
+            print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
             return True
 
         if block.hash_block() == self.block_candidate.hash_block():
@@ -231,6 +232,7 @@ class Chain():
                 # print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
                 self.block_candidate = copy.deepcopy(block)
                 # print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+                print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
                 return True
 
         win_address = self.protocol.winner(self.block_candidate.signer, block.signer,

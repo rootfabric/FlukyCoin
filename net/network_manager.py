@@ -645,17 +645,21 @@ class NetworkManager:
                 continue
 
             all_peers += 1
-            if client.info['block_count'] == self.chain.blocks_count():
+            if client.info['block_count'] >= self.chain.blocks_count():
                 if client.info['last_block_hash'] == self.chain.last_block_hash():
                     count_s += 1
         # простая проверка, количества нод с которыми совпадают блоки
-        if time.time() - self.chain.last_block().time > 10 and count_s < all_peers:
-            if self.synced:
-                print(f"в сети есть рассинхрон {count_s} из {all_peers}")
-                if all_peers > 1 and count_s == 0:
-                    print(f"Текущая цепь в меньшинстве")
-                    print("Нода потеряла синхронизацию!")
-                    self.synced = False
+        if self.chain.last_block() is not None:
+            if (time.time() - self.chain.last_block().time > 10
+            and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL-10
+                    and count_s < all_peers):
+                print("CCCCC")
+                if self.synced:
+                    print(f"в сети есть рассинхрон {count_s} из {all_peers}")
+                    if all_peers > 1 and count_s == 0:
+                        print(f"Текущая цепь в меньшинстве")
+                        print("Нода потеряла синхронизацию!")
+                        self.synced = False
 
         if count_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:
@@ -670,13 +674,16 @@ class NetworkManager:
         pause_mempool = time.time()
         pause_synced = time.time()
 
-        thread = threading.Thread(target=self._ping_all_peers_and_save)
-        thread.daemon = True
-        thread.start()
+        try:
+            thread = threading.Thread(target=self._ping_all_peers_and_save)
+            thread.daemon = True
+            thread.start()
+        except Exception as e:
+            print("_ping_all_peers_and_save", e)
 
         while self.running:
 
-            try:
+            # try:
 
                 # if time.time() - t > 10:
                 #     # thread = threading.Thread(target=self._ping_all_peers_and_save)
@@ -719,5 +726,5 @@ class NetworkManager:
                     pause_mempool = time.time()
 
                 time.sleep(0.1)  # Пауза перед следующей проверкой
-            except Exception as e:
-                print("check_peers", e)
+            # except Exception as e:
+            #     print("check_peers", e)

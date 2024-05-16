@@ -31,6 +31,7 @@ if __name__ == '__main__':
             t = b1.time - b0.time
             list_time.append(t)
 
+        print(block.signer)
             # print(b0.hash, b1.previousHash, t)
 
     print(list_time)

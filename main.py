@@ -37,6 +37,11 @@ if __name__ == "__main__":
     config = config_loader.load_config()
 
     # run_node(port, known_peers)
-    node = BlockchainNode(config)
-    node.run_node()
+    while 1:
+        try:
+            node = BlockchainNode(config)
+            node.run_node()
+        except Exception as e:
+            print("__main__", e)
+
 

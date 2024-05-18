@@ -50,7 +50,7 @@ class BlockchainNode:
         if hasattr(self, 'network_manager'):
             self.network_manager.stop()
 
-    def handle_request(self, request, client_id):
+    def handle_request(self, request):
         command = request.get('command')
 
         # print(f"Command: {request}")
@@ -80,7 +80,7 @@ class BlockchainNode:
             return {"mempool_hashes": self.mempool.get_hashes()}
         elif command == 'newblock':
             block = request.get('block_data')
-            return self.receive_new_block(block, client_id)
+            return self.receive_new_block(block)
         elif command == 'peerhello':
             peer = request.get('peer')
             return self.register_peer(peer)
@@ -181,12 +181,12 @@ class BlockchainNode:
 
         return {'status': 'success', 'message': f'Peer {peer} added'}
 
-    def receive_new_block(self, block_json, client_id):
+    def receive_new_block(self, block_json):
         """ Проверка блока """
         block = Block.from_json(block_json)
         if self.chain.add_block_candidate(block):
             # print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
-            self.network_manager.distribute_block(block, ban_address=self.network_manager.server.clients[client_id])
+            # self.network_manager.distribute_block(block, ban_address=self.network_manager.server.clients[client_id])
 
             return {'status': 'success', 'message': 'New block received and distributed'}
         # print(f"Кандидат из другой ноды не подходит:{block.datetime()} {block.hash}")

@@ -65,6 +65,7 @@ class NetworkManager:
         self.start_time = self.time_ntpt.get_corrected_time()
 
         self.num_blocks_need_load = []
+        self.no_need_pause_sinc= False
         print("Start networc manager", self.known_peers)
 
     def signal_handler(self, signal, frame):
@@ -94,14 +95,14 @@ class NetworkManager:
         """"""
         raise "Метод должен быть назначен в ноде"
 
-    def handle_request(self, request, client_id):
+    def handle_request(self, request):
         """ Сообщение с сервера сначала попадает сюда """
         command = request.get('command')
 
         if command == 'version':
             # print("Server connect", command)
             new_address = request.get('address')
-            self.server.clients[client_id] = new_address
+            # self.server.clients[client_id] = new_address
             self.add_known_peer(new_address, False)
 
             # новый адрес, отправить всем активным пирам
@@ -110,12 +111,12 @@ class NetworkManager:
             # print("New server connect", new_address)
             return {'connected': True, "address": self.server.address}
 
-        if client_id not in self.server.clients:
-            return {"error": "need authorisation"}
+        # if client_id not in self.server.clients:
+        #     return {"error": "need authorisation"}
 
         # print("Server command", command, self.server.clients[client_id])
         # работа ноды на входящее сообщение
-        return self.handle_request_node(request, client_id)
+        return self.handle_request_node(request)
 
     def distribute_peer(self, new_address):
         # print("distribute_peer get_active_peers", self.active_peers())
@@ -531,9 +532,11 @@ class NetworkManager:
         """ Проверка синхронности с пирами """
 
         count_peers = 0
+        count_sync_peers = 0
         # print("check_synk_with_peers",  self.peers.keys())
         block_sync = True
         chain_size = 0
+        self.no_need_pause_sinc = True
 
         # if not self.synced:
         #     # пингуем если не засинхрины активно
@@ -542,7 +545,7 @@ class NetworkManager:
         for client in list(self.peers.values()):
 
             # себя не смотрим
-            if client.address() == self.server.address or client.server_address == self.server.address:
+            if client.address() == self.server.address or client.address() == self.server.address:
                 continue
 
             count_peers += 1
@@ -560,6 +563,7 @@ class NetworkManager:
 
                 if peer_info.get('synced') == "True":
                     # print(peer_info)
+                    count_sync_peers+=1
                     chain_size = max(chain_size, peer_info['block_count'])
                     # print("Узел синхронный, проверяем состояние")
                     # print(peer_info)
@@ -583,7 +587,7 @@ class NetworkManager:
                                 print(f"Block {block_num} added from {client.address()}. {block.hash}")
                                 if int(block_num) % 100 == 0:
                                     self.chain.save_chain_to_disk(dir=str(self.server.address))
-
+                                self.no_need_pause_sinc = True
                             else:
                                 print(f"Invalid block {block_num} received from {client.address()}.")
                                 "Возникает ситуация, когда своя цепочка не соподает с присылаемой"
@@ -661,7 +665,7 @@ class NetworkManager:
                         print("Нода потеряла синхронизацию!")
                         self.synced = False
 
-        if count_peers == 0:
+        if count_sync_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:
                 if not self.synced:
                     print("Ноды не обнаружены, включаем синхронизацию")
@@ -697,8 +701,10 @@ class NetworkManager:
 
                 if time.time() - pause_synced > 1:
                     # если засинхрились, то проверка реже
-                    pause_synced = time.time()
+
                     self.check_synk_with_peers()
+                    if not self.no_need_pause_sinc:
+                        pause_synced = time.time()
 
                 if not self.synced:
                     # self.check_synk_with_peers()

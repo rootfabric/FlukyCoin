@@ -78,9 +78,16 @@ class Server:
             client_socket.close()
 
     def close(self):
-        self.is_work = False
-        self.server_socket.close()
-        # self.server_thread.join()  # Дожидаемся завершения серверного потока
+        self.is_work = False  # Останавливаем прослушивание новых подключений
+        # Создаём временное подключение, чтобы разблокировать accept()
+        try:
+            temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            temp_socket.connect((self.server_socket.getsockname()[0], self.server_socket.getsockname()[1]))
+            temp_socket.close()
+        except Exception as e:
+            print(f"Error while creating a temporary connection: {e}")
+        self.server_socket.close()  # Закрываем серверный сокет
+        self.server_thread.join()  # Дожидаемся завершения серверного потока
         print("Server has been stopped")
 
 

@@ -80,7 +80,7 @@ class Server:
     def close(self):
         self.is_work = False
         self.server_socket.close()
-        self.server_thread.join()  # Дожидаемся завершения серверного потока
+        # self.server_thread.join()  # Дожидаемся завершения серверного потока
         print("Server has been stopped")
 
 

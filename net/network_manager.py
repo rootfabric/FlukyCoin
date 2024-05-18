@@ -325,6 +325,7 @@ class NetworkManager:
 
     def stop(self):
         self.running = False
+        self.server.close()
         self.background_thread.join()  # Дожидаемся завершения фонового потока
 
     def broadcast_new_peer(self):
@@ -435,7 +436,7 @@ class NetworkManager:
                     response = client.send_request(req)
 
                     if response is not None and response.get('status') == 'ok':
-                        client.last_broadcast_block == block_to_brodcast.hash_block()
+                        # client.last_broadcast_block == block_to_brodcast.hash_block()
                         if len(blocks) > 0:
                             self.blocks_to_broadcast[adress] = blocks
 
@@ -459,55 +460,7 @@ class NetworkManager:
                             # self.chain.add_block_candidate(candidate)
                         # print(response)
 
-    # def sync_node(self):
-    #     # Проверяем, есть ли у всех известных узлов такое же количество блоков, как и у текущего узла
-    #     current_block_count = len(self.chain.blocks)
-    #     print(f"Checking synchronization status with {len(self.active_peers())} peers...")
-    #     for peer in self.active_peers():
-    #
-    #         if peer == self.server.address:
-    #             continue
-    #
-    #         client = self.peers.get(peer)
-    #
-    #         if client is None:
-    #             continue
-    #
-    #         response = client.send_request({'command': 'newpeer', 'peer': self.server.address})
-    #         if "error" in response:
-    #             continue
-    #         print(response)
-    #
-    #         response = client.send_request({'command': 'getinfo'})
-    #         peer_block_count = response.get('block_count', 0)
-    #         client.close()
-    #
-    #         # Если количество блоков различается, начинаем процесс синхронизации
-    #         if peer_block_count != current_block_count:
-    #             print(f"Synchronization needed with {peer}.")
-    #             self.pull_blocks_from_peer(peer, current_block_count, peer_block_count)
-    #
-    #             # берем очередной блок которого нет в ноде
-    #             block_num = self.chain.blocks_count()
-    #             response = client.send_request({'command': 'getblock', 'block_number': block_num})
-    #             block_data = response.get('block')
-    #             if block_data:
-    #                 # Проверяем и добавляем блок в локальную цепочку
-    #                 block = Block.from_json(block_data)
-    #                 if self.chain.validate_and_add_block(block):
-    #                     print(f"Block {block.block_num} added from {peer}. {block.hash}")
-    #                 else:
-    #                     print(f"Invalid block {block_num} received from {peer}.")
-    #
-    #         else:
-    #             print(f"{peer} is synchronized.")
-    #
-    #         # self.pull_candidat_block_from_peer(peer)
-    #
-    #     print(f"Synchronization check completed. Nodes count {len(self.active_peers())}")
-    #     print(f"Blocks: {self.chain.blocks_count()}")
-    #     if self.chain.last_block() is not None:
-    #         print(f"{datetime.datetime.fromtimestamp(self.chain.last_block().time)}")
+
 
     def pull_candidat_block_from_peer(self, peer):
 
@@ -538,9 +491,6 @@ class NetworkManager:
         chain_size = 0
         self.no_need_pause_sinc = True
 
-        # if not self.synced:
-        #     # пингуем если не засинхрины активно
-        #     self.ping_all_peers()
 
         for client in list(self.peers.values()):
 
@@ -570,7 +520,14 @@ class NetworkManager:
 
                     # нода синхронна
                     if self.synced:
+
+                        if peer_info['block_candidat'] != self.chain.block_candidate_hash:
+                            if not self.chain.check_hash(peer_info['block_candidat']):
+                                print(f"Расхождение блока кандидата {peer_info['block_candidat']}, на ноде{client.address()}делаем запрос")
+                                self.pull_candidat_block_from_peer(client.address())
+
                         continue
+
 
                     if peer_info['block_count'] > self.chain.blocks_count():
 
@@ -590,7 +547,7 @@ class NetworkManager:
                                 self.no_need_pause_sinc = True
                             else:
                                 print(f"Invalid block {block_num} received from {client.address()}.")
-                                "Возникает ситуация, когда своя цепочка не соподает с присылаемой"
+                                "Возникает ситуация, когда своя цепочка не сопадает с присылаемой"
                                 "Тут надо делать более сложный форк"
                                 "Пока просто откатываемся на несколько блоков назад"
                                 "Нужна правильная отработка отката транзакций"
@@ -629,41 +586,41 @@ class NetworkManager:
                 self.synced = True
                 print("Нода синхронизированна!")
 
-        # print("Всего активныйх пиров", count_peers)
-        if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
-            self.synced = False
-            print("Нода потеряла синхронизацию!")
 
-        # примерный алгоритм отслеживания синхронизации сети
-        count_s = 0
-        all_peers = 0
-        for client in list(self.peers.values()):
-
-            if client.info is None:
-                continue
-
-            if client.info.get('synced') != "True":
-                continue
-            # себя не смотрим
-            if client.address() == self.server.address or client.server_address == self.server.address:
-                continue
-
-            all_peers += 1
-            if client.info['block_count'] >= self.chain.blocks_count():
-                if client.info['last_block_hash'] == self.chain.last_block_hash():
-                    count_s += 1
-        # простая проверка, количества нод с которыми совпадают блоки
-        if self.chain.last_block() is not None:
-            if (time.time() - self.chain.last_block().time > 10
-            and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL-10
-                    and count_s < all_peers):
-                print("CCCCC")
-                if self.synced:
-                    print(f"в сети есть рассинхрон {count_s} из {all_peers}")
-                    if all_peers > 1 and count_s == 0:
-                        print(f"Текущая цепь в меньшинстве")
-                        print("Нода потеряла синхронизацию!")
-                        self.synced = False
+        # if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
+        #     self.synced = False
+        #     print("Нода потеряла синхронизацию!")
+        #
+        # # примерный алгоритм отслеживания синхронизации сети
+        # count_s = 0
+        # all_peers = 0
+        # for client in list(self.peers.values()):
+        #
+        #     if client.info is None:
+        #         continue
+        #
+        #     if client.info.get('synced') != "True":
+        #         continue
+        #     # себя не смотрим
+        #     if client.address() == self.server.address or client.server_address == self.server.address:
+        #         continue
+        #
+        #     all_peers += 1
+        #     if client.info['block_count'] >= self.chain.blocks_count():
+        #         if client.info['last_block_hash'] == self.chain.last_block_hash():
+        #             count_s += 1
+        # # простая проверка, количества нод с которыми совпадают блоки
+        # if self.chain.last_block() is not None:
+        #     if (time.time() - self.chain.last_block().time > 10
+        #     and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL-10
+        #             and count_s < all_peers):
+        #         # print("CCCCC")
+        #         if self.synced:
+        #             print(f"в сети есть рассинхрон {count_s} из {all_peers}")
+        #             if all_peers > 1 and count_s == 0:
+        #                 print(f"Текущая цепь в меньшинстве")
+        #                 print("Нода потеряла синхронизацию!")
+        #                 self.synced = False
 
         if count_sync_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:

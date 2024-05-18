@@ -14,7 +14,7 @@ class Protocol:
     WAIT_ACTIVE_PEERS_BEFORE_START = 10
 
     BLOCK_TIME_INTERVAL = 30
-    BLOCK_TIME_INTERVAL_LOG = 10
+    BLOCK_TIME_INTERVAL_LOG = 5
 
 
     @staticmethod

@@ -31,10 +31,10 @@ class BlockchainNode:
 
         self.mempool = Mempool(dir=str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}'))
 
-        self.chain = Chain(config = self.config)
+        self.chain = Chain(config=self.config)
 
         self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool,
-                                              chain=self.chain, time_ntpt = self.time_ntpt)
+                                              chain=self.chain, time_ntpt=self.time_ntpt)
 
         self.protocol = Protocol()
         self.uuid = self.protocol.hash_to_uuid(self.network_manager.server.address)
@@ -150,13 +150,15 @@ class BlockchainNode:
         client.close()
 
     def get_info(self):
-        return {'synced': f'{self.network_manager.synced}', 'node': f'{self.network_manager.server.address}',
+        answ = {'synced': f'{self.network_manager.synced}', 'node': f'{self.network_manager.server.address}',
                 'version': Protocol.VERSION,
                 'peers': self.network_manager.known_peers,
                 'block_count': self.chain.blocks_count(),
                 'block_candidat': self.chain.block_candidate_hash,
                 'last_block_hash': self.chain.last_block_hash()
                 }
+        # print(answ)
+        return answ
 
     def get_block(self, block_number):
         block = self.chain.blocks[block_number]
@@ -193,7 +195,6 @@ class BlockchainNode:
 
         return {'status': 'fail', 'message': 'Block wrong', "block_candidate": self.chain.block_candidate.to_json()}
 
-
     def signal_handler(self, signal, frame):
         print('Ctrl+C captured, stopping server and shutting down...')
         self.stop()  # Ваш метод для остановки сервера и закрытия потоков
@@ -221,7 +222,6 @@ class BlockchainNode:
         # is_key_block = self.protocol.is_key_block(block.previousHash)
         # print(f"Key block: {is_key_block}")
 
-
         # создание блока со своим адресом
 
         seq_hash = self.protocol.sequence(block.previousHash)
@@ -236,7 +236,6 @@ class BlockchainNode:
         block.hash_block()
 
         return block
-
 
     def run_node(self):
 
@@ -276,7 +275,6 @@ class BlockchainNode:
                           new_block.datetime())
                     self.network_manager.distribute_block(self.chain.block_candidate)
 
-
                 needClose = self.chain.need_close_block()
 
                 try:
@@ -312,9 +310,9 @@ class BlockchainNode:
                 time_to_close = Protocol.BLOCK_TIME_INTERVAL_LOG
                 if self.chain.last_block() is not None:
                     time_block = self.chain.last_block().time
-                    time_to_close_block = self.time_ntpt.get_corrected_time() -time_block
-                    if time_to_close_block<time_to_close and time_to_close_block>0:
-                        time_to_close = time_to_close -time_to_close_block
+                    time_to_close_block = self.time_ntpt.get_corrected_time() - time_block
+                    if time_to_close_block < time_to_close and time_to_close_block > 0:
+                        time_to_close = time_to_close - time_to_close_block
 
                 time.sleep(time_to_close)
 
@@ -327,6 +325,7 @@ class BlockchainNode:
                 # # print(f"Chain {len(self.chain.blocks)} blocks")
             except Exception as e:
                 print("error main loop ", e)
+
 
 if __name__ == "__main__":
     """ """

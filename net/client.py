@@ -105,7 +105,7 @@ class Client:
             # print(f"Timeout occurred when connecting to {self.host}:{self.port}")
             return {'error': 'Timeout occurred'}
         except Exception as e:
-            print(f"An error occurred: {e}")
+            # print(f"An error occurred: {e}")
             return {'error': str(e)}
 
     def close(self):

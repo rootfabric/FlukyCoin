@@ -8,5 +8,8 @@ initial_peers:
     - "95.154.71.53:9333"
     - "api.robotsimulator.ru:9333"
     - "api.robotsimulator.ru:9334"
+    - "127.0.0.1:9333"
+    - "127.0.0.1:9334"
+    - "127.0.0.1:9335"
 #    - "95.154.71.53:9334"                                 
 address: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRHOME

@@ -521,7 +521,7 @@ class NetworkManager:
                     # нода синхронна
                     if self.synced:
                         # проверку не делать на срезах
-                        if (time.time() - self.chain.last_block().time > 5
+                        if self.chain.last_block() is not None and  (time.time() - self.chain.last_block().time > 5
                             and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL-5):
                             if peer_info['block_candidat'] != self.chain.block_candidate_hash:
                                 bl = self.chain.check_hash(peer_info['block_candidat'])
@@ -529,7 +529,7 @@ class NetworkManager:
                                 self.chain.add_block_candidate(bl)
 
                                 if bl is None:
-                                        print(f"Расхождение блока кандидата {peer_info['block_candidat']}, на ноде{client.address()}делаем запрос")
+                                        print(f"Расхождение блока кандидата {peer_info['block_candidat']}, на ноде {client.address()} делаем запрос")
                                         self.pull_candidat_block_from_peer(client.address())
 
                         continue

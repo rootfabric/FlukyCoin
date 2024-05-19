@@ -181,11 +181,11 @@ class Chain():
             return True
 
         if block.previousHash != self.last_block().hash_block():
-            print("Chain: ошибка проверки кандидата, хеш не подходит")
+            # print("Chain: ошибка проверки кандидата, хеш не подходит")
             return False
 
         if block.time<self.last_block().time:
-            print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
+            # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
             return False
 
         return True
@@ -268,7 +268,7 @@ class Chain():
 
         if self.block_candidate is None:
             return False
-        print(f"Check: {self.blocks_count()} block_candidate time: {self.block_candidate.datetime()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time()}  {self.block_candidate.hash_block()}")
+        print(f"Check: {self.blocks_count()} block_candidate time: {self.block_candidate.datetime():0.1f} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time()}  {self.block_candidate.hash_block()}")
 
         if self.block_candidate.time >self.time_ntpt.get_corrected_time():
 

@@ -15,6 +15,7 @@ class Protocol:
 
     BLOCK_TIME_INTERVAL = 30
     BLOCK_TIME_INTERVAL_LOG = 5
+    KEY_BLOCK_POROG = 2
 
 
     @staticmethod
@@ -32,11 +33,12 @@ class Protocol:
         return uuid.UUID(bytes=short_hash)
 
     @staticmethod
-    def is_key_block(previousHash, porog=11):  # 11 2-4 в день
+    def is_key_block(previousHash):  # 11 2-4 в день
         """ Определяет, является ли блок ключевым """
+
         count_zerro = previousHash.count("0")
 
-        if count_zerro >= porog:
+        if count_zerro >= Protocol.KEY_BLOCK_POROG:
             return True
 
         return False
@@ -99,7 +101,7 @@ class Protocol:
             return a1
 
         if ratio1 < ratio2:
-
+            print("win", a2, "loose", a1, "sec", sequence)
             return a2
 
         rev = self.is_reverse(sequence)
@@ -107,7 +109,7 @@ class Protocol:
         sorted_list = sorted([a1, a2], reverse=rev)
         winer = sorted_list[0]
         print("win", winer, "loose", sorted_list[1], "sec", sequence)
-        return
+        return winer
 
     def random_addres(self):
         h = hashlib.sha256(str(random.random()).encode('utf-8')).digest()

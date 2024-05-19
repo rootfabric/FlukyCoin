@@ -31,7 +31,7 @@ class BlockchainNode:
 
         self.mempool = Mempool(dir=str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}'))
 
-        self.chain = Chain(config=self.config)
+        self.chain = Chain(config=self.config, mempool=self.mempool )
 
         self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool,
                                               chain=self.chain, time_ntpt=self.time_ntpt)

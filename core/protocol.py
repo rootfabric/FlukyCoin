@@ -14,8 +14,13 @@ class Protocol:
     WAIT_ACTIVE_PEERS_BEFORE_START = 10
 
     BLOCK_TIME_INTERVAL = 30
-    BLOCK_TIME_INTERVAL_LOG = 5
-    KEY_BLOCK_POROG = 2
+    BLOCK_TIME_INTERVAL_LOG =BLOCK_TIME_INTERVAL/4
+
+    # 11 2-4 в день
+    KEY_BLOCK_POROG = 8
+
+    # если появилось подозрение на рассинхрон, сколько проаерять, прежде чем терять рассинхрон
+    TIME_CONFIRM_LOST_SYNC = 60
 
 
     @staticmethod

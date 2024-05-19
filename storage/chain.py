@@ -6,16 +6,17 @@ import base64
 # # Пример использования класса
 from storage.transaction_storage import TransactionStorage
 from core.protocol import Protocol
+from storage.mempool import Mempool
 import copy
 import time
 from tools.time_sync import NTPTimeSynchronizer
 import os
 import pickle
 class Chain():
-    def __init__(self, config = None, time_ntpt = None):
+    def __init__(self, config = None, time_ntpt = None, mempool=None):
         self.blocks: Block = []
         self.transaction_storage = TransactionStorage()
-
+        self.mempool: Mempool = mempool
         self.protocol = Protocol()
 
         self.block_candidate: Block = None
@@ -269,7 +270,7 @@ class Chain():
         if self.block_candidate is None:
             return False
         # print(f"Check: {self.blocks_count()} block_candidate time: {self.block_candidate.datetime()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.1f}  {self.block_candidate.hash_block()}")
-        print(f"Check: {self.blocks_count()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.2f}  {self.block_candidate.hash_block()[:5]}...{self.block_candidate.hash_block()[-5:]}  singer: ...{self.block_candidate.signer [-5:]}")
+        print(f"Check: {self.blocks_count()} txs[{self.mempool.size()}] delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.2f}  {self.block_candidate.hash_block()[:5]}...{self.block_candidate.hash_block()[-5:]}  singer: ...{self.block_candidate.signer [-5:]}")
 
         if self.block_candidate.time >self.time_ntpt.get_corrected_time():
 

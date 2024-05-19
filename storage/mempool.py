@@ -65,7 +65,8 @@ class Mempool:
         """Вернуть список всех транзакций в mempool."""
         return self.transactions
 
-
+    def size(self):
+        return len(self.transactions)
 if __name__ == '__main__':
     # Пример использования класса Mempool
     mempool = Mempool()

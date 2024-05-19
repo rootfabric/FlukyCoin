@@ -11,10 +11,11 @@ if __name__ == '__main__':
     # print(t.get_data_hash().hexdigest())
     print(t.hash)
 
-    client = Client(host = "127.0.0.1", port = 9333)
+    # client = Client(host = "127.0.0.1", port = 9334)
+    client = Client(host = "192.168.0.26", port = 9334)
 
     response = client.send_request(
-        {'command': 'version', 'ver': Protocol.version, 'address': "127.0.0.1:888"})
+        {'command': 'version', 'ver': Protocol.VERSION, 'address': "127.0.0.1:888"})
     print(response)
 
     response = client.send_request(

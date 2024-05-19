@@ -95,16 +95,19 @@ class Protocol:
         ratio2, lcs = self.find_longest_common_substring(sequence, a2.lower())
 
         if ratio1 > ratio2:
+            print("win",a1, "loose", a2, "sec", sequence)
             return a1
 
         if ratio1 < ratio2:
+
             return a2
 
         rev = self.is_reverse(sequence)
 
         sorted_list = sorted([a1, a2], reverse=rev)
-
-        return sorted_list[0]
+        winer = sorted_list[0]
+        print("win", winer, "loose", sorted_list[1], "sec", sequence)
+        return
 
     def random_addres(self):
         h = hashlib.sha256(str(random.random()).encode('utf-8')).digest()

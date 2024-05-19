@@ -108,7 +108,7 @@ class BlockchainNode:
         if block_hash is not None:
             # сообщение с хешем  , надо проверить на наличие
 
-            if not self.chain.check_hash(block_hash):
+            if self.chain.check_hash(block_hash) is None:
                 # транзакции нет
                 return {"status": "get"}
             else:
@@ -188,7 +188,7 @@ class BlockchainNode:
         block = Block.from_json(block_json)
         if self.chain.add_block_candidate(block):
             # print(f"Кандидат из другой ноды доставлен:{block.datetime()} {block.hash}")
-            # self.network_manager.distribute_block(block, ban_address=self.network_manager.server.clients[client_id])
+            self.network_manager.distribute_block(block)
 
             return {'status': 'success', 'message': 'New block received and distributed'}
         # print(f"Кандидат из другой ноды не подходит:{block.datetime()} {block.hash}")

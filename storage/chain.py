@@ -30,7 +30,9 @@ class Chain():
             dir = f"{host}_{port}"
             self.load_from_disk(dir=dir)
 
-        self.history_hash = set()
+        self.history_hash = {}
+
+
 
     def time(self):
         return self.time_ntpt.get_corrected_time()
@@ -47,13 +49,12 @@ class Chain():
 
         # Все хеши блоков храним, чтобы потом не брать уже полученный
         if block_hash in self.history_hash:
-            return True
-
-        self.history_hash.add(block_hash)
-
-        if self.block_candidate is not None and block_hash ==self.block_candidate.hash_block():
-            return True
-        return False
+            return self.history_hash[block_hash]
+        #
+        #
+        # if self.block_candidate is not None and block_hash ==self.block_candidate.hash_block():
+        #     return True
+        return None
     def save_chain_to_disk(self, dir="", filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
         dir = dir.replace(":", "_")
@@ -124,7 +125,7 @@ class Chain():
 
         self.miners.add(block.signer)
 
-        self.history_hash.add(block.hash_block())
+        self.history_hash[block.hash_block()] = block
         # self.save_to_disk()
 
     def blocks_count(self):
@@ -180,11 +181,11 @@ class Chain():
             return True
 
         if block.previousHash != self.last_block().hash_block():
-            # print("Chain: ошибка проверки кандидата, хеш не подходит")
+            print("Chain: ошибка проверки кандидата, хеш не подходит")
             return False
 
         if block.time<self.last_block().time:
-            # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
+            print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
             return False
 
         return True

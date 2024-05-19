@@ -623,7 +623,7 @@ class NetworkManager:
                     and count_s < all_peers):
                 # print("CCCCC")
                 if self.synced:
-                    print(f"в сети есть рассинхрон {count_s} из {all_peers}")
+                    # print(f"в сети есть рассинхрон {count_s} из {all_peers}")
                     if all_peers > 1 and count_s == 0:
                         # после подозрения на рассинхрон, делаем паузу
                         if self.time_lost_sinc is None:
@@ -633,8 +633,8 @@ class NetworkManager:
                             print(f"Текущая цепь в меньшинстве")
                             print("Нода потеряла синхронизацию!")
                             self.synced = False
-            else:
-                self.time_lost_sinc = None
+                    else:
+                        self.time_lost_sinc = None
 
         if count_sync_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:

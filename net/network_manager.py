@@ -267,7 +267,7 @@ class NetworkManager:
 
                     return True
 
-                print(f"Error send: {response}")
+                # print(f"Error send: {response}")
                 del self.peers[address]
                 return False
 
@@ -312,7 +312,7 @@ class NetworkManager:
 
                 return True
 
-            print(f"Error send: {response}")
+            # print(f"Error send: {response}")
             if address in self.peers:
                 del self.peers[address]
             return False
@@ -452,7 +452,7 @@ class NetworkManager:
                             candidate_json = response.get("block_candidate")
                             candidate = Block.from_json(candidate_json)
                             if self.chain.add_block_candidate(candidate):
-                                print(f"Блок от {adress} верный. Добавляем в цепь")
+                                # print(f"Блок от {adress} верный. Добавляем в цепь")
                                 self.distribute_block(self.chain.block_candidate, ban_address=adress)
                             # else:
                             # print("!!!!!!!!!!!!!!!!!!!!!!!!!")

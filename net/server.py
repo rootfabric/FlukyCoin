@@ -74,6 +74,8 @@ class Server:
                 request = json.loads(data.decode('utf-8'))
                 response = self.handle_request(request)
                 client_socket.sendall(json.dumps(response).encode('utf-8'))
+        except Exception as e:
+            """ Клиент отключился """
         finally:
             client_socket.close()
 

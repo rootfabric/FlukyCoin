@@ -268,7 +268,8 @@ class Chain():
 
         if self.block_candidate is None:
             return False
-        print(f"Check: {self.blocks_count()} block_candidate time: {self.block_candidate.datetime():0.1f} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time()}  {self.block_candidate.hash_block()}")
+        # print(f"Check: {self.blocks_count()} block_candidate time: {self.block_candidate.datetime()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.1f}  {self.block_candidate.hash_block()}")
+        print(f"Check: {self.blocks_count()} delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.2f}  {self.block_candidate.hash_block()[:5]}...{self.block_candidate.hash_block()[-5:]}  singer: ...{self.block_candidate.signer [-5:]}")
 
         if self.block_candidate.time >self.time_ntpt.get_corrected_time():
 

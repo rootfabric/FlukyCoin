@@ -14,7 +14,7 @@ import time
 import datetime
 from tools.time_sync import NTPTimeSynchronizer
 import signal
-
+from tools.ip_tools import validate_and_resolve_address_with_port, check_port_open
 """
 
 Связь с нодами, организация обмена данными
@@ -196,7 +196,6 @@ class NetworkManager:
             client = Client(address.split(":")[0], int(address.split(":")[1]))
             if client is not None:
                 self.peers[address] = client
-
             else:
                 return None
 
@@ -212,7 +211,7 @@ class NetworkManager:
                 message = response.get('connected')
                 if message is not True:
                     # нода не принимает соединение
-                    print(f"wrong version {address}")
+                    print(f"wrong version {address} mess: {response}")
                     del self.peers[address]
                     return None
                 # сервер возвращает свой реальный адрес.
@@ -235,6 +234,10 @@ class NetworkManager:
     def ping_peer(self, address):
         """ установка связи и проверка соединеня """
         try:
+            address = validate_and_resolve_address_with_port(address)
+            if address is None:
+                return False
+
             client = self.peers.get(address)
             if client is None:
                 client = self._connect_to_address(address)

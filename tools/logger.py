@@ -10,7 +10,7 @@ import os
 from colorlog import ColoredFormatter
 from logging.handlers import RotatingFileHandler
 
-LOG_NAME = 'qrl'
+LOG_NAME = 'flc'
 
 LOG_MAXBYTES = 100 * 1024 * 1024
 LOG_FORMAT_FULL = '%(asctime)s - %(levelname)s -  %(message)s'

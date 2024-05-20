@@ -54,17 +54,28 @@ class XMSSPublicKey:
         key_data = str(self.OID) + str(self.root_value)
 
         # Генерация хеша из данных ключа
-        key_hash = hashlib.sha256(key_data.encode('utf-8')).digest()
+        # key_hash = hashlib.sha256(key_data.encode('utf-8')).digest()
+
+        # Создание хеш-объекта и генерация хеша из данных ключа
+        shake = hashlib.shake_256()
+        shake.update(key_data.encode('utf-8'))
+        key_hash = shake.digest(32)
 
         # Применение кодирования Base58Check к хэшу
         # Генерация контрольной суммы из хеша хеша
-        checksum = hashlib.sha256(hashlib.sha256(key_hash).digest()).digest()[:4]
+        # checksum = hashlib.sha256(hashlib.sha256(key_hash).digest()).digest()[:4]
+
+        shake = hashlib.shake_256()
+        shake.update(key_hash)
+        checksum = shake.digest(32)[:4]
 
         # Конкатенация хеша и контрольной суммы
         full_key = key_hash + checksum
 
         # Применение кодирования Base58 к полному ключу
         address = base58.b58encode(full_key).decode('utf-8')
+        #Q010900411c50a98e65d289b51d9d4dc0f61833c26f2c6c4f3ce4df8e9968d1fcae6f6341392bea
+        #OutDw1DdZZmSVwmbr2ozGjfHeWXcuGVTaTwEf3PYfJV5VoP2h3YdxUAYbgAvWQMmA5diDB5XdN36f1yu5EcirEVcKCBx1XLz
 
         # Применение кодирования Base64 к хэшу
         # address = base64.urlsafe_b64encode(key_hash).decode('utf-8').rstrip('=')

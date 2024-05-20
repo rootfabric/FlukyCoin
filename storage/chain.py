@@ -87,7 +87,11 @@ class Chain():
         try:
             with open(full_path, 'rb') as file:
                 self.blocks, self.transaction_storage, self.block_candidate = pickle.load(file)
-            print(f"Blockchain loaded from disk. {self.blocks_count()}")
+
+            for block in self.blocks:
+                    self.miners.add(block.signer)
+
+            print(f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.miners)}")
         except FileNotFoundError:
             print("No blockchain file found.")
         except Exception as e:

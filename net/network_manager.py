@@ -15,6 +15,7 @@ import datetime
 from tools.time_sync import NTPTimeSynchronizer
 import signal
 from tools.ip_tools import validate_and_resolve_address_with_port, check_port_open
+
 """
 
 Связь с нодами, организация обмена данными
@@ -65,7 +66,7 @@ class NetworkManager:
         self.start_time = self.time_ntpt.get_corrected_time()
 
         self.num_blocks_need_load = []
-        self.no_need_pause_sinc= False
+        self.no_need_pause_sinc = False
         self.time_lost_sinc = None
         print("Start networc manager", self.known_peers)
 
@@ -110,7 +111,7 @@ class NetworkManager:
             self.distribute_peer(new_address)
 
             # print("New server connect", new_address)
-            return {'connected': True, "address": self.server.address}
+            return {'connected': True, "address": self.server.address, 'version': Protocol.VERSION}
 
         # if client_id not in self.server.clients:
         #     return {"error": "need authorisation"}
@@ -208,12 +209,14 @@ class NetworkManager:
                 del self.peers[address]
                 return None
             else:
-                message = response.get('connected')
-                if message is not True:
-                    # нода не принимает соединение
-                    print(f"wrong version {address} mess: {response}")
-                    del self.peers[address]
-                    return None
+                connected = response.get('connected')
+                if connected != True:
+                    version = response.get('version')
+                    if version != Protocol.VERSION:
+                        # нода не принимает соединение
+                        print(f"wrong version {address} mess: {response}")
+                        del self.peers[address]
+                        return None
                 # сервер возвращает свой реальный адрес.
                 client.server_address = response.get('address')
                 # print("connect to ", address)
@@ -464,8 +467,6 @@ class NetworkManager:
                             # self.chain.add_block_candidate(candidate)
                         # print(response)
 
-
-
     def pull_candidat_block_from_peer(self, peer):
 
         if peer not in self.peers:
@@ -495,7 +496,6 @@ class NetworkManager:
         chain_size = 0
         self.no_need_pause_sinc = True
 
-
         for client in list(self.peers.values()):
 
             # себя не смотрим
@@ -517,7 +517,7 @@ class NetworkManager:
 
                 if peer_info.get('synced') == "True":
                     # print(peer_info)
-                    count_sync_peers+=1
+                    count_sync_peers += 1
                     chain_size = max(chain_size, peer_info['block_count'])
                     # print("Узел синхронный, проверяем состояние")
                     # print(peer_info)
@@ -525,19 +525,19 @@ class NetworkManager:
                     # нода синхронна
                     if self.synced:
                         # проверку не делать на срезах
-                        if self.chain.last_block() is not None and  (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL/5
-                            and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL-Protocol.BLOCK_TIME_INTERVAL/5):
+                        if self.chain.last_block() is not None and (
+                                time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 5
+                                and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 5):
                             if peer_info['block_candidat'] != self.chain.block_candidate_hash:
                                 bl = self.chain.check_hash(peer_info['block_candidat'])
 
                                 self.chain.add_block_candidate(bl)
 
                                 if bl is None:
-                                        # print(f"Расхождение блока кандидата {peer_info['block_candidat']}, на ноде {client.address()} делаем запрос")
-                                        self.pull_candidat_block_from_peer(client.address())
+                                    # print(f"Расхождение блока кандидата {peer_info['block_candidat']}, на ноде {client.address()} делаем запрос")
+                                    self.pull_candidat_block_from_peer(client.address())
 
                         continue
-
 
                     if peer_info['block_count'] > self.chain.blocks_count():
 
@@ -596,7 +596,6 @@ class NetworkManager:
                 self.synced = True
                 print("Нода синхронизированна!")
 
-
         if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
             self.synced = False
             print("Нода потеряла синхронизацию!")
@@ -621,8 +620,8 @@ class NetworkManager:
                     count_s += 1
         # простая проверка, количества нод с которыми совпадают блоки
         if self.chain.last_block() is not None:
-            if (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL/4
-            and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL-Protocol.BLOCK_TIME_INTERVAL/4
+            if (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 4
+                    and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4
                     and count_s < all_peers):
                 # print("CCCCC")
                 if self.synced:
@@ -632,7 +631,7 @@ class NetworkManager:
                         if self.time_lost_sinc is None:
                             self.time_lost_sinc = time.time()
 
-                        if time.time()-self.time_lost_sinc>Protocol.TIME_CONFIRM_LOST_SYNC:
+                        if time.time() - self.time_lost_sinc > Protocol.TIME_CONFIRM_LOST_SYNC:
                             print(f"Текущая цепь в меньшинстве")
                             print("Нода потеряла синхронизацию!")
                             self.synced = False
@@ -663,48 +662,48 @@ class NetworkManager:
 
             # try:
 
-                # if time.time() - t > 10:
-                #     # thread = threading.Thread(target=self._ping_all_peers_and_save)
-                #     # thread.daemon = True
-                #     # thread.start()
-                #     self._ping_all_peers_and_save()
-                #     t = time.time()
+            # if time.time() - t > 10:
+            #     # thread = threading.Thread(target=self._ping_all_peers_and_save)
+            #     # thread.daemon = True
+            #     # thread.start()
+            #     self._ping_all_peers_and_save()
+            #     t = time.time()
 
-                if len(self.peers_to_broadcast) > 0:
-                    self.broadcast_new_peer()
+            if len(self.peers_to_broadcast) > 0:
+                self.broadcast_new_peer()
 
-                if time.time() - pause_synced > 1:
-                    # если засинхрились, то проверка реже
+            if time.time() - pause_synced > 1:
+                # если засинхрились, то проверка реже
 
-                    self.check_synk_with_peers()
-                    if not self.no_need_pause_sinc:
-                        pause_synced = time.time()
+                self.check_synk_with_peers()
+                if not self.no_need_pause_sinc:
+                    pause_synced = time.time()
 
-                if not self.synced:
-                    # self.check_synk_with_peers()
-                    time.sleep(0.1)
-                    continue
+            if not self.synced:
+                # self.check_synk_with_peers()
+                time.sleep(0.1)
+                continue
 
-                    # if len(self.list_need_broadcast_transaction) > 0:
-                #     for tx in self.list_need_broadcast_transaction:
-                #         self.broadcast_new_transaction(tx)
+                # if len(self.list_need_broadcast_transaction) > 0:
+            #     for tx in self.list_need_broadcast_transaction:
+            #         self.broadcast_new_transaction(tx)
 
-                if len(self.blocks_to_broadcast) > 0:
-                    try:
-                        self.broadcast_blocks()
-                    except Exception as e:
-                        print("blocks_to_broadcast", e)
+            if len(self.blocks_to_broadcast) > 0:
+                try:
+                    self.broadcast_blocks()
+                except Exception as e:
+                    print("blocks_to_broadcast", e)
 
-                if time.time() - pause_mempool > 10:
-                    for peer in list(self.active_peers()):
-                        if self.server.address != peer:
-                            try:
-                                self.take_mempool(peer)
-                            except Exception as e:
-                                print(e)
+            if time.time() - pause_mempool > 10:
+                for peer in list(self.active_peers()):
+                    if self.server.address != peer:
+                        try:
+                            self.take_mempool(peer)
+                        except Exception as e:
+                            print(e)
 
-                    pause_mempool = time.time()
+                pause_mempool = time.time()
 
-                time.sleep(0.1)  # Пауза перед следующей проверкой
-            # except Exception as e:
-            #     print("check_peers", e)
+            time.sleep(0.1)  # Пауза перед следующей проверкой
+        # except Exception as e:
+        #     print("check_peers", e)

@@ -38,7 +38,7 @@ address_list = [
     "OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRSERV1",
 
 ]
-previousHash = "c8f11d0dea353cb425932508758fc531304eb76ece2afceca94cbf71769ffe8a"
+previousHash = "f9b280306751658bfe3b4cf18baebea1bcec46ab2f5205a559f690249e4c4f4c"
 winner = address_list[0]
 for i, address in enumerate(address_list[:-1]):
     winner = protocol.winner(winner, address_list[i+1], protocol.sequence(previousHash))

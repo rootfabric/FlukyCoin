@@ -44,6 +44,7 @@ import json
 class Server:
     def __init__(self, handle_request, port=5555, host='localhost'):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Включаем опцию SO_REUSEADDR
         self.server_socket.bind((host, port))
         self.server_socket.listen(5)
         self.handle_request = handle_request

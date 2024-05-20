@@ -596,48 +596,56 @@ class NetworkManager:
                 self.synced = True
                 print("Нода синхронизированна!")
 
-        if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
-            self.synced = False
-            print("Нода потеряла синхронизацию!")
+        # if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
+        #     self.synced = False
+        #     print("Нода потеряла синхронизацию!")
+        if (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 4
+                and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4):
+            # примерный алгоритм отслеживания синхронизации сети
+            count_s = 0
+            all_peers = 0
+            for client in list(self.peers.values()):
 
-        # примерный алгоритм отслеживания синхронизации сети
-        count_s = 0
-        all_peers = 0
-        for client in list(self.peers.values()):
+                if client.info is None:
+                    continue
 
-            if client.info is None:
-                continue
+                if client.info.get('synced') != "True":
+                    continue
+                # себя не смотрим
+                if client.address() == self.server.address or client.server_address == self.server.address:
+                    continue
 
-            if client.info.get('synced') != "True":
-                continue
-            # себя не смотрим
-            if client.address() == self.server.address or client.server_address == self.server.address:
-                continue
+                all_peers += 1
+                if client.info['block_count'] >= self.chain.blocks_count():
+                    if client.info['last_block_hash'] == self.chain.last_block_hash():
+                        count_s += 1
 
-            all_peers += 1
-            if client.info['block_count'] >= self.chain.blocks_count():
-                if client.info['last_block_hash'] == self.chain.last_block_hash():
-                    count_s += 1
-        # простая проверка, количества нод с которыми совпадают блоки
-        if self.chain.last_block() is not None:
-            if (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 4
-                    and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4
-                    and count_s < all_peers):
-                # print("CCCCC")
-                if self.synced:
-                    # print(f"в сети есть рассинхрон {count_s} из {all_peers}")
-                    if all_peers > 1 and count_s == 0:
-                        # после подозрения на рассинхрон, делаем паузу
-                        if self.time_lost_sinc is None:
-                            self.time_lost_sinc = time.time()
+            # простая проверка, количества нод с которыми совпадают блоки
+            if self.chain.last_block() is not None:
+                if (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 4
+                        and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4
+                        and count_s < all_peers):
+                    # print("CCCCC")
+                    print("count_s", count_s, "all_peers", all_peers)
+                    if self.synced:
+                        # print(f"в сети есть рассинхрон {count_s} из {all_peers}")
+                        if all_peers > 1 and count_s == 0:
+                            # после подозрения на рассинхрон, делаем паузу
+                            if self.time_lost_sinc is None:
+                                self.time_lost_sinc = time.time()
 
-                        if time.time() - self.time_lost_sinc > Protocol.TIME_CONFIRM_LOST_SYNC:
-                            print(f"Текущая цепь в меньшинстве")
-                            print("Нода потеряла синхронизацию!")
-                            self.synced = False
-                    else:
+                            if time.time() - self.time_lost_sinc > Protocol.TIME_CONFIRM_LOST_SYNC:
+                                print(f"Текущая цепь в меньшинстве. всего ", len(self.peers.values()))
+                                for client in list(self.peers.values()):
+                                    print(client.info)
+                                print("Нода потеряла синхронизацию!")
+                                self.synced = False
+                        else:
+                            self.time_lost_sinc = None
+                if count_s == all_peers:
+                    if self.time_lost_sinc is not None:
+                        print("count_s == all_peers:", count_s)
                         self.time_lost_sinc = None
-
         if count_sync_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:
                 if not self.synced:

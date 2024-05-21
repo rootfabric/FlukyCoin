@@ -588,8 +588,8 @@ class NetworkManager:
                     # если количество блоков равно, доп проверки
                     if peer_info['block_count'] == self.chain.blocks_count():
 
-                        if self.chain.block_candidate_hash is not None and peer_info['block_candidat'] is not None:
-                            if peer_info['block_candidat'] != self.chain.block_candidate_hash:
+                        if self.chain.block_candidate_hash is not None and peer_info['block_candidate'] is not None:
+                            if peer_info['block_candidate'] != self.chain.block_candidate_hash:
                                 # print("!!! Не совпадает кандидат, требуется обмен")
                                 self.pull_candidat_block_from_peer(client.address())
                                 # self.distribute_block(self.chain.block_candidate, address=client.address())

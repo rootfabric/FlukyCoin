@@ -511,7 +511,9 @@ class NetworkManager:
             count_peers += 1
 
             # client.info = client.send_request({'command': 'getinfo'})
-            client.get_info()
+            # Запрос если нет совподадения блоков
+            if self.chain.block_candidate_hash != client.info.get('block_candidat'):
+                client.get_info()
 
             peer_info = client.info
             # print("peer_info",client.address(),  peer_info['block_candidat'])

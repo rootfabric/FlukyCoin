@@ -278,11 +278,11 @@ class BlockchainNode:
                 needClose = self.chain.need_close_block()
 
                 print(
-                    f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
-                # for p in self.network_manager.peers.values():
-                #     print(p.address(), "" if p.info['block_candidat'] is None else f"{p.info['block_candidat'][:5]}")
-                print([(p.address(), "" if p.info['block_candidat'] is None else f"{p.info['block_candidat'][:5]}")
-                       for p in self.network_manager.peers.values()])
+                    # f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
+                    f"Check: {self.chain.blocks_count()} peers[{len(self.network_manager.active_peers())}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
+
+                # print([(p.address(), "" if p.info.get('block_candidat') is None else f"{p.info['block_candidat'][:5]}")
+                #        for p in self.network_manager.peers.values()])
 
                 try:
                     if needClose and self.chain.block_candidate is not None:

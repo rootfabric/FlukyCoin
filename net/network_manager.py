@@ -168,6 +168,10 @@ class NetworkManager:
     def ping_all_peers(self):
         try:
             for peer in list(self.known_peers):
+                # себя не смотрим
+                if peer == self.server.address or "127.0.0.1" in peer:
+                    continue
+
                 thread = threading.Thread(target=self.ping_peer, args=(peer,))
                 thread.daemon = True
                 thread.start()
@@ -501,7 +505,7 @@ class NetworkManager:
         for client in list(self.peers.values()):
 
             # себя не смотрим
-            if client.address() == self.server.address or client.address() == self.server.address or "127.0.0.1" in client.address() :
+            if client.address() == self.server.address or "127.0.0.1" in client.address() :
                 continue
 
             count_peers += 1
@@ -522,7 +526,7 @@ class NetworkManager:
                     count_sync_peers += 1
                     chain_size = max(chain_size, peer_info['block_count'])
                     # print("Узел синхронный, проверяем состояние")
-                    # print(peer_info)
+                    # print(client.address(), peer_info['block_candidat'])
 
                     # нода синхронна
                     if self.synced:
@@ -714,6 +718,6 @@ class NetworkManager:
 
                 pause_mempool = time.time()
 
-            time.sleep(0.1)  # Пауза перед следующей проверкой
+            time.sleep(5)  # Пауза перед следующей проверкой
         # except Exception as e:
         #     print("check_peers", e)

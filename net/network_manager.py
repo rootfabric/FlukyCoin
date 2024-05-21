@@ -534,7 +534,7 @@ class NetworkManager:
 
             # client.info = client.send_request({'command': 'getinfo'})
             # Запрос если нет совподадения блоков
-            if self.chain.block_candidate_hash != client.info.get('block_candidat'):
+            if self.chain.block_candidate_hash != client.info.get('block_candidat') or not self.synced:
                 client.get_info()
 
             peer_info = client.info

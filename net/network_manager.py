@@ -742,6 +742,6 @@ class NetworkManager:
 
                 pause_mempool = time.time()
 
-            time.sleep(5)  # Пауза перед следующей проверкой
+            time.sleep(1)  # Пауза перед следующей проверкой
         # except Exception as e:
         #     print("check_peers", e)

@@ -230,6 +230,14 @@ class NetworkManager:
 
             client.send_request({'command': 'newpeer', 'peer': self.server.address})
 
+
+
+            if 'version' not in client.get_info(ignore_timer=True):
+                if address in self.peers:
+                    print("Успешный коннект, но пустой информационный файл")
+                    del self.peers[address]
+                return None
+
             # при первом коннекте шлем своего кандидата
             # self.distribute_block(self.chain.block_candidate, address)
             # client.send_request(req = {'command': 'invb', 'block_hash': self.chain.block_candidate.hash_block()}
@@ -241,6 +249,7 @@ class NetworkManager:
 
             if address in self.peers:
                 del self.peers[address]
+
 
     def ping_peer(self, address):
         """ установка связи и проверка соединеня """
@@ -262,6 +271,11 @@ class NetworkManager:
             # response = client.send_request({'command': 'getinfo'})
 
             response = client.get_info()
+            # if 'version' not in response:
+            #     del self.peers[address]
+            #     return False
+
+
 
             # print(f"{address} ping response ", response)
             if response is not None:
@@ -289,6 +303,8 @@ class NetworkManager:
                 del self.peers[address]
                 return False
         except Exception as e:
+            if address in self.peers:
+                del self.peers[address]
             print("Error ping_peer!", e)
 
     def take_mempool(self, address):

@@ -64,6 +64,7 @@ import json
 import time
 import datetime
 
+
 class Client:
     def __init__(self, host="localhost", port=5555, timeout=5.0):
         self.host = host
@@ -84,12 +85,13 @@ class Client:
     def address(self):
         return f"{self.host}:{self.port}"
 
-    def get_info(self):
+    def get_info(self, ignore_timer=False):
         """Опрос сервера с учетом частоты запросов."""
-        if time.time() - self.last_time_info > 1:
+        if time.time() - self.last_time_info > 1 or ignore_timer:
             self.info = self.send_request({'command': 'getinfo'})
             # print("get_info", datetime.datetime.now(), self.info)
             self.last_time_info = time.time()
+
         return self.info
 
     def send_request(self, request):
@@ -112,6 +114,7 @@ class Client:
         if self.is_connected:
             self.client_socket.close()
             print("Client has been disconnected")
+
 
 if __name__ == '__main__':
     client = Client('localhost', 5555)

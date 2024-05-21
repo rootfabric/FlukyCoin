@@ -1769,7 +1769,7 @@ if __name__ == '__main__':
 
 
     # Генерация пары ключей и адреса для Клиента 1
-    seed_client1 = "unique_seed_for_client2"  # Уникальный сид для клиента 1
+    seed_client1 = "unique_seed_for_client2111"  # Уникальный сид для клиента 1
     height = 5  # Высота дерева
     n = 4  # Размер хэша в байтах
     w = 16  # Параметр Winternitz

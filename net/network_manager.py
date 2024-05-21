@@ -396,7 +396,13 @@ class NetworkManager:
             if ban_address is not None and ban_address == peer:
                 # задан конеретный адрес куда не надо отослать
                 continue
+
+            if block.hash_block() == self.peers[peer].info.get('block_candidate'):
+                # если блок стоит в статусе, нет смысла отсылать
+                continue
+
             blocks_to_brodcast = self.blocks_to_broadcast.get(peer, [])
+
             blocks_to_brodcast.append(copy.deepcopy(block))
             self.blocks_to_broadcast[peer] = blocks_to_brodcast
 
@@ -536,8 +542,8 @@ class NetworkManager:
                         if self.chain.last_block() is not None and (
                                 time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 5
                                 and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 5):
-                            if peer_info['block_candidat'] != self.chain.block_candidate_hash:
-                                bl = self.chain.check_hash(peer_info['block_candidat'])
+                            if peer_info['block_candidate'] != self.chain.block_candidate_hash:
+                                bl = self.chain.check_hash(peer_info['block_candidate'])
 
                                 self.chain.add_block_candidate(bl)
 

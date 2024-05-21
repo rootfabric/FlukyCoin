@@ -154,7 +154,7 @@ class BlockchainNode:
                 'version': Protocol.VERSION,
                 'peers': self.network_manager.known_peers,
                 'block_count': self.chain.blocks_count(),
-                'block_candidat': self.chain.block_candidate_hash,
+                'block_candidate': self.chain.block_candidate_hash,
                 'last_block_hash': self.chain.last_block_hash()
                 }
         # print("get_info", "block_candidat", answ['block_candidat'])

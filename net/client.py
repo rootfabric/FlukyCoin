@@ -88,7 +88,7 @@ class Client:
         """Опрос сервера с учетом частоты запросов."""
         if time.time() - self.last_time_info > 1:
             self.info = self.send_request({'command': 'getinfo'})
-            # print(datetime.datetime.now(), self.info)
+            # print("get_info", datetime.datetime.now(), self.info)
             self.last_time_info = time.time()
         return self.info
 

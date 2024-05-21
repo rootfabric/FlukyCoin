@@ -68,7 +68,7 @@ class NetworkManager:
         self.num_blocks_need_load = []
         self.no_need_pause_sinc = False
         self.time_lost_sinc = None
-        print("Start networc manager", self.known_peers)
+        print("Start network manager", self.known_peers)
 
     def signal_handler(self, signal, frame):
         print('Ctrl+C captured, stopping server and shutting down...')
@@ -183,6 +183,7 @@ class NetworkManager:
 
     def _ping_all_peers_and_save(self):
         while self.running:
+            # print("Ping all peers")
             try:
                 self.ping_all_peers()
                 self.save_to_disk()
@@ -194,10 +195,12 @@ class NetworkManager:
 
     def _connect_to_address(self, address):
         try:
+            # print("connect to ", address)
             client = Client(address.split(":")[0], int(address.split(":")[1]))
-            if client is not None:
+            if client.is_connected:
                 self.peers[address] = client
             else:
+                del self.peers[address]
                 return None
 
             response = client.send_request(
@@ -226,6 +229,7 @@ class NetworkManager:
             # при первом коннекте шлем своего кандидата
             # self.distribute_block(self.chain.block_candidate, address)
             # client.send_request(req = {'command': 'invb', 'block_hash': self.chain.block_candidate.hash_block()}
+            # print("Connected to ", address)
 
             return client
 
@@ -240,21 +244,19 @@ class NetworkManager:
             address = validate_and_resolve_address_with_port(address)
             if address is None:
                 return False
+            if "127.0.0.1" in address:
+                return False
 
             client = self.peers.get(address)
             if client is None:
                 client = self._connect_to_address(address)
 
             if client is None:
-                # если клиента нет, выполняем подключение
-                # print(f"Ошибка клиента {address}")
-                # пир не отвечает, удаляем из активных
-                if address in self.peers:
-                    del self.peers[address]
                 return False
 
             # try:
             # response = client.send_request({'command': 'getinfo'})
+
             response = client.get_info()
 
             # print(f"{address} ping response ", response)
@@ -499,7 +501,7 @@ class NetworkManager:
         for client in list(self.peers.values()):
 
             # себя не смотрим
-            if client.address() == self.server.address or client.address() == self.server.address:
+            if client.address() == self.server.address or client.address() == self.server.address or "127.0.0.1" in client.address() :
                 continue
 
             count_peers += 1
@@ -508,7 +510,7 @@ class NetworkManager:
             client.get_info()
 
             peer_info = client.info
-            # print("peer_info", peer_info)
+            # print("peer_info",client.address(),  peer_info['block_candidat'])
 
             if peer_info is None:
                 continue
@@ -626,7 +628,7 @@ class NetworkManager:
                         and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4
                         and count_s < all_peers):
                     # print("CCCCC")
-                    print("count_s", count_s, "all_peers", all_peers)
+                    # print("count_s", count_s, "all_peers", all_peers)
                     if self.synced:
                         # print(f"в сети есть рассинхрон {count_s} из {all_peers}")
                         if all_peers > 1 and count_s == 0:

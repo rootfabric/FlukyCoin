@@ -157,7 +157,7 @@ class BlockchainNode:
                 'block_candidat': self.chain.block_candidate_hash,
                 'last_block_hash': self.chain.last_block_hash()
                 }
-        # print(answ)
+        print("get_info", "block_candidat", answ['block_candidat'])
         return answ
 
     def get_block(self, block_number):
@@ -277,13 +277,19 @@ class BlockchainNode:
 
                 needClose = self.chain.need_close_block()
 
+                print(
+                    f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
+                for p in self.network_manager.peers.values():
+                    print(p.address(), p.info['block_candidat'])
+                # print([(p.address(), p.info['block_candidate'])])
+
                 try:
                     if needClose and self.chain.block_candidate is not None:
                         print("*******************", self.network_manager.active_peers())
                         print(f"Время закрывать блок: {self.chain.blocks_count()}")
                         if not self.chain.close_block():
                             print("last_block", self.chain.last_block_hash())
-                            print("candidat", self.chain.block_candidate_hash)
+                            print("candidate", self.chain.block_candidate_hash)
                             self.chain.reset_block_candidat
                             time.sleep(0.45)
                             continue

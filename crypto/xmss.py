@@ -36,9 +36,10 @@ class XMSSPrivateKey:
         self.root_value = None
         self.SEED = None
 
+
 class XMSSPublicKey:
 
-    def __init__(self, OID=None, root_value=None, SEED=None, height = 4, n = 4, w = 32):
+    def __init__(self, OID=None, root_value=None, SEED=None, height=4, n=4, w=32):
         self.OID = OID
         self.root_value = root_value
         self.SEED = SEED
@@ -80,8 +81,7 @@ class XMSSPublicKey:
         checksum = hash_func.digest(32)[:4] if hash_function_code in {1, 2} else hash_func.digest()[:4]
 
         # Конкатенация хеша, контрольной суммы и параметров
-        full_key = params + key_hash + checksum
-        print("key_hash", key_hash)
+        full_key = key_hash + params + checksum
 
         # Кодирование Base58
         address = base58.b58encode(full_key).decode('utf-8')
@@ -93,15 +93,16 @@ class XMSSPublicKey:
             # Декодирование адреса из Base58 и удаление префикса 'Out'
             decoded_address = base58.b58decode(address[len(self.address_start):])
 
-            # Выделение первого байта для определения функции хеширования и других параметров
-            params = decoded_address[:1]
+
+            params = decoded_address[-6:-4]
             hash_function_code = params[0] >> 4
             tree_height = params[0] & 0x0F
 
             # Отделение контрольной суммы от основной части адреса
-            main_part = decoded_address[2:-4]
+            # main_part = decoded_address[2:-4]
+            main_part = decoded_address[0:-6]
             checksum = decoded_address[-4:]
-            print("main_part", main_part)
+
             # Выбор функции хеширования
             hash_func = self.hash_functions.get(hash_function_code, lambda: hashlib.shake_256())()
 
@@ -120,6 +121,7 @@ class XMSSPublicKey:
             'root_value': self.root_value.hex(),
             'SEED': self.SEED
         }
+
     def to_bytes(self):
         # Сериализация и сжатие объекта в байты
         return zlib.compress(pickle.dumps(self))
@@ -167,14 +169,16 @@ class XMSSPublicKey:
 
         return cls(OID=OID, root_value=root_value, SEED=SEED)
 
+
 class XMSSKeypair:
 
-    def __init__(self, SK, PK, height = 4, n = 4, w = 32):
+    def __init__(self, SK, PK, height=4, n=4, w=32):
         self.SK = SK
         self.PK = PK
-        self.height =height
-        self.n =n
-        self.w =w
+        self.height = height
+        self.n = n
+        self.w = w
+
 
 class SigXMSS:
     def __init__(self, idx_sig, r, sig_ots, auth):
@@ -191,6 +195,7 @@ class SigXMSS:
     def from_bytes(bytes_data):
         # Распаковка и десериализация объекта из сжатых байтов
         return pickle.loads(zlib.decompress(bytes_data))
+
 
 class SigWithAuthPath:
     def __init__(self, sig_ots, auth):
@@ -262,7 +267,10 @@ def WOTS_genSK(length, n):
 
     return secret_key
 
+
 import random
+
+
 def WOTS_genSK_from_seed(length, n, seed):
     # Инициализация генератора случайных чисел с использованием сида
     random.seed(seed)
@@ -274,6 +282,7 @@ def WOTS_genSK_from_seed(length, n, seed):
         secret_key.append(random_bytes)
 
     return secret_key
+
 
 def WOTS_genPK(private_key: [bytes], length: int, w: int in {4, 16}, SEED, address):
     public_key = [bytes()] * length
@@ -336,8 +345,6 @@ def WOTS_pkFromSig(message: bytes, signature: [bytes], w: int in {4, 16}, addres
     return tmp_pk
 
 
-
-
 def base_w(byte_string: bytes, w: int in {4, 16}, out_len):
     in_ = 0
     total_ = 0
@@ -364,6 +371,7 @@ def generate_random_value(n, seed_value=None):
 
     return value
 
+
 def compute_needed_bytes(n):
     if n == 0:
         return 1
@@ -380,6 +388,7 @@ def compute_lengths(n: int, w: int in {4, 16}):
 def to_byte(value, bytes_count):
     # Преобразование целого числа в bytes
     return value.to_bytes(bytes_count, byteorder='big')
+
 
 def xor(one: bytearray, two: bytearray) -> bytearray:
     return bytearray(a ^ b for (a, b) in zip(one, two))
@@ -406,7 +415,6 @@ def F(KEY, M):
 
 
 def chain(X, i, s, SEED, address, w):
-
     if s == 0:
         return X
     if (i + s) > (w - 1):
@@ -427,11 +435,10 @@ def PRF(KEY: str, M: ADRS) -> bytearray:
     key_len = len(KEY)
     KEY2 = bytearray()
     KEY2.extend(map(ord, KEY))
-    help_ = sha256(toBytes + KEY2 + M.keyAndMask).hexdigest()[:key_len*2]
+    help_ = sha256(toBytes + KEY2 + M.keyAndMask).hexdigest()[:key_len * 2]
     out = bytearray()
     out.extend(map(ord, help_))
     return out
-
 
 
 def H(KEY: bytearray, M: bytearray) -> bytearray:
@@ -471,6 +478,7 @@ def RAND_HASH(left: bytearray, right: bytearray, SEED: str, adrs: ADRS):
 
     return H(KEY, xor(left, BM_0) + xor(right, BM_1))
 
+
 def pseudorandom_function(seed, n):
     # Создаем хеш из сида, предполагая, что seed является строкой.
     seed_bytes = seed.encode('utf-8')  # Преобразуем строку сида в байты
@@ -481,7 +489,6 @@ def pseudorandom_function(seed, n):
 
 
 def ltree(pk: List[bytearray], address: ADRS, SEED: str, length: int) -> bytearray:
-
     address.setTreeHeight(0)
 
     while length > 1:
@@ -501,7 +508,6 @@ def ltree(pk: List[bytearray], address: ADRS, SEED: str, length: int) -> bytearr
 
 
 def treeHash(SK: XMSSPrivateKey, s: int, t: int, address: ADRS, w: int in {4, 16}, length_all: int) -> bytearray:
-
     class StackElement:
         def __init__(self, node_value=None, height=None):
             self.node_value = node_value
@@ -543,11 +549,7 @@ def treeHash(SK: XMSSPrivateKey, s: int, t: int, address: ADRS, w: int in {4, 16
     return Stack.pop().node_value
 
 
-
-
-
 def XMSS_keyGen(height: int, n: int, w: int in {4, 16}) -> XMSSKeypair:
-
     len_1, len_2, len_all = compute_lengths(n, w)
 
     wots_sk = []
@@ -577,6 +579,7 @@ def XMSS_keyGen(height: int, n: int, w: int in {4, 16}) -> XMSSKeypair:
     KeyPair = XMSSKeypair(SK, PK)
     return KeyPair
 
+
 def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int) -> XMSSKeypair:
     len_1, len_2, len_all = compute_lengths(n, w)
     wots_sk = []
@@ -590,7 +593,7 @@ def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int) -> XMSSKeypair
     PK = XMSSPublicKey()
     idx = 0
 
-    SK.SK_PRF = generate_random_value( n, seed + "SK_PRF")  # Генерация SK_PRF на основе сида
+    SK.SK_PRF = generate_random_value(n, seed + "SK_PRF")  # Генерация SK_PRF на основе сида
     SEED = generate_random_value(n, seed + "SEED")  # Генерация SEED на основе сида
     SK.SEED = SEED
     SK.wots_private_keys = wots_sk
@@ -609,7 +612,9 @@ def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int) -> XMSSKeypair
     KeyPair = XMSSKeypair(SK, PK, height, n, w)
     return KeyPair
 
-def buildAuth(SK: XMSSPrivateKey, index: int, address: ADRS, w: int in {4, 16}, length_all: int, h: int) -> List[bytearray]:
+
+def buildAuth(SK: XMSSPrivateKey, index: int, address: ADRS, w: int in {4, 16}, length_all: int, h: int) -> List[
+    bytearray]:
     auth = []
 
     for j in range(h):
@@ -618,13 +623,15 @@ def buildAuth(SK: XMSSPrivateKey, index: int, address: ADRS, w: int in {4, 16}, 
     return auth
 
 
-def treeSig(message: bytearray, SK: XMSSPrivateKey, address: ADRS, w: int in {4, 16}, length_all: int, idx_sig: int, h: int) -> SigWithAuthPath:
+def treeSig(message: bytearray, SK: XMSSPrivateKey, address: ADRS, w: int in {4, 16}, length_all: int, idx_sig: int,
+            h: int) -> SigWithAuthPath:
     auth = buildAuth(SK, idx_sig, address, w, length_all, h)
     address.setType(0)
     address.setOTSAddress(idx_sig)
     sig_ots = WOTS_sign(message, SK.wots_private_keys[idx_sig], w, SK.SEED, address)
     Sig = SigWithAuthPath(sig_ots, auth)
     return Sig
+
 
 def XMSS_sign(message: bytearray, SK: XMSSPrivateKey, n, w: int, address: ADRS, h: int) -> SigXMSS:
     len_1, len_2, length_all = compute_lengths(n, w)
@@ -648,7 +655,9 @@ def XMSS_sign(message: bytearray, SK: XMSSPrivateKey, n, w: int, address: ADRS, 
     # Создание и возвращение объекта SigXMSS с необходимыми данными для верификации
     return SigXMSS(idx_sig, r, sig.sig_ots, sig.auth)
 
-def XMSS_rootFromSig(idx_sig: int, sig_ots, auth: List[bytearray], message: bytearray, h: int, w: int in {4, 16}, SEED, address: ADRS):
+
+def XMSS_rootFromSig(idx_sig: int, sig_ots, auth: List[bytearray], message: bytearray, h: int, w: int in {4, 16}, SEED,
+                     address: ADRS):
     n = len(message) // 2
     len_1, len_2, length_all = compute_lengths(n, w)
 
@@ -678,7 +687,6 @@ def XMSS_rootFromSig(idx_sig: int, sig_ots, auth: List[bytearray], message: byte
 
 # def XMSS_verify(Sig: SigXMSS, M: bytearray, PK: XMSSPublicKey, n, w: int in {4, 16}, SEED, height: int):
 def XMSS_verify(Sig: SigXMSS, M: bytearray, PK: XMSSPublicKey):
-
     address = ADRS()
 
     height = PK.height
@@ -710,7 +718,6 @@ def generate_seed(length):
 
 
 def XMSS_demo(messages: List[bytearray]):
-
     height = int(log2(len(messages)))
     n = len(messages[0]) // 2
     w = 16
@@ -735,8 +742,8 @@ def XMSS_demo(messages: List[bytearray]):
     print("XMSS verification result:")
     print("Proved: " + str(ifProved))
 
-def XMSS_demo_seed(messages: List[bytearray]):
 
+def XMSS_demo_seed(messages: List[bytearray]):
     # height = int(log2(len(messages)))
     # msg_len = len(messages[0]) // 2
     # w = 16
@@ -774,11 +781,11 @@ def XMSS_demo_seed(messages: List[bytearray]):
 import os
 
 
-def save_keys_to_file(keypair: XMSSKeypair , file_path: str):
+def save_keys_to_file(keypair: XMSSKeypair, file_path: str):
     data = {
-        'height':keypair.height,
-        'n':keypair.n,
-        'w':keypair.w,
+        'height': keypair.height,
+        'n': keypair.n,
+        'w': keypair.w,
         'private_key': {
             # Исправлено: обработка списка списков байтов
             'wots_private_keys': [[key.hex() for key in wots_key] for wots_key in keypair.SK.wots_private_keys],
@@ -793,7 +800,6 @@ def save_keys_to_file(keypair: XMSSKeypair , file_path: str):
             'SEED': keypair.PK.SEED
         }
 
-
     }
     with open(file_path, 'w') as file:
         json.dump(data, file)
@@ -804,9 +810,8 @@ def load_keys_from_file(file_path: str) -> XMSSKeypair:
         data = json.load(file)
 
     height = data['height']
-    n  = data['n']
-    w  = data['w']
-
+    n = data['n']
+    w = data['w']
 
     SK = XMSSPrivateKey()
     PK = XMSSPublicKey()
@@ -856,28 +861,24 @@ if __name__ == '__main__':
     # keypair = XMSSKeypair.generate_keys_from_seed(seed, height, n)
     # print("Приватный ключ и публичный ключ успешно сгенерированы из сида.", keypair)
 
-
     # XMSS_demo([bytearray(b'0e4575aa2c51')])
     # XMSS_demo_seed([bytearray(b'0e4575aa2c51'), bytearray(b'1e4575aa2c51')])
 
-
     # Генерация пары ключей и адреса для Клиента 1
-    seed_client1 = "unique_seed_for_client31112223"  # Уникальный сид для клиента 1
+    seed_client1 = "unique_seed_for_client3111223"  # Уникальный сид для клиента 1
     height = 6  # Высота дерева
     n = 4  # Размер хэша в байтах
     w = 16  # Параметр Winternitz
 
-    print("Количество подписей", 2**height)
+    print("Количество подписей", 2 ** height)
     # Генерация пары ключей на основе сида
     keyPair_client1 = XMSS_keyGen_from_seed(seed_client1, height, n, w)
     save_keys_to_file(keyPair_client1, "client1.key")
 
-    keyPair_client1= load_keys_from_file("client1.key")
+    keyPair_client1 = load_keys_from_file("client1.key")
 
     # Генерация адреса на основе публичного ключа
     address_client1 = keyPair_client1.PK.generate_address(2)
-
-
 
     print(f"Сид: {seed_client1}")
     print(f"Адрес Клиента 1: {address_client1}")
@@ -885,8 +886,6 @@ if __name__ == '__main__':
 
     is_valid_address = keyPair_client1.PK.is_valid_address(address_client1)
     print(f"Адрес верен: {is_valid_address}")
-
-
 
     # Создание сообщения для подписи
     message_client1 = bytearray(b'This is a message from client1 to be signed.')
@@ -898,7 +897,8 @@ if __name__ == '__main__':
     print("Делаем подпись")
     signature_client1 = XMSS_sign(message_client1, keyPair_client1.SK, n, w, addressXMSS_client1, height)
 
-    print(f"Подпись: {signature_client1}, размер: {len(signature_client1.to_bytes())} байт  время: {datetime.datetime.now() - d}" )
+    print(
+        f"Подпись: {signature_client1}, размер: {len(signature_client1.to_bytes())} байт  время: {datetime.datetime.now() - d}")
 
     # Верификация подписи сообщения Клиентом 2
 
@@ -912,4 +912,3 @@ if __name__ == '__main__':
     verification_result = XMSS_verify(signature_client1, message_client1, PK_client1_received)
 
     print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")
-

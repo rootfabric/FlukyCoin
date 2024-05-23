@@ -10,19 +10,19 @@ import datetime
 from net.client import Client
 from net.network_manager import NetworkManager
 from tools.time_sync import NTPTimeSynchronizer
-
+from tools.logger import Log
 
 class BlockchainNode:
-    def __init__(self, config):
-
+    def __init__(self, config, log = Log()):
+        self.log = log
         self.config = config
         # self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         # self.host = config.get("host", "localhost")
         # self.port = config.get("port", "5555")
         self.address = config.get("address")
-        print(f"Blockchain Node address {self.address}")
+        self.log.info(f"Blockchain Node address {self.address}")
 
-        self.time_ntpt = NTPTimeSynchronizer()
+        self.time_ntpt = NTPTimeSynchronizer(log=log)
 
         self.running = True
 
@@ -31,7 +31,7 @@ class BlockchainNode:
 
         self.mempool = Mempool(dir=str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}'))
 
-        self.chain = Chain(config=self.config, mempool=self.mempool )
+        self.chain = Chain(config=self.config, mempool=self.mempool , log = self.log)
 
         self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool,
                                               chain=self.chain, time_ntpt=self.time_ntpt)
@@ -39,7 +39,7 @@ class BlockchainNode:
         self.protocol = Protocol()
         self.uuid = self.protocol.hash_to_uuid(self.network_manager.server.address)
 
-        print("Blockchain Node initialized", self.network_manager.server.address, "uuid", self.uuid)
+        self.log.info("Blockchain Node initialized", self.network_manager.server.address, "uuid", self.uuid)
 
         #
         # #  простая хранилка
@@ -121,7 +121,7 @@ class BlockchainNode:
         tx.make_hash()
 
         if self.mempool.add_transaction(tx):
-            print("Добавлена транзакция")
+            self.log.info("Добавлена транзакция", tx.hash)
             self.network_manager.list_need_broadcast_transaction.append(tx)
 
     def send_peers_list(self):
@@ -131,7 +131,7 @@ class BlockchainNode:
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
         response = client.send_request({'command': 'peerhello', 'peer': self.server.address})
         client.close()
-        print("Hello response:", response)
+        self.log.info("Hello response:", response)
         return response
 
     def register_peer(self, peer):
@@ -143,7 +143,7 @@ class BlockchainNode:
     def request_peers_list(self, peer):
         client = Client(peer.split(":")[0], int(peer.split(":")[1]))
         response = client.send_request({'command': 'getpeers'})
-        print("Peers list response:", response)
+        self.log.info("Peers list response:", response)
         for p in response.get('peers', []):
             if p not in self.known_peers:
                 self.known_peers.append(p)
@@ -176,7 +176,7 @@ class BlockchainNode:
 
     def add_peer(self, peer):
         if peer not in self.network_manager.known_peers:
-            print("Add new peer", peer)
+            self.log.info("Add new peer", peer)
             self.network_manager.add_known_peer(peer)
 
         # self.network_manager.list_need_broadcast_peers.append(peer)
@@ -196,7 +196,7 @@ class BlockchainNode:
         return {'status': 'fail', 'message': 'Block wrong', "block_candidate": self.chain.block_candidate.to_json()}
 
     def signal_handler(self, signal, frame):
-        print('Ctrl+C captured, stopping server and shutting down...')
+        self.log.info('Ctrl+C captured, stopping server and shutting down...')
         self.stop()  # Ваш метод для остановки сервера и закрытия потоков
 
     def create_block(self):
@@ -252,14 +252,14 @@ class BlockchainNode:
         """ В главный цикл работы попадаем когда нода синхронизованная """
         signal.signal(signal.SIGINT, self.signal_handler)
 
-        print("Blockchain Node is running")
+        self.log.info("Blockchain Node is running")
 
         while self.running:
             try:
                 # не работаем без синхронизации
                 if not self.network_manager.synced:
                     time.sleep(0.5)
-                    print([(p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
+                    self.log.info("active peers", [(p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
                            for p in self.network_manager.peers.values()])
 
                     # print("Node not sync!")
@@ -280,37 +280,37 @@ class BlockchainNode:
 
                 needClose = self.chain.need_close_block()
 
-                print(
+                self.log.info(
                     # f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
                     f"Check: {self.chain.blocks_count()} peers[{len(self.network_manager.active_peers())}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
 
-                # print([(p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
-                #        for p in self.network_manager.peers.values()])
+                self.log.info([(p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
+                       for p in self.network_manager.peers.values()])
 
                 try:
                     if needClose and self.chain.block_candidate is not None:
-                        print("*******************", self.network_manager.active_peers())
-                        print(f"Время закрывать блок: {self.chain.blocks_count()}")
+                        self.log.info("*******************", self.network_manager.active_peers())
+                        self.log.info(f"Время закрывать блок: {self.chain.blocks_count()}")
                         if not self.chain.close_block():
-                            print("last_block", self.chain.last_block_hash())
-                            print("candidate", self.chain.block_candidate_hash)
+                            self.log.info("last_block", self.chain.last_block_hash())
+                            self.log.info("candidate", self.chain.block_candidate_hash)
                             self.chain.reset_block_candidat
                             time.sleep(0.45)
                             continue
                         last_block = self.chain.last_block()
                         if last_block is not None:
-                            print(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
+                            self.log.info(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
                                   last_block.signer)
 
                         self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
 
-                        print(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
+                        self.log.info(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
                         if self.protocol.is_key_block(self.chain.last_block().hash):
-                            print("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
-                        print("*******************")
+                            self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
+                        self.log.info("*******************")
                         continue
                 except Exception as e:
-                    print("Ошибка основного цикла", e)
+                    self.log.error("Ошибка основного цикла", e)
                 # if needClose and self.chain.block_candidate is not None:
                 #     self.chain.close_block()
                 #     print("Закрываем блок", self.chain.last_block().hash)
@@ -334,7 +334,7 @@ class BlockchainNode:
                 #
                 # # print(f"Chain {len(self.chain.blocks)} blocks")
             except Exception as e:
-                print("error main loop ", e)
+                self.log.error("error main loop ", e)
 
 
 if __name__ == "__main__":

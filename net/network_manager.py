@@ -15,7 +15,7 @@ import datetime
 from tools.time_sync import NTPTimeSynchronizer
 import signal
 from tools.ip_tools import validate_and_resolve_address_with_port, check_port_open
-
+from tools.logger import Log
 """
 
 Связь с нодами, организация обмена данными
@@ -24,7 +24,7 @@ from tools.ip_tools import validate_and_resolve_address_with_port, check_port_op
 
 
 class NetworkManager:
-    def __init__(self, handle_request, config, mempool, chain: Chain, time_ntpt):
+    def __init__(self, handle_request, config, mempool, chain: Chain, time_ntpt, log = Log()):
 
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         self.host = config.get("host", "localhost")
@@ -32,6 +32,8 @@ class NetworkManager:
 
         # синхронизирована нода с блокчейном
         self.synced = False
+
+        self.log = log
 
         self.mempool = mempool
         self.chain = chain
@@ -68,10 +70,10 @@ class NetworkManager:
         self.num_blocks_need_load = []
         self.no_need_pause_sinc = False
         self.time_lost_sinc = None
-        print("Start network manager", self.known_peers)
+        self.log.info("Start network manager", self.known_peers)
 
     def signal_handler(self, signal, frame):
-        print('Ctrl+C captured, stopping server and shutting down...')
+        self.log.info('Ctrl+C captured, stopping server and shutting down...')
         self.stop()  # Ваш метод для остановки сервера и закрытия потоков
 
     def run(self):
@@ -163,7 +165,7 @@ class NetworkManager:
                 except:
                     pass
         else:
-            print(f"No data file found at {full_path}. Starting with an empty list of peers.")
+            self.log.info(f"No data file found at {full_path}. Starting with an empty list of peers.")
 
     def ping_all_peers(self):
         try:
@@ -176,7 +178,7 @@ class NetworkManager:
                 thread.daemon = True
                 thread.start()
         except Exception as e:
-            print("error ping_all_peers", e)
+            self.log.error("error ping_all_peers", e)
 
     def ping_active_peers(self):
         for peer in list(self.peers.values()):
@@ -193,7 +195,7 @@ class NetworkManager:
                 self.save_to_disk()
                 # print(self.active_peers())
             except Exception as e:
-                print(" Error _ping_all_peers_and_save", e)
+                self.log.error(" Error _ping_all_peers_and_save", e)
 
             time.sleep(60)
 
@@ -283,7 +285,7 @@ class NetworkManager:
 
                     if address not in self.known_peers:
                         self.add_known_peer(address, False)
-                        print(f"New active peer {address}")
+                        self.log.info(f"New active peer {address}")
 
                     new_peers = response.get('peers', [])
                     for new_peer in new_peers:
@@ -299,13 +301,13 @@ class NetworkManager:
                 return False
 
             else:
-                print(f"Failed to connect to {address}")
+                self.log.info(f"Failed to connect to {address}")
                 del self.peers[address]
                 return False
         except Exception as e:
             if address in self.peers:
                 del self.peers[address]
-            print("Error ping_peer!", e)
+            self.log.error("Error ping_peer!", e)
 
     def take_mempool(self, address):
         """ установка связи и проверка соединеня """
@@ -377,7 +379,7 @@ class NetworkManager:
     def broadcast_new_transaction(self, tx_to_broadcast: Transaction):
         """ передать всем клиентам информацию о новом пире """
 
-        print(f"Broadcast to {tx_to_broadcast}")
+        self.log.info(f"Broadcast to {tx_to_broadcast}")
         for client in list(self.peers.values()):
 
             if self.server.address == client.address():
@@ -395,7 +397,7 @@ class NetworkManager:
                     response = client.send_request(
                         {'command': 'tx',
                          'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.sign}})
-                    print(response)
+                    # self.log.info(response)
 
     def distribute_block(self, block, address=None, ban_address=None):
 
@@ -508,7 +510,7 @@ class NetworkManager:
         if blockcandidate_json is not None:
             blockcandidate = Block.from_json(blockcandidate_json)
             if self.chain.add_block_candidate(blockcandidate):
-                print("Добавлен кандидат с ноды", blockcandidate.hash)
+                self.log.info("Добавлен кандидат с ноды", blockcandidate.hash)
                 self.distribute_block(self.chain.block_candidate, ban_address=peer)
             else:
                 # print("Кандидат с ноды не подходит", blockcandidate.hash)
@@ -581,12 +583,12 @@ class NetworkManager:
                             # Проверяем и добавляем блок в локальную цепочку
                             block = Block.from_json(block_data)
                             if self.chain.validate_and_add_block(block):
-                                print(f"Block [{block_num}/{peer_info['block_count']}] added from {client.address()}. {block.hash}")
+                                self.log.info(f"Block [{block_num}/{peer_info['block_count']}] added from {client.address()}. {block.hash}")
                                 if int(block_num) % 100 == 0:
                                     self.chain.save_chain_to_disk(dir=str(self.server.address))
                                 self.no_need_pause_sinc = True
                             else:
-                                print(f"Invalid block {block_num} received from {client.address()}.")
+                                self.log.warning(f"Invalid block {block_num} received from {client.address()}.")
                                 "Возникает ситуация, когда своя цепочка не сопадает с присылаемой"
                                 "Тут надо делать более сложный форк"
                                 "Пока просто откатываемся на несколько блоков назад"
@@ -620,11 +622,11 @@ class NetworkManager:
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
             # если блок близок к закрытию, то ждем следующий
             if self.time_ntpt.get_corrected_time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL / 5:
-                print("Блоки синхронизированные:", self.chain.blocks_count())
-                print(self.chain.last_block_hash())
+                self.log.info("Блоки синхронизированные:", self.chain.blocks_count())
+                self.log.info(self.chain.last_block_hash())
 
                 self.synced = True
-                print("Нода синхронизированна!")
+                self.log.info("Нода синхронизированна!")
 
         # if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
         #     self.synced = False
@@ -665,16 +667,16 @@ class NetworkManager:
                                 self.time_lost_sinc = time.time()
 
                             if time.time() - self.time_lost_sinc > Protocol.TIME_CONFIRM_LOST_SYNC:
-                                print(f"Текущая цепь в меньшинстве. всего ", len(self.peers.values()))
+                                self.log.warning(f"Текущая цепь в меньшинстве. всего ", len(self.peers.values()))
                                 for client in list(self.peers.values()):
                                     print(client.info)
-                                print("Нода потеряла синхронизацию!")
+                                self.log.warning("Нода потеряла синхронизацию!")
                                 self.synced = False
                         else:
                             self.time_lost_sinc = None
                 if count_s == all_peers:
                     if self.time_lost_sinc is not None:
-                        print("count_s == all_peers:", count_s)
+                        self.log.info("count_s == all_peers:", count_s)
                         self.time_lost_sinc = None
         if count_sync_peers == 0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:
@@ -694,7 +696,7 @@ class NetworkManager:
             thread.daemon = True
             thread.start()
         except Exception as e:
-            print("_ping_all_peers_and_save", e)
+            self.log.error("_ping_all_peers_and_save", e)
 
         while self.running:
 
@@ -730,7 +732,7 @@ class NetworkManager:
                 try:
                     self.broadcast_blocks()
                 except Exception as e:
-                    print("blocks_to_broadcast", e)
+                    self.log.error("blocks_to_broadcast", e)
 
             if time.time() - pause_mempool > 10:
                 for peer in list(self.active_peers()):

@@ -12,16 +12,18 @@ import time
 from tools.time_sync import NTPTimeSynchronizer
 import os
 import pickle
+from tools.logger import Log
 class Chain():
-    def __init__(self, config = None, time_ntpt = None, mempool=None):
+    def __init__(self, config = None, time_ntpt = None, mempool=None, log = Log()):
         self.blocks: Block = []
         self.transaction_storage = TransactionStorage()
         self.mempool: Mempool = mempool
         self.protocol = Protocol()
+        self.log = log
 
         self.block_candidate: Block = None
 
-        self.time_ntpt = NTPTimeSynchronizer() if time_ntpt is None else time_ntpt
+        self.time_ntpt = NTPTimeSynchronizer(log = self.log) if time_ntpt is None else time_ntpt
 
         self.miners = set()
 
@@ -91,22 +93,22 @@ class Chain():
             for block in self.blocks:
                     self.miners.add(block.signer)
 
-            print(f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.miners)}")
+            self.log.info(f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.miners)}")
         except FileNotFoundError:
-            print("No blockchain file found.")
+            self.log.error("No blockchain file found.")
         except Exception as e:
-            print(f"Failed to load blockchain: {e}")
+            self.log.error(f"Failed to load blockchain: {e}")
 
     def validate_block_hash(self, block):
         if block.previousHash != self.last_block_hash():
-            print("validateblock.previousHash != self.last_block_hash()")
+            self.log.warning("validateblock.previousHash != self.last_block_hash()")
             return False
         return True
 
     def validate_and_add_block(self, block):
 
         if block is None:
-            print("validate block is None")
+            self.log.warning("validate block is None")
             return False
 
         if not self.validate_block_hash(block):
@@ -204,13 +206,13 @@ class Chain():
         # первый блок
         if self.last_block() is None and self.block_candidate is None:
             self.block_candidate = copy.deepcopy(block)
-            print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
             return True
 
         # print("Исходный block:", block)
         if self.block_candidate is None:
             self.block_candidate = copy.deepcopy(block)
-            print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
             return True
 
         if block.hash_block() == self.block_candidate.hash_block():
@@ -238,7 +240,7 @@ class Chain():
                 # print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
                 self.block_candidate = copy.deepcopy(block)
                 # print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
-                print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+                self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
                 return True
 
         win_address = self.protocol.winner(self.block_candidate.signer, block.signer,
@@ -251,7 +253,7 @@ class Chain():
             return False
         # новый победитель
         self.block_candidate = copy.deepcopy(block)
-        print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+        self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
 
         return True
 
@@ -262,7 +264,7 @@ class Chain():
             self.reset_block_candidat()
             return True
         else:
-            print("Не валидный блок для закрытия")
+            self.log.info("Не валидный блок для закрытия")
             self.reset_block_candidat()
             return False
 

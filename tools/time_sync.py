@@ -1,11 +1,12 @@
 import ntplib
 from time import time, ctime, sleep
 import datetime
-
+from tools.logger import Log
 class NTPTimeSynchronizer:
-    def __init__(self, ntp_server="pool.ntp.org"):
+    def __init__(self, ntp_server="pool.ntp.org", log = Log):
         self.ntp_server = ntp_server
         self.time_delta = None
+        self.log = log
         # self.ntp_client = ntplib.NTPClient()
         self.synchronize_time()
 
@@ -17,10 +18,10 @@ class NTPTimeSynchronizer:
             ntp_timestamp = response.tx_time
             system_timestamp = time()
             self.time_delta = ntp_timestamp - system_timestamp
-            print(f"Время синхронизировано. Текущее NTP время: {ctime(ntp_timestamp)}")
-            print(f"Дельта времени: {self.time_delta} секунд")
+            self.log.info(f"Время синхронизировано. Текущее NTP время: {ctime(ntp_timestamp)}")
+            self.log.info(f"Дельта времени: {self.time_delta} секунд")
         except Exception as e:
-            print(f"Не удалось получить время от NTP-сервера: {e}")
+            self.log.warning(f"Не удалось получить время от NTP-сервера: {e}")
 
     def get_corrected_time(self):
         """Получение корректированного времени на основе сохраненной дельты."""

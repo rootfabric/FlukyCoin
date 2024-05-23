@@ -40,9 +40,10 @@
 import socket
 import threading
 import json
+from tools.logger import Log
 
 class Server:
-    def __init__(self, handle_request, port=5555, host='localhost'):
+    def __init__(self, handle_request, port=5555, host='localhost', log = Log()):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Включаем опцию SO_REUSEADDR
         self.server_socket.bind((host, port))
@@ -50,7 +51,8 @@ class Server:
         self.handle_request = handle_request
         self.address = f"{host}:{port}"
         self.is_work = True
-        print(f"Server is listening on {self.address}")
+        self.log = log
+        self.log.info(f"Server is listening on {self.address}")
 
         # Создание потока для асинхронного прослушивания
         self.server_thread = threading.Thread(target=self.listen)
@@ -64,7 +66,7 @@ class Server:
                 # print(f"Connected by {addr}")
                 threading.Thread(target=self.handle_client, args=(client_socket,)).start()
             except Exception as e:
-                print("Error Server listen", e)
+                self.log.error("Error Server listen", e)
 
     def handle_client(self, client_socket):
         try:
@@ -88,10 +90,10 @@ class Server:
             temp_socket.connect((self.server_socket.getsockname()[0], self.server_socket.getsockname()[1]))
             temp_socket.close()
         except Exception as e:
-            print(f"Error while creating a temporary connection: {e}")
+            self.log.info(f"Error while creating a temporary connection: {e}")
         self.server_socket.close()  # Закрываем серверный сокет
         self.server_thread.join()  # Дожидаемся завершения серверного потока
-        print("Server has been stopped")
+        self.log.info("Server has been stopped")
 
 
 if __name__ == '__main__':

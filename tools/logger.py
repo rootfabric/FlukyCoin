@@ -1,111 +1,123 @@
-# coding=utf-8
-# Distributed under the MIT software license, see the accompanying
-# file LICENSE or http://www.opensource.org/licenses/mit-license.php.
-
-import sys
 import logging
-import traceback
-
 import os
-from colorlog import ColoredFormatter
-from logging.handlers import RotatingFileHandler
-
-LOG_NAME = 'flc'
-
-LOG_MAXBYTES = 100 * 1024 * 1024
-LOG_FORMAT_FULL = '%(asctime)s - %(levelname)s -  %(message)s'
-LOG_FORMAT_SMALL = '%(asctime)s - %(message)s'
-
-logger = logging.getLogger(LOG_NAME)
+import datetime
+import sys
 
 
-# TODO: Use configuration file instead. Example https://fangpenlin.com/posts/2012/08/26/good-logging-practice-in-python/
+class Log():
+    '''
 
-def initialize_default(force_console_output=False, log_level=logging.DEBUG):
-    logging_target = sys.stderr
-    if sys.flags.interactive or force_console_output:
-        logger.setLevel(log_level)
-        logging_target = sys.stdout
+    Клас для ведения логов
 
-    handler = logging.StreamHandler(logging_target)
-    handler.setFormatter(logging.Formatter(LOG_FORMAT_FULL, None))
-    logger.addHandler(handler)
-    set_unhandled_exception_handler()
-    return handler
+    '''
 
+    def __init__(self, log_name="fc", stdout=True, save_log=True, log_level_text="INFO", work_dir='logs'):
+        """ Инициализация класса"""
 
-def log_to_file(filename):
-    dir_path = os.path.dirname(os.path.realpath(filename))
-    os.makedirs(dir_path, exist_ok=True)
-    handler = RotatingFileHandler(filename,
-                                  mode='a',
-                                  maxBytes=LOG_MAXBYTES,
-                                  backupCount=2,
-                                  encoding=None,
-                                  delay=0)
-    handler.setLevel(logging.DEBUG)
-    logger.addHandler(handler)
-    return handler
+        self._log = logging.getLogger(log_name)
+        self.save_log = save_log
+        self.log_name = log_name
+        self.log_level = log_level_text
+        self.work_dir = work_dir if work_dir else 'logs'
+
+        if save_log:
+            self.create_log_directory()
 
 
-def _unhandled_exception(etype, value, tb):
-    tmp = ['Unhandled exception!\n']
-    tmp.extend(traceback.format_exception(etype, value, tb))
-    logger.fatal(''.join(tmp))
+        # можно задавать уровень логирования, во избежания записи лишней информации в файл
+        if log_level_text == "CRITICAL":
+            self._log.setLevel(logging.CRITICAL)
+        elif log_level_text == "ERROR":
+            self._log.setLevel(logging.ERROR)
+        elif log_level_text == "DEBUG":
+            self._log.setLevel(logging.DEBUG)
+        elif log_level_text == "INFO":
+            self._log.setLevel(logging.INFO)
 
+        stream_formatter = logging.Formatter(
+            '[%(asctime)-15s] %(message)s')
 
-def set_unhandled_exception_handler():
-    sys.excepthook = _unhandled_exception
+        # По умолчанию всю информацию выводим в консоль
+        self.stream_handler = logging.StreamHandler(sys.stdout)
+        self.stream_handler.setFormatter(stream_formatter)
 
+        if stdout:
+            # Добавляем если нет уже созданных заголовков
+            if not self._log.handlers:
+                self._log.addHandler(self.stream_handler)
 
-def get_colors(format_string):
-    return ColoredFormatter(
-        "%(log_color)s" + format_string,
-        datefmt=None,
-        reset=True,
-        log_colors={
-            'DEBUG': 'cyan',
-            'INFO': 'white',
-            'WARNING': 'yellow',
-            'ERROR': 'red',
-            'CRITICAL': 'red,bg_white',
-        },
-        secondary_log_colors={},
-        style='%'
-    )
+        self.file_handler = None
 
+    def create_log_directory(self):
+        try:
+            if not os.path.exists(self.work_dir):
+                os.mkdir(self.work_dir)
+        except Exception as ex:
+            print(f'\n\nОшибка создания директории {self.work_dir}:\n', ex)
+            self.work_dir = 'logs'
+            try:
+                if not os.path.exists(self.work_dir):
+                    os.mkdir(self.work_dir)
+            except Exception as ex:
+                print(f'\n\nОшибка создания директории {self.work_dir} в рабочем каталоге:\n', ex)
+                print('\nЛогирование осуществляется в консоль.')
+                self.save_log = False
 
-def set_colors(enable_colors, formatting):
-    for h in logger.handlers:
-        if enable_colors and isinstance(h, logging.StreamHandler):
-            h.setFormatter(get_colors(formatting))
-        else:
-            h.setFormatter(logging.Formatter(formatting))
+    def _check_open_file(self):
+        """ Проверка открытого файла для логирования"""
 
+        if self.save_log:
+            if self.file_handler is None:
+                # создаем файл единожды только после того как была попытка записи логов
+                if not os.path.isdir(self.work_dir):
+                    os.mkdir(self.work_dir)
 
-def debug(msg, *args, **kwargs):
-    logger.debug(repr(msg)[1:-1], *args, **kwargs)
+                log_formatter = logging.Formatter(
+                    '%(asctime)-15s::%(levelname)s::%(filename)s::%(funcName)s::%(lineno)d::%(message)s')
 
+                try:
+                    self.file_handler = logging.FileHandler(f"{self.work_dir}/{self.log_name}_{datetime.date.today()}.log")
+                except Exception as e:
+                    # Ошибка может возникнуть если нет доступа к указанной директории. Тогда по дефолту кидаем в рабочую
+                    # if not os.path.isdir("logs"):
+                    #     os.mkdir("logs")
 
-def info(msg, *args, **kwargs):
-    try:
-        logger.info(repr(msg)[1:-1], *args, **kwargs)
-    except Exception:
-        raise Exception
+                    self.file_handler = logging.FileHandler(
+                        f"logs/{self.log_name}_{datetime.date.today()}.log")
 
+                self.file_handler.setFormatter(log_formatter)
 
-def warning(msg, *args, **kwargs):
-    logger.warning(repr(msg)[1:-1], *args, **kwargs)
+                # Не накапливаем в потоках file_handler. Первый вывод в stdout. Второй в файл
+                if len(self._log.handlers) < 2:
+                    self._log.addHandler(self.file_handler)
 
+    def close(self):
+        self._log.handlers = []
+        del self._log
 
-def error(msg, *args, **kwargs):
-    logger.error(repr(msg)[1:-1], *args, **kwargs)
+    def debug(self, *args):
+        self._check_open_file()
+        self._log.debug(" ".join(args))
 
+    def args_to_str(self, args):
+        return [str(arg) if not isinstance(arg, str) else arg for arg in args]
 
-def exception(e):
-    error_str = traceback.format_exception(None, e, e.__traceback__)
-    logger.error(''.join(error_str))
+    def info(self, *args, **kwargs):
+        self._check_open_file()
+        self._log.info(" ".join(self.args_to_str(args)))
 
+    def warning(self, *args, **kwargs):
+        self._check_open_file()
+        self._log.warning(" ".join(self.args_to_str(args)))
 
-def fatal(msg, *args, **kwargs):
-    logger.fatal(repr(msg)[1:-1], *args, **kwargs)
+    def error(self, *args, **kwargs):
+        self._check_open_file()
+        self._log.error(" ".join(self.args_to_str(args)))
+
+    def exception(self, *args, **kwargs):
+        self._check_open_file()
+        self._log.exception(" ".join(self.args_to_str(args)), **kwargs)
+
+if __name__ == '__main__':
+    log = Log()
+    log.info("тест")

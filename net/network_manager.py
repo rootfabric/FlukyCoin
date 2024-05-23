@@ -581,7 +581,7 @@ class NetworkManager:
                             # Проверяем и добавляем блок в локальную цепочку
                             block = Block.from_json(block_data)
                             if self.chain.validate_and_add_block(block):
-                                print(f"Block {block_num} added from {client.address()}. {block.hash}")
+                                print(f"Block [{block_num}/{peer_info['block_count']}] added from {client.address()}. {block.hash}")
                                 if int(block_num) % 100 == 0:
                                     self.chain.save_chain_to_disk(dir=str(self.server.address))
                                 self.no_need_pause_sinc = True

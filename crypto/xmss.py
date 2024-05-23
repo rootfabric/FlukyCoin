@@ -93,7 +93,6 @@ class XMSSPublicKey:
             # Декодирование адреса из Base58 и удаление префикса 'Out'
             decoded_address = base58.b58decode(address[len(self.address_start):])
 
-
             params = decoded_address[-6:-4]
             hash_function_code = params[0] >> 4
             tree_height = params[0] & 0x0F
@@ -119,15 +118,25 @@ class XMSSPublicKey:
         return {
             'OID': self.OID,
             'root_value': self.root_value.hex(),
-            'SEED': self.SEED
+            'SEED': self.SEED,
+            'height': self.height,
+            'n': self.n,
+            'w': self.w
         }
 
     def to_bytes(self):
         # Сериализация и сжатие объекта в байты
-        return zlib.compress(pickle.dumps(self))
+        return zlib.compress(pickle.dumps(self.to_json()))
 
-    @staticmethod
-    def from_bytes(bytes_data):
+    def to_str(self):
+        return base58.b58encode(self.to_bytes())
+
+    @classmethod
+    def from_str(cls, text_pk):
+        return XMSSPublicKey.from_json(XMSSPublicKey.from_bytes(base58.b58decode(text_pk)))
+
+    @classmethod
+    def from_bytes(cls, bytes_data):
         # Распаковка и десериализация объекта из сжатых байтов
         return pickle.loads(zlib.decompress(bytes_data))
 
@@ -162,12 +171,15 @@ class XMSSPublicKey:
     def from_json(cls, json_data):
         OID = json_data.get('OID')
         root_value_hex = json_data.get('root_value')
-        SEED_hex = json_data.get('SEED')
+        SEED = json_data.get('SEED')
+        height = json_data.get('height')
+        n = json_data.get('n')
+        w = json_data.get('w')
 
         root_value = bytes.fromhex(root_value_hex) if root_value_hex else None
-        SEED = bytes.fromhex(SEED_hex) if SEED_hex else None
+        # SEED = bytes.fromhex(SEED_hex) if SEED_hex else None
 
-        return cls(OID=OID, root_value=root_value, SEED=SEED)
+        return cls(OID=OID, root_value=root_value, SEED=SEED, height=height, n=n, w=w)
 
 
 class XMSSKeypair:
@@ -196,6 +208,12 @@ class SigXMSS:
         # Распаковка и десериализация объекта из сжатых байтов
         return pickle.loads(zlib.decompress(bytes_data))
 
+    def to_str(self):
+        return base58.b58encode(self.to_bytes())
+
+    @classmethod
+    def from_str(cls, sign_str):
+        return SigXMSS.from_bytes(base58.b58decode(sign_str))
 
 class SigWithAuthPath:
     def __init__(self, sig_ots, auth):
@@ -867,18 +885,19 @@ if __name__ == '__main__':
     # Генерация пары ключей и адреса для Клиента 1
     seed_client1 = "unique_seed_for_client3111223"  # Уникальный сид для клиента 1
     height = 6  # Высота дерева
-    n = 4  # Размер хэша в байтах
+    n = 10  # Размер хэша в байтах
     w = 16  # Параметр Winternitz
 
     print("Количество подписей", 2 ** height)
     # Генерация пары ключей на основе сида
     keyPair_client1 = XMSS_keyGen_from_seed(seed_client1, height, n, w)
+
     save_keys_to_file(keyPair_client1, "client1.key")
 
     keyPair_client1 = load_keys_from_file("client1.key")
 
     # Генерация адреса на основе публичного ключа
-    address_client1 = keyPair_client1.PK.generate_address(2)
+    address_client1 = keyPair_client1.PK.generate_address()
 
     print(f"Сид: {seed_client1}")
     print(f"Адрес Клиента 1: {address_client1}")
@@ -891,24 +910,29 @@ if __name__ == '__main__':
     message_client1 = bytearray(b'This is a message from client1 to be signed.')
 
     # Подпись сообщения
-    addressXMSS_client1 = ADRS()  # Инициализация адреса для XMSS
+    # addressXMSS_client1 = ADRS()  # Инициализация адреса для XMSS
 
     d = datetime.datetime.now()
     print("Делаем подпись")
-    signature_client1 = XMSS_sign(message_client1, keyPair_client1.SK, n, w, addressXMSS_client1, height)
+    signature_client1 = XMSS_sign(message_client1, keyPair_client1.SK, n, w, ADRS(), height)
 
     print(
         f"Подпись: {signature_client1}, размер: {len(signature_client1.to_bytes())} байт  время: {datetime.datetime.now() - d}")
+    print(len(base58.b58encode(signature_client1.to_bytes())))
 
-    # Верификация подписи сообщения Клиентом 2
+    sign_str = signature_client1.to_str()
+    pk_str = keyPair_client1.PK.to_str()
+    print("pk_str", pk_str)
+    print("sign_str", sign_str)
 
-    # Имитация получения публичного ключа Клиента 1 другим клиентом
-    PK_client1_received = keyPair_client1.PK
+    # распаковываем подписи
+    PK = XMSSPublicKey.from_str(pk_str)
+    signature = SigXMSS.from_str(sign_str)
+    print("OTS", signature.idx_sig)
 
-    # Имитация получения сида Клиента 1 другим клиентом (в реальных условиях сид не передается)
-    SEED_client1_received = PK_client1_received.SEED
+    PK_client1_received = PK
 
     # Верификация подписи
-    verification_result = XMSS_verify(signature_client1, message_client1, PK_client1_received)
+    verification_result = XMSS_verify(signature, message_client1, PK)
 
     print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")

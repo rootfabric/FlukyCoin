@@ -280,7 +280,10 @@ class NetworkManager:
             # response = client.send_request({'command': 'getinfo'})
 
             response = client.get_info()
-            self.log.info("ping response", address, "synced", response['synced'],response['block_count'],response['block_candidate'])
+            if 'synced' in response:
+                self.log.info("ping response", address, "synced", response['synced'],response['block_count'],response['block_candidate'][:5])
+            else:
+                self.log.warning("ping response", address, response)
             # if 'version' not in response:
             #     del self.peers[address]
             #     return False
@@ -755,3 +758,4 @@ class NetworkManager:
             time.sleep(1)  # Пауза перед следующей проверкой
         # except Exception as e:
         #     print("check_peers", e)
+

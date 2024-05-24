@@ -63,14 +63,16 @@ import socket
 import json
 import time
 import datetime
+from tools.logger import Log
 
 
 class Client:
-    def __init__(self, host="localhost", port=5555, timeout=5.0):
+    def __init__(self, host="localhost", port=5555, timeout=5.0, log=Log()):
         self.host = host
         self.port = port
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.settimeout(timeout)
+        self.log = log
         try:
             self.client_socket.connect((host, port))
             self.is_connected = True
@@ -88,6 +90,7 @@ class Client:
     def get_info(self, ignore_timer=False):
         """Опрос сервера с учетом частоты запросов."""
         if time.time() - self.last_time_info > 1 or ignore_timer:
+            # self.log.info("get_info", self.address())
             self.info = self.send_request({'command': 'getinfo'})
             # print("get_info", datetime.datetime.now(), self.info)
             self.last_time_info = time.time()

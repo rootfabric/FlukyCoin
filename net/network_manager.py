@@ -91,8 +91,9 @@ class NetworkManager:
             self.known_peers.add(new_address)
 
             self.known_peers = list(self.known_peers)
-        if ping:
-            self.ping_peer(new_address)
+
+            if ping:
+                self.ping_peer(new_address)
             # self.broadcast_new_peer(new_address)
 
     def handle_request_node(self):
@@ -169,7 +170,7 @@ class NetworkManager:
 
     def ping_all_peers(self):
         try:
-            for peer in list(self.known_peers):
+            for peer in set(list(self.known_peers)):
                 # себя не смотрим
                 if peer == self.server.address or "127.0.0.1" in peer:
                     continue
@@ -197,7 +198,7 @@ class NetworkManager:
             except Exception as e:
                 self.log.error(" Error _ping_all_peers_and_save", e)
 
-            time.sleep(60)
+            time.sleep(55.5)
 
     def _connect_to_address(self, address):
         try:
@@ -260,8 +261,8 @@ class NetworkManager:
             if address is None:
                 if address in self.peers:
                     del self.peers[address]
-
                 return False
+
             if "127.0.0.1" in address:
                 if address in self.peers:
                     del self.peers[address]
@@ -279,18 +280,13 @@ class NetworkManager:
             # try:
             # response = client.send_request({'command': 'getinfo'})
 
+            # if time.time() - client.last_time_info>1:
             response = client.get_info()
             if 'synced' in response:
-                self.log.info("ping response", address, "synced", response['synced'],response['block_count'],response['block_candidate'][:5])
+                self.log.info("ping response", address, f"last ping: {time.time() - client.last_time_info:0.2f}", "synced", response['synced'],response['block_count'],response['block_candidate'][:5])
             else:
                 self.log.warning("ping response", address, response)
-            # if 'version' not in response:
-            #     del self.peers[address]
-            #     return False
 
-
-
-            # print(f"{address} ping response ", response)
             if response is not None:
                 if 'error' not in response:
 
@@ -315,6 +311,8 @@ class NetworkManager:
                 self.log.info(f"Failed to connect to {address}")
                 del self.peers[address]
                 return False
+
+
         except Exception as e:
             if address in self.peers:
                 del self.peers[address]

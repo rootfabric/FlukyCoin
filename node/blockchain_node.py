@@ -127,12 +127,12 @@ class BlockchainNode:
     def send_peers_list(self):
         return {'peers': self.network_manager.active_peers()}
 
-    def send_hello(self, peer):
-        client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-        response = client.send_request({'command': 'peerhello', 'peer': self.server.address})
-        client.close()
-        self.log.info("Hello response:", response)
-        return response
+    # def send_hello(self, peer):
+    #     client = Client(peer.split(":")[0], int(peer.split(":")[1]))
+    #     response = client.send_request({'command': 'peerhello', 'peer': self.server.address})
+    #     client.close()
+    #     self.log.info("Hello response:", response)
+    #     return response
 
     def register_peer(self, peer):
         if peer not in self.network_manager.get_active_peers():
@@ -140,14 +140,14 @@ class BlockchainNode:
             self.broadcast_new_peer(peer)
         return {'status': 'success', 'message': f'Welcome, {peer}, registered successfully'}
 
-    def request_peers_list(self, peer):
-        client = Client(peer.split(":")[0], int(peer.split(":")[1]))
-        response = client.send_request({'command': 'getpeers'})
-        self.log.info("Peers list response:", response)
-        for p in response.get('peers', []):
-            if p not in self.known_peers:
-                self.known_peers.append(p)
-        client.close()
+    # def request_peers_list(self, peer):
+    #     client = Client(peer.split(":")[0], int(peer.split(":")[1]))
+    #     response = client.send_request({'command': 'getpeers'})
+    #     self.log.info("Peers list response:", response)
+    #     for p in response.get('peers', []):
+    #         if p not in self.known_peers:
+    #             self.known_peers.append(p)
+    #     client.close()
 
     def get_info(self):
         answ = {'synced': f'{self.network_manager.synced}', 'node': f'{self.network_manager.server.address}',

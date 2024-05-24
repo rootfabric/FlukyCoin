@@ -258,8 +258,13 @@ class NetworkManager:
         try:
             address = validate_and_resolve_address_with_port(address)
             if address is None:
+                if address in self.peers:
+                    del self.peers[address]
+
                 return False
             if "127.0.0.1" in address:
+                if address in self.peers:
+                    del self.peers[address]
                 return False
 
             client = self.peers.get(address)
@@ -267,12 +272,15 @@ class NetworkManager:
                 client = self._connect_to_address(address)
 
             if client is None:
+                if address in self.peers:
+                    del self.peers[address]
                 return False
 
             # try:
             # response = client.send_request({'command': 'getinfo'})
 
             response = client.get_info()
+            self.log.info("ping response", address, response)
             # if 'version' not in response:
             #     del self.peers[address]
             #     return False

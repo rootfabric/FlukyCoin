@@ -280,7 +280,7 @@ class NetworkManager:
             # response = client.send_request({'command': 'getinfo'})
 
             response = client.get_info()
-            self.log.info("ping response", address, response)
+            self.log.info("ping response", address, "synced", response['synced'],response['block_count'],response['block_candidate'])
             # if 'version' not in response:
             #     del self.peers[address]
             #     return False

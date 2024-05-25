@@ -256,21 +256,23 @@ class NetworkManager:
             if address in self.peers:
                 del self.peers[address]
 
+    def _close_client(self, address):
+        if address in self.peers:
+            self.peers[address].close()
+
+        if address in self.peers:
+            del self.peers[address]
 
     def ping_peer(self, address):
         """ установка связи и проверка соединеня """
         try:
             address = validate_and_resolve_address_with_port(address)
             if address is None:
-                if address in self.peers:
-                    self.peers[address].close()
-                    del self.peers[address]
+                self._close_client(address)
                 return False
 
             if "127.0.0.1" in address:
-                if address in self.peers:
-                    self.peers[address].close()
-                    del self.peers[address]
+                self._close_client(address)
                 return False
 
             client = self.peers.get(address)
@@ -278,9 +280,7 @@ class NetworkManager:
                 client = self._connect_to_address(address)
 
             if client is None:
-                if address in self.peers:
-                    self.peers[address].close()
-                    del self.peers[address]
+                self._close_client(address)
                 return False
 
             # try:
@@ -288,10 +288,11 @@ class NetworkManager:
 
             # if time.time() - client.last_time_info>1:
             response = client.get_info()
-            if 'synced' in response:
-                self.log.info("ping response", address, f"last ping: {time.time() - client.last_time_info:0.2f}", "synced", response['synced'],response['block_count'],response['block_candidate'][:5])
-            else:
-                self.log.warning("ping response", address, response)
+            # if 'synced' in response:
+            #     block_candidate_node = response['block_candidate'][:5] if response['block_candidate'] is not None else None
+            #     self.log.info("ping response", address, f"last ping: {time.time() - client.last_time_info:0.2f}", "synced", response['synced'],response['block_count'],block_candidate_node)
+            # else:
+            #     self.log.warning("ping response", address, response)
 
             if response is not None:
                 if 'error' not in response:
@@ -310,21 +311,17 @@ class NetworkManager:
                     return True
 
                 # print(f"Error send: {response}")
-                self.peers[address].close()
-                del self.peers[address]
+                self._close_client(address)
                 return False
 
             else:
                 self.log.info(f"Failed to connect to {address}")
-                self.peers[address].close()
-                del self.peers[address]
+                self._close_client(address)
                 return False
 
 
         except Exception as e:
-            if address in self.peers:
-                self.peers[address].close()
-                del self.peers[address]
+            self._close_client(address)
             self.log.error("Error ping_peer!", e)
 
     def take_mempool(self, address):
@@ -544,7 +541,7 @@ class NetworkManager:
         # print("check_synk_with_peers",  self.peers.keys())
         block_sync = True
         chain_size = 0
-        self.no_need_pause_sinc = True
+        self.no_need_pause_sinc = False
 
         for client in list(self.peers.values()):
 
@@ -754,7 +751,7 @@ class NetworkManager:
                 # если засинхрились, то проверка реже
 
                 self.check_synk_with_peers()
-                if  self.no_need_pause_sinc:
+                if not self.synced and self.no_need_pause_sinc:
                     continue
 
                 pause_synced = time.time()

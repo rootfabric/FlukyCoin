@@ -258,10 +258,9 @@ class BlockchainNode:
             try:
                 # не работаем без синхронизации
                 if not self.network_manager.synced:
-                    time.sleep(0.5)
                     self.log.info("active peers", [(p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
                            for p in self.network_manager.peers.values()])
-
+                    time.sleep(5)
                     # print("Node not sync!")
                     continue
 

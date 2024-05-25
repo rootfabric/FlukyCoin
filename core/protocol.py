@@ -11,7 +11,7 @@ import uuid
 class Protocol:
     VERSION = "0.1"
     # ожидание подсоединения активных пиров
-    WAIT_ACTIVE_PEERS_BEFORE_START = 10
+    WAIT_ACTIVE_PEERS_BEFORE_START = 30
 
     BLOCK_TIME_INTERVAL = 30
     BLOCK_TIME_INTERVAL_LOG =BLOCK_TIME_INTERVAL/4

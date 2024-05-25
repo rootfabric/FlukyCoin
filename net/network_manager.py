@@ -70,6 +70,7 @@ class NetworkManager:
         self.num_blocks_need_load = []
         self.no_need_pause_sinc = False
         self.time_lost_sinc = None
+
         self.log.info("Start network manager", self.known_peers)
 
     def signal_handler(self, signal, frame):
@@ -193,6 +194,8 @@ class NetworkManager:
             # print("Ping all peers")
             try:
                 self.ping_all_peers()
+                # if self.server.address not in self.peers:
+                #     self.log.warning("Ведомая нода! ")
                 self.save_to_disk()
                 # print(self.active_peers())
             except Exception as e:
@@ -260,11 +263,13 @@ class NetworkManager:
             address = validate_and_resolve_address_with_port(address)
             if address is None:
                 if address in self.peers:
+                    self.peers[address].close()
                     del self.peers[address]
                 return False
 
             if "127.0.0.1" in address:
                 if address in self.peers:
+                    self.peers[address].close()
                     del self.peers[address]
                 return False
 
@@ -274,6 +279,7 @@ class NetworkManager:
 
             if client is None:
                 if address in self.peers:
+                    self.peers[address].close()
                     del self.peers[address]
                 return False
 
@@ -304,17 +310,20 @@ class NetworkManager:
                     return True
 
                 # print(f"Error send: {response}")
+                self.peers[address].close()
                 del self.peers[address]
                 return False
 
             else:
                 self.log.info(f"Failed to connect to {address}")
+                self.peers[address].close()
                 del self.peers[address]
                 return False
 
 
         except Exception as e:
             if address in self.peers:
+                self.peers[address].close()
                 del self.peers[address]
             self.log.error("Error ping_peer!", e)
 
@@ -521,10 +530,12 @@ class NetworkManager:
             if self.chain.add_block_candidate(blockcandidate):
                 self.log.info("Добавлен кандидат с ноды", blockcandidate.hash)
                 self.distribute_block(self.chain.block_candidate, ban_address=peer)
+                return True
             else:
                 # print("Кандидат с ноды не подходит", blockcandidate.hash)
                 self.distribute_block(self.chain.block_candidate, address=peer)
-
+                return False
+        return False
     def check_synk_with_peers(self):
         """ Проверка синхронности с пирами """
 
@@ -562,7 +573,7 @@ class NetworkManager:
                     chain_size = max(chain_size, peer_info['block_count'])
                     # print("Узел синхронный, проверяем состояние")
                     # print(client.address(), peer_info['block_candidat'])
-
+                    flag_need_check_sync = False
                     # нода синхронна
                     if self.synced:
                         # проверку не делать на срезах
@@ -576,11 +587,18 @@ class NetworkManager:
 
                                 if bl is None:
                                     # print(f"Расхождение блока кандидата {peer_info['block_candidat']}, на ноде {client.address()} делаем запрос")
-                                    self.pull_candidat_block_from_peer(client.address())
+                                    if not self.pull_candidat_block_from_peer(client.address()):
+                                        """ блок не подходит, признак расхождения цепи """
+                                        flag_need_check_sync = True
 
-                        continue
+                        if not flag_need_check_sync:
+                            continue
 
-                    if peer_info['block_count'] > self.chain.blocks_count():
+                    # текущая нода убежала вперед и потеряла синхру
+                    # if not self.synced and peer_info['block_count'] < self.chain.blocks_count():
+                    #     self.chain.blocks = self.chain.blocks[:-100]
+
+                    if not self.synced and peer_info['block_count'] > self.chain.blocks_count():
 
                         # print(f"На узле {client.address()} блоков больше, подгружаем")
                         block_sync = False
@@ -605,15 +623,26 @@ class NetworkManager:
                                 self.chain.blocks = self.chain.blocks[:-1]
                                 self.chain.reset_block_candidat()
                         continue
-                    # if peer_info['block_count'] < self.chain.blocks_count():
-                    #     print("На синхронной ноде меньше блоков чем на текущей!")
-                    #     """ тут требуется более глубокий синхрон """
-                    #     """ Как временное решение срубание блоков """
-                    #     self.chain.blocks = self.chain.blocks[:-1]
-                    #     self.chain.reset_block_candidat()
+
+
+                    if self.synced and peer_info['block_count'] < self.chain.blocks_count():
+
+
+                        """ 
+                        тут требуется более глубокий синхрон
+                        если нода без выделенного адреса, и убежала вперед, может быть такая ситуация                        
+                        """
+
+                        # активируем таймер, для потери синхронизации
+                        if self.time_lost_sinc is None:
+                            self.log.warning("На синхронной ноде меньше блоков чем на текущей!")
+                            self.time_lost_sinc = time.time()
+
+                        # self.chain.blocks = self.chain.blocks[:-1]
+
 
                     # если количество блоков равно, доп проверки
-                    if peer_info['block_count'] == self.chain.blocks_count():
+                    if self.synced and peer_info['block_count'] == self.chain.blocks_count():
 
                         if self.chain.block_candidate_hash is not None and peer_info['block_candidate'] is not None:
                             if peer_info['block_candidate'] != self.chain.block_candidate_hash:
@@ -670,7 +699,7 @@ class NetworkManager:
                     # print("count_s", count_s, "all_peers", all_peers)
                     if self.synced:
                         # print(f"в сети есть рассинхрон {count_s} из {all_peers}")
-                        if all_peers > 1 and count_s == 0:
+                        if all_peers >= 1 and count_s == 0:
                             # после подозрения на рассинхрон, делаем паузу
                             if self.time_lost_sinc is None:
                                 self.time_lost_sinc = time.time()
@@ -678,16 +707,16 @@ class NetworkManager:
                             if time.time() - self.time_lost_sinc > Protocol.TIME_CONFIRM_LOST_SYNC:
                                 self.log.warning(f"Текущая цепь в меньшинстве. всего ", len(self.peers.values()))
                                 for client in list(self.peers.values()):
-                                    print(client.info)
+                                    self.log.info(client.info)
                                 self.log.warning("Нода потеряла синхронизацию!")
                                 self.synced = False
-                        else:
-                            self.time_lost_sinc = None
+                        # else:
+                        #     self.time_lost_sinc = None
                 if count_s == all_peers:
                     if self.time_lost_sinc is not None:
                         self.log.info("count_s == all_peers:", count_s)
                         self.time_lost_sinc = None
-        if count_sync_peers == 0:
+        if count_sync_peers == 0 and len( list(self.peers.values()))==0:
             if self.time_ntpt.get_corrected_time() > self.start_time + Protocol.WAIT_ACTIVE_PEERS_BEFORE_START:
                 if not self.synced:
                     print("Ноды не обнаружены, включаем синхронизацию")
@@ -725,8 +754,12 @@ class NetworkManager:
                 # если засинхрились, то проверка реже
 
                 self.check_synk_with_peers()
-                if not self.no_need_pause_sinc:
-                    pause_synced = time.time()
+                if  self.no_need_pause_sinc:
+                    continue
+
+                pause_synced = time.time()
+
+
 
             if not self.synced:
                 # self.check_synk_with_peers()

@@ -3,48 +3,105 @@ import hashlib
 import time
 
 from core.transaction import Transaction
+from core.protocol import Protocol
+from core.BlockHeader import BlockHeader
 import os, json
 import random
 from storage.transaction_storage import TransactionStorage, TransactionGenerator
 import base64
+
+
 # from crypto.xmss import *
 
 
 class Block:
 
     def __init__(self, previousHash=None):
-        self.index = 0
-        self.time = time.time()
+
+        # self.bh = BlockHeader()
+        self.version = Protocol.VERSION
+        self.timestamp_seconds = time.time()
         self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if previousHash is None else previousHash
-        # self.previousHash = "3b6c2c7aa4d45aa89fcad9568208270fb73dd954a0c62b33d5e47355d4157ff1" if previousHash is None else previousHash
-
-        self.hash = None
-        # self.new_nodes = {}
-
-        # публичны ключ того кто сделал блок.
-        self.signer = None
 
         self.sign = None
+        self.Hash = None
 
-        # параметр возникновения ключевого блока
-        self.diff_key_block = 11
+        # избыточные параметры
 
-        # технические параметры, для симулятора, ускоряющие работу
-
-        # уровень победителя и его адрес
-        # self.winer_ratio = 0
-        # self.winer_address = None
+        self.block_number = 0
+        # адрес публичного ключ того кто сделал блок.
+        self.signer = None
 
         self.transactions = []
+
+    @staticmethod
+    def create(
+            block_number: int,
+            prev_headerhash: bytes,
+            prev_timestamp: int,
+            transactions: list,
+            miner_PK: bytes,
+            address_reward
+    ):
+
+        block = Block()
+        block.block_number = block_number
+        block.previousHash = prev_headerhash
+
+        # Process transactions
+        hashedtransactions = []
+        fee_reward = 0
+
+        for tx in transactions:
+            fee_reward += tx.fee
+
+        # Prepare coinbase tx
+        # total_reward_amount = BlockHeader.block_reward_calc(block_number, dev_config) + fee_reward
+
+        block_reward, ratio, lcs = Protocol.reward(block.signer, Protocol.sequence(block.previousHash))
+
+        total_reward_amount = block_reward + fee_reward
+
+        # coinbase_tx = CoinBase.create(dev_config, total_reward_amount, miner_address, block_number)
+
+        coinbase_tx = Transaction(tx_type="coinbase", fromAddress=Protocol.coinbase_address,
+                         toAddress=address_reward, amount=block_reward)
+
+
+        hashedtransactions.append(coinbase_tx.txhash)
+        Block._copy_tx_pbdata_into_block(block, coinbase_tx)  # copy memory rather than sym link
+
+        for tx in transactions:
+            hashedtransactions.append(tx.txhash)
+            Block._copy_tx_pbdata_into_block(block, tx)  # copy memory rather than sym link
+
+        txs_hash = merkle_tx_hash(hashedtransactions)  # FIXME: Find a better name, type changes
+
+        tmp_blockheader = BlockHeader.create(dev_config=dev_config,
+                                             blocknumber=block_number,
+                                             prev_headerhash=prev_headerhash,
+                                             prev_timestamp=prev_timestamp,
+                                             hashedtransactions=txs_hash,
+                                             fee_reward=fee_reward,
+                                             seed_height=seed_height,
+                                             seed_hash=seed_hash)
+
+        block.blockheader = tmp_blockheader
+
+        block._data.header.MergeFrom(tmp_blockheader.pbdata)
+
+        block.set_nonces(dev_config, 0, 0)
+
+        return block
 
     def to_json_for_sign(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON
         block_dict = {
-            'index': self.index,
+            'index': self.block_number,
             'previousHash': self.previousHash,
-            'time': self.time,
+            'time': self.timestamp_seconds,
             'transactions': [tr.to_json() for tr in self.transactions],
-            'hash': self.hash,
+            'hash': self.Hash,
             'diff_key_block': self.diff_key_block,
             'signer': self.signer
         }
@@ -53,11 +110,11 @@ class Block:
     def to_json(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON
         block_dict = {
-            'index': self.index,
+            'index': self.block_number,
             'previousHash': self.previousHash,
-            'time': self.time,
+            'time': self.timestamp_seconds,
             'transactions': [tr.to_json() for tr in self.transactions],
-            'hash': self.hash,
+            'hash': self.Hash,
             # 'diff_key_block': self.diff_key_block,
             'signer': self.signer,
             'sign': self.sign,
@@ -71,10 +128,10 @@ class Block:
         # Десериализация строки JSON обратно в объект Block
         block_dict = json.loads(json_str)
         block = cls(block_dict['previousHash'])
-        block.index = block_dict['index']
-        block.time = block_dict['time']
+        block.block_number = block_dict['index']
+        block.timestamp_seconds = block_dict['time']
         block.transactions = [Transaction.from_json(t) for t in block_dict['transactions']]
-        block.hash = block_dict['hash']
+        block.Hash = block_dict['hash']
         # block.diff_key_block = block_dict['diff_key_block']
         block.signer = block_dict['signer']
         block.sign = block_dict['sign']
@@ -93,9 +150,9 @@ class Block:
 
     def hash_block(self):
         """ Формирование блока"""
-        if self.hash is None:
-            self.hash = self.calculate_hash()
-        return self.hash
+        if self.Hash is None:
+            self.Hash = self.calculate_hash()
+        return self.Hash
 
     def add_new_node(self, node, node_parrent):
         # формирование транзекций новой ноды
@@ -122,7 +179,7 @@ class Block:
 
         # Шаг 2 и 3: Подсчёт начальных нулей в шестнадцатеричной строке
         count = 0
-        for char in self.hash:
+        for char in self.Hash:
             if char == '0':
                 count += 1
             else:
@@ -131,15 +188,16 @@ class Block:
         return count
 
     def block(self):
-        self.hash = self.calculate_hash()
+        self.Hash = self.calculate_hash()
 
     def datetime(self):
-        return datetime.datetime.fromtimestamp(self.time)
+        return datetime.datetime.fromtimestamp(self.timestamp_seconds)
+
     def __equal__(self, other):
-        return (self.index == other.blocks_count and
+        return (self.block_number == other.blocks_count and
                 self.timeStamp == other.timestamp and
                 self.previousHash == other.previousHash and
-                self.hash == other.hash and
+                self.Hash == other.Hash and
                 self.transactions == other.transaction and
                 self.nonce == other.nonce
                 )

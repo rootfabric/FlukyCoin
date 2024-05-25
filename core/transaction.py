@@ -10,8 +10,13 @@ class Transaction:
         self.toAddress = toAddress
         self.amount = amount
         self.fee = fee
+        self.txhash = None
 
         self.sign = None
+
+    @property
+    def txhash(self) -> bytes:
+        return self.get_data_hash()
 
     def as_dict(self):
         # Возвращает представление объекта в виде словаря
@@ -33,15 +38,6 @@ class Transaction:
         data = json.loads(json_str)
         return cls(**data)
 
-    def calculate_hash(self):
-        text_transaction = self.to_json()
-
-        data = str(self.previousHash) + str(text_transaction)
-        data += str(self.signer) + str(self.winer_address)
-
-        result = hashlib.sha256(data.encode())
-        return result.hexdigest()
-
     def get_data_hash(self) -> bytes:
         """
         This method returns the hashes of the transaction data.
@@ -50,7 +46,7 @@ class Transaction:
 
     def make_hash(self):
         """ Идентификатор транзакции """
-        self.hash = self.get_data_hash().hexdigest()
+        self.txhash = self.get_data_hash().hexdigest()
 
     def sign_from_str(self, sign_str):
         """  требуется серилизация """
@@ -62,4 +58,4 @@ if __name__ == '__main__':
     t = Transaction("coinbase", "1", "2", "100")
     t.make_hash()
     # print(t.get_data_hash().hexdigest())
-    print(t.hash)
+    print(t.txhash)

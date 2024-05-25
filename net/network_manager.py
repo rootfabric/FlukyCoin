@@ -5,7 +5,7 @@ from net.client import Client
 from core.protocol import Protocol
 from core.transaction import Transaction
 from storage.chain import Chain
-from core.block import Block
+from core.Block import Block
 import os
 import pickle
 import threading
@@ -402,7 +402,7 @@ class NetworkManager:
                 continue
 
             if client.is_connected:
-                response = client.send_request({'command': 'invt', 'tx': tx_to_broadcast.hash})
+                response = client.send_request({'command': 'invt', 'tx': tx_to_broadcast.txhash})
                 if response.get('status') == 'ok':
                     if tx_to_broadcast in self.list_need_broadcast_transaction:
                         self.list_need_broadcast_transaction.remove(tx_to_broadcast)
@@ -525,7 +525,7 @@ class NetworkManager:
         if blockcandidate_json is not None:
             blockcandidate = Block.from_json(blockcandidate_json)
             if self.chain.add_block_candidate(blockcandidate):
-                self.log.info("Добавлен кандидат с ноды", blockcandidate.hash)
+                self.log.info("Добавлен кандидат с ноды", blockcandidate.Hash)
                 self.distribute_block(self.chain.block_candidate, ban_address=peer)
                 return True
             else:
@@ -575,8 +575,8 @@ class NetworkManager:
                     if self.synced:
                         # проверку не делать на срезах
                         if self.chain.last_block() is not None and (
-                                time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 5
-                                and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 5):
+                                time.time() - self.chain.last_block().timestamp_seconds > Protocol.BLOCK_TIME_INTERVAL / 5
+                                and time.time() - self.chain.last_block().timestamp_seconds < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 5):
                             if peer_info['block_candidate'] != self.chain.block_candidate_hash:
                                 bl = self.chain.check_hash(peer_info['block_candidate'])
 
@@ -607,7 +607,7 @@ class NetworkManager:
                             # Проверяем и добавляем блок в локальную цепочку
                             block = Block.from_json(block_data)
                             if self.chain.validate_and_add_block(block):
-                                self.log.info(f"Block [{block_num}/{peer_info['block_count']}] added from {client.address()}. {block.hash}")
+                                self.log.info(f"Block [{block_num}/{peer_info['block_count']}] added from {client.address()}. {block.Hash}")
                                 if int(block_num) % 100 == 0:
                                     self.chain.save_chain_to_disk(dir=str(self.server.address))
                                 self.no_need_pause_sinc = True
@@ -656,7 +656,7 @@ class NetworkManager:
 
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
             # если блок близок к закрытию, то ждем следующий
-            if self.time_ntpt.get_corrected_time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL / 5:
+            if self.time_ntpt.get_corrected_time() - self.chain.last_block().timestamp_seconds < Protocol.BLOCK_TIME_INTERVAL / 5:
 
                 self.synced = True
                 self.log.info("Блоки синхронизированные:", self.chain.blocks_count())
@@ -665,8 +665,8 @@ class NetworkManager:
         # if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
         #     self.synced = False
         #     print("Нода потеряла синхронизацию!")
-        if (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 4
-                and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4):
+        if (time.time() - self.chain.last_block().timestamp_seconds > Protocol.BLOCK_TIME_INTERVAL / 4
+                and time.time() - self.chain.last_block().timestamp_seconds < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4):
             # примерный алгоритм отслеживания синхронизации сети
             count_s = 0
             all_peers = 0
@@ -688,8 +688,8 @@ class NetworkManager:
 
             # простая проверка, количества нод с которыми совпадают блоки
             if self.chain.last_block() is not None:
-                if (time.time() - self.chain.last_block().time > Protocol.BLOCK_TIME_INTERVAL / 4
-                        and time.time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4
+                if (time.time() - self.chain.last_block().timestamp_seconds > Protocol.BLOCK_TIME_INTERVAL / 4
+                        and time.time() - self.chain.last_block().timestamp_seconds < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 4
                         and count_s < all_peers):
                     # print("CCCCC")
                     # print("count_s", count_s, "all_peers", all_peers)

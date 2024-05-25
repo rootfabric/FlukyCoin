@@ -22,6 +22,9 @@ class Protocol:
     # если появилось подозрение на рассинхрон, сколько проаерять, прежде чем терять рассинхрон
     TIME_CONFIRM_LOST_SYNC = 60
 
+    coinbase_address = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
+                       b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+
 
     @staticmethod
     def find_longest_common_substring(s1, s2):
@@ -69,8 +72,9 @@ class Protocol:
     #
     #     return ratio1 * ratio1 * 10, ratio1, lcs
 
+    @staticmethod
     def reward(self, addrr, sequence, block_number=0, initial_reward=3000000, halving_interval=1500000):
-        ratio1, lcs = self.find_longest_common_substring(sequence, addrr.lower())
+        ratio1, lcs = Protocol.find_longest_common_substring(sequence, addrr.lower())
 
         # Определение количества прошедших халфингов
         halvings_passed = block_number // halving_interval

@@ -19,10 +19,10 @@ class Mempool:
 
     def add_transaction(self, transaction):
         """Добавить транзакцию в mempool и сохранить изменения."""
-        if transaction.hash in self.transactions:
+        if transaction.Hash in self.transactions:
             return False
 
-        self.transactions[transaction.hash] = transaction
+        self.transactions[transaction.Hash] = transaction
         # self.save_transactions()
         return True
 
@@ -74,7 +74,7 @@ if __name__ == '__main__':
     t = Transaction("coinbase", "1", "2", "100")
     t.make_hash()
     # print(t.get_data_hash().hexdigest())
-    print(t.hash)
+    print(t.txhash)
     mempool.add_transaction(t)
 
     # Получение всех транзакций

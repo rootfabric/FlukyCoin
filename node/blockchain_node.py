@@ -1,6 +1,6 @@
 import time
 
-from core.block import Block
+from core.Block import Block
 from core.transaction import Transaction
 from core.protocol import Protocol
 from storage.mempool import Mempool
@@ -121,7 +121,7 @@ class BlockchainNode:
         tx.make_hash()
 
         if self.mempool.add_transaction(tx):
-            self.log.info("Добавлена транзакция", tx.hash)
+            self.log.info("Добавлена транзакция", tx.Hash)
             self.network_manager.list_need_broadcast_transaction.append(tx)
 
     def send_peers_list(self):
@@ -209,13 +209,13 @@ class BlockchainNode:
 
         block.signer = self.address
 
-        last_block_time = self.chain.last_block().time if self.chain.last_block() is not None else self.chain.time()
+        last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
         # last_block_date = datetime.datetime.fromtimestamp(last_block_time)
 
         time_candidat = last_block_time + Protocol.BLOCK_TIME_INTERVAL
         # синхронизированное время цепи
-        block.time = time_candidat if time_candidat > self.chain.time_ntpt.get_corrected_time() else self.chain.time_ntpt.get_corrected_time()
+        block.timestamp_seconds = time_candidat if time_candidat > self.chain.time_ntpt.get_corrected_time() else self.chain.time_ntpt.get_corrected_time()
 
         # print(f"Create time: last_block_date{last_block_date}  candidat:{datetime.datetime.fromtimestamp(block.time)}")
 
@@ -273,7 +273,7 @@ class BlockchainNode:
                 new_block = self.create_block()
 
                 if self.chain.add_block_candidate(new_block):
-                    print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
+                    print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.Hash,
                           new_block.datetime())
                     self.network_manager.distribute_block(self.chain.block_candidate)
 
@@ -305,7 +305,7 @@ class BlockchainNode:
                         self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
 
                         self.log.info(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
-                        if self.protocol.is_key_block(self.chain.last_block().hash):
+                        if self.protocol.is_key_block(self.chain.last_block().Hash):
                             self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
                         self.log.info("*******************")
                         continue
@@ -319,7 +319,7 @@ class BlockchainNode:
 
                 time_to_close = Protocol.BLOCK_TIME_INTERVAL_LOG
                 if self.chain.last_block() is not None:
-                    time_block = self.chain.last_block().time
+                    time_block = self.chain.last_block().timestamp_seconds
                     time_to_close_block = self.time_ntpt.get_corrected_time() - time_block
                     if time_to_close_block < time_to_close and time_to_close_block > 0:
                         time_to_close = time_to_close - time_to_close_block

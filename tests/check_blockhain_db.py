@@ -1,6 +1,6 @@
 from storage.chain import Chain
 from core.protocol import Protocol
-from core.block import Block
+from core.Block import Block
 
 if __name__ == '__main__':
     """ """
@@ -28,10 +28,10 @@ if __name__ == '__main__':
             b0 : Block = chain.blocks[i-1]
             b1 : Block= chain.blocks[i]
 
-            t = b1.time - b0.time
+            t = b1.timestamp_seconds - b0.timestamp_seconds
             list_time.append(t)
 
-            print(block.datetime(), b0.hash, block.signer)
+            print(block.datetime(), b0.Hash, block.signer)
             # print(b0.hash, b1.previousHash, t)
 
     print(list_time)

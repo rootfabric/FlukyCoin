@@ -1,6 +1,6 @@
 from core.protocol import Protocol
 from storage.chain import Chain
-from core.block import Block
+from core.Block import Block
 from core.transaction import Transaction
 
 def create_block(chain, address):
@@ -11,13 +11,13 @@ def create_block(chain, address):
 
     block.signer = address
 
-    last_block_time = chain.last_block().time if chain.last_block() is not None else chain.time()
+    last_block_time = chain.last_block().timestamp_seconds if chain.last_block() is not None else chain.timestamp_seconds()
 
     # last_block_date = datetime.datetime.fromtimestamp(last_block_time)
 
     time_candidat = last_block_time + Protocol.block_interval()
     # синхронизированное время цепи
-    block.time = time_candidat if time_candidat > chain.time_ntpt.get_corrected_time() else chain.time_ntpt.get_corrected_time()
+    block.timestamp_seconds = time_candidat if time_candidat > chain.time_ntpt.get_corrected_time() else chain.time_ntpt.get_corrected_time()
 
     # print(f"Create time: last_block_date{last_block_date}  candidat:{datetime.datetime.fromtimestamp(block.time)}")
 

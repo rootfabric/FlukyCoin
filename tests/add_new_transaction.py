@@ -9,7 +9,7 @@ if __name__ == '__main__':
     t = Transaction("coinbase", random.randint(0,100000), "2", "100")
     t.make_hash()
     # print(t.get_data_hash().hexdigest())
-    print(t.hash)
+    print(t.txhash)
 
     # client = Client(host = "127.0.0.1", port = 9334)
     client = Client(host = "192.168.0.26", port = 9334)

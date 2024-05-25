@@ -1,6 +1,6 @@
 import datetime
 
-from core.block import Block
+from core.Block import Block
 import base64
 # from crypto.xmss import *
 # # Пример использования класса
@@ -191,7 +191,7 @@ class Chain():
             # print("Chain: ошибка проверки кандидата, хеш не подходит")
             return False
 
-        if block.time<self.last_block().time:
+        if block.timestamp_seconds<self.last_block().timestamp_seconds:
             # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
             return False
 
@@ -206,13 +206,13 @@ class Chain():
         # первый блок
         if self.last_block() is None and self.block_candidate is None:
             self.block_candidate = copy.deepcopy(block)
-            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+            self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
             return True
 
         # print("Исходный block:", block)
         if self.block_candidate is None:
             self.block_candidate = copy.deepcopy(block)
-            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+            self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
             return True
 
         if block.hash_block() == self.block_candidate.hash_block():
@@ -222,7 +222,7 @@ class Chain():
         if not self.validate_candidate(block):
             return False
 
-        self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if self.last_block() is None else self.last_block().hash
+        self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if self.last_block() is None else self.last_block().Hash
 
         is_key_block = self.protocol.is_key_block(self.previousHash)
         # print(f"Key block: {is_key_block}")
@@ -240,7 +240,7 @@ class Chain():
                 # print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
                 self.block_candidate = copy.deepcopy(block)
                 # print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
-                self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+                self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
                 return True
 
         win_address = self.protocol.winner(self.block_candidate.signer, block.signer,
@@ -253,7 +253,7 @@ class Chain():
             return False
         # новый победитель
         self.block_candidate = copy.deepcopy(block)
-        self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+        self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
 
         return True
 
@@ -277,7 +277,7 @@ class Chain():
             return False
         # print(f"Check: {self.blocks_count()} txs[{self.mempool.size()}] delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.2f}  {self.block_candidate.hash_block()[:5]}...{self.block_candidate.hash_block()[-5:]}  singer: ...{self.block_candidate.signer [-5:]}")
 
-        if self.block_candidate.time >self.time_ntpt.get_corrected_time():
+        if self.block_candidate.timestamp_seconds >self.time_ntpt.get_corrected_time():
 
             return False
 

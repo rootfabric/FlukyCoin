@@ -657,11 +657,10 @@ class NetworkManager:
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
             # если блок близок к закрытию, то ждем следующий
             if self.time_ntpt.get_corrected_time() - self.chain.last_block().time < Protocol.BLOCK_TIME_INTERVAL / 5:
-                self.log.info("Блоки синхронизированные:", self.chain.blocks_count())
-                self.log.info(self.chain.last_block_hash())
 
                 self.synced = True
-                self.log.info("Нода синхронизированна!")
+                self.log.info("Блоки синхронизированные:", self.chain.blocks_count())
+                self.log.info("Нода синхронизированна! последний блок: ", self.log.info(self.chain.last_block_hash()))
 
         # if self.synced and self.chain.blocks_count() < chain_size and chain_size != 0:
         #     self.synced = False

@@ -38,8 +38,8 @@ class Transaction:
     def to_json(self, for_sign = False):
         # Сериализует объект в строку JSON
         d = self.as_dict()
-        print("to_json", d)
         if for_sign:
+            # данные для подбиси. Убираем поля которых не должно быть
             d['public_key'] = None
             d['signature'] = None
             d['txhash'] = None
@@ -196,7 +196,7 @@ if __name__ == '__main__':
     tt.make_sign(xmss)
     json_transaction = tt.to_json()
     print(json_transaction)
-
+    tt.validate()
 
     # tt = TransferTransaction("1", ["2", "3", "4"], [100, 100, 100])
     # tt.nonce = 1
@@ -212,4 +212,5 @@ if __name__ == '__main__':
 
     tt2 = Transaction.from_json(json_transaction)
     print(tt2.to_json())
-    tt2.validate()
+    if tt2.validate():
+        print("Валидация успешна")

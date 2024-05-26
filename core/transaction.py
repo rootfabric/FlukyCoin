@@ -1,8 +1,8 @@
 import json
 import hashlib
 from core.protocol import Protocol
-from crypto.xmss import XMSS
-
+from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
+from tools.logger import Log
 class Transaction:
 
     def __init__(self, tx_type, fromAddress, toAddress, amount, fee=0):
@@ -16,6 +16,7 @@ class Transaction:
         self.txhash = None
         self.public_key = None
         self.signature = None
+        self.log = Log()
 
     def as_dict(self):
         # Возвращает представление объекта в виде словаря
@@ -34,9 +35,14 @@ class Transaction:
             data['message_data'] = self.message_data[:Protocol.MAX_MESSAGE_SIZE]
         return data
 
-    def to_json(self):
+    def to_json(self, for_sign = False):
         # Сериализует объект в строку JSON
         d = self.as_dict()
+        print("to_json", d)
+        if for_sign:
+            d['public_key'] = None
+            d['signature'] = None
+            d['txhash'] = None
         return json.dumps(d)
 
     @classmethod
@@ -61,7 +67,7 @@ class Transaction:
         """
         This method returns the hashes of the transaction data.
         """
-        return hashlib.sha256(self.to_json().encode())
+        return hashlib.sha256(self.to_json(for_sign = True).encode())
 
     def make_hash(self):
         """ Идентификатор транзакции """
@@ -74,6 +80,36 @@ class Transaction:
             self.signature = signature.to_base64()
             self.public_key = xmss.keyPair.PK.to_hex()
             print(f"Подпись размер: {len(self.signature)} ")
+
+    def validate(self):
+        """ проверка транзакции """
+
+        old_hash = self.txhash
+
+        self.make_hash()
+        if old_hash != self.txhash:
+            self.log.error("Ошибка валидации транзакции. не совпадает хеш")
+            return False
+
+        PK2 = XMSSPublicKey.from_hex(self.public_key)
+        if self.fromAddress !=PK2.generate_address():
+            self.log.error("Ошибка валидации транзакции. не совпадает отправитель")
+            return False
+
+        signature = SigXMSS.from_base64(self.signature)
+
+        # Верификация подписи
+        verf = XMSS_verify(signature, bytes.fromhex(self.txhash), PK2)
+        if not verf:
+            self.log.error("Ошибка валидации транзакции. не совпадает подпись")
+            return False
+
+        """ 
+        Валидация по цепи
+        """
+
+        return True
+
 
 class TransferTransaction(Transaction):
     def __init__(self, fromAddress, toAddress, amount, fee=0, message_data=None):
@@ -91,6 +127,8 @@ class TransferTransaction(Transaction):
         tx = cls(fromAddress, toAddress, amount, fee, message_data)
         tx.nonce = data.get('nonce')
         tx.txhash = data.get('txhash')
+        tx.public_key = data.get('public_key')
+        tx.signature = data.get('signature')
         return tx
 
 
@@ -109,6 +147,7 @@ class SlaveTransaction(Transaction):
             'slaveAddress': self.slaveAddress,
             'slaveTypes': self.slaveTypes
         })
+
         return data
 
     @classmethod
@@ -120,6 +159,9 @@ class SlaveTransaction(Transaction):
         tx = cls(fromAddress, slaveAddress, slaveTypes, fee)
         tx.nonce = data.get('nonce')
         tx.txhash = data.get('txhash')
+        tx.public_key = data.get('public_key')
+        tx.signature = data.get('signature')
+
         return tx
 
 
@@ -139,29 +181,35 @@ class CoinbaseTransaction(Transaction):
 
 
 if __name__ == '__main__':
-    t = CoinbaseTransaction("2", 100)
-    t.nonce = 1
-    t.make_hash()
-    print(t.to_json())
+    # t = CoinbaseTransaction("2", 100)
+    # t.nonce = 1
+    # t.make_hash()
+    # print(t.to_json())
 
 
     xmss = XMSS.create()
     print(xmss.address)
 
-    tt = TransferTransaction("1", ["2"], [100], message_data=["test message"])
+    tt = TransferTransaction(xmss.address, ["2"], [100], message_data=["test message"])
     tt.nonce = 1
     tt.make_hash()
     tt.make_sign(xmss)
-    print(tt.to_json())
+    json_transaction = tt.to_json()
+    print(json_transaction)
 
-    tt = TransferTransaction("1", ["2", "3", "4"], [100, 100, 100])
-    tt.nonce = 1
-    tt.make_hash()
-    tt.make_sign(xmss)
-    print(tt.to_json())
 
-    st = SlaveTransaction("1", ["slaveAddress123"], ["TRANSFER", "MINING"], 0.01)
-    st.nonce = 1
-    st.make_hash()
-    st.make_sign(xmss)
-    print(st.to_json())
+    # tt = TransferTransaction("1", ["2", "3", "4"], [100, 100, 100])
+    # tt.nonce = 1
+    # tt.make_hash()
+    # tt.make_sign(xmss)
+    # print(tt.to_json())
+    #
+    # st = SlaveTransaction("1", ["slaveAddress123"], ["TRANSFER", "MINING"], 0.01)
+    # st.nonce = 1
+    # st.make_hash()
+    # st.make_sign(xmss)
+    # print(st.to_json())
+
+    tt2 = Transaction.from_json(json_transaction)
+    print(tt2.to_json())
+    tt2.validate()

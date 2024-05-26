@@ -1,6 +1,6 @@
 import time
 
-from core.transaction import Transaction
+from core.transaction import TransferTransaction
 from core.Block import Block
 from core.protocol import Protocol
 
@@ -15,9 +15,11 @@ if __name__ == '__main__':
     print(xmss.address)
 
 
-    t = Transaction("coinbase", random.randint(0,100000), "2", "100")
+    t = TransferTransaction("aaaaa", ['bbbbb'], ["100000000"], "1000")
+    t.nonce = 1
     t.make_hash()
-    # print(t.get_data_hash().hexdigest())
+
+    print(t.to_json())
 
 
 

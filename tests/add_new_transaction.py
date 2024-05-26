@@ -19,5 +19,5 @@ if __name__ == '__main__':
     print(response)
 
     response = client.send_request(
-        {'command': 'tx', 'tx_data': {'tx_json':t.to_json(), 'tx_sign':t.sign}})
+        {'command': 'tx', 'tx_data': {'tx_json':t.to_json(), 'tx_sign':t.signature}})
     print(response)

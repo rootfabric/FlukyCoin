@@ -411,7 +411,7 @@ class NetworkManager:
                     # клиенту нужна эта транзакция
                     response = client.send_request(
                         {'command': 'tx',
-                         'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.sign}})
+                         'tx_data': {'tx_json': tx_to_broadcast.to_json(), 'tx_sign': tx_to_broadcast.signature}})
                     # self.log.info(response)
 
     def distribute_block(self, block, address=None, ban_address=None):

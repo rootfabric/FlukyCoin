@@ -117,7 +117,7 @@ class BlockchainNode:
     def add_transaction(self, transaction_data):
         """ Добавление транзакции """
         tx = Transaction.from_json(transaction_data['tx_json'])
-        tx.sign = tx.sign_from_str(transaction_data['tx_sign'])
+        tx.signature = tx.sign_from_str(transaction_data['tx_sign'])
         tx.make_hash()
 
         if self.mempool.add_transaction(tx):
@@ -172,7 +172,7 @@ class BlockchainNode:
 
     def get_transaction(self, txid):
         tx = self.mempool.transactions.get(txid)
-        return {'command': 'tx', 'tx_data': {'tx_json': tx.to_json(), 'tx_sign': tx.sign}}
+        return {'command': 'tx', 'tx_data': {'tx_json': tx.to_json(), 'tx_sign': tx.signature}}
 
     def add_peer(self, peer):
         if peer not in self.network_manager.known_peers:

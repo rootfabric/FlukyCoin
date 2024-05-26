@@ -28,6 +28,15 @@ class Protocol:
                               b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
                               b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
+    hash_functions = {
+        0: hashlib.sha256(),
+        1: lambda: hashlib.shake_128(),  # Функция возвращает объект хеша
+        2: lambda: hashlib.shake_256()  # Функция возвращает объект хеша
+    }
+
+    # по умолчанию функция хехирования
+    DEFAULT_HASH_FUNCTION_CODE = 1
+    DEFAULT_HEIGHT = 10
     @staticmethod
     def find_longest_common_substring(s1, s2):
         match = difflib.SequenceMatcher(None, s1, s2).find_longest_match(0, len(s1), 0, len(s2))

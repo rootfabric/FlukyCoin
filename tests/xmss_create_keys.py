@@ -15,6 +15,8 @@ if __name__ == '__main__':
     # print(len(sign.to_str()))
     # print(sign.to_str())
 
+    print("Address s_valid", keys.keyPair.PK.is_valid_address(keys.address))
+
     pk_str = keys.keyPair.PK.to_str()
     # PK = keys.keyPair.PK
     # распаковываем подписи

@@ -26,6 +26,7 @@ from string import ascii_letters, digits
 from hashlib import sha256
 from math import floor, log2, log, ceil
 from crypto.world_list import word_list
+from core.protocol import Protocol
 
 
 class XMSSPrivateKey:
@@ -37,6 +38,11 @@ class XMSSPrivateKey:
         self.root_value = None
         self.SEED = None
 
+hash_functions = {
+            0: hashlib.sha256(),
+            1: lambda: hashlib.shake_128(),  # Функция возвращает объект хеша
+            2: lambda: hashlib.shake_256()  # Функция возвращает объект хеша
+        }
 
 class XMSSPublicKey:
 
@@ -48,11 +54,7 @@ class XMSSPublicKey:
         self.height = height
         self.n = n
         self.w = w
-        self.hash_functions = {
-            0: hashlib.sha256,
-            1: lambda: hashlib.shake_128(),  # Функция возвращает объект хеша
-            2: lambda: hashlib.shake_256()  # Функция возвращает объект хеша
-        }
+        self.hash_functions = Protocol.hash_functions
         self.address_start = ""
 
     def verify_sign(self, signature_str, message):
@@ -64,7 +66,7 @@ class XMSSPublicKey:
 
         return verification_result
 
-    def generate_address(self, hash_function_code=2):
+    def generate_address(self, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE):
         # Определение параметров
         tree_height = self.height
         signature_scheme_code = 0  # XMSS
@@ -113,7 +115,7 @@ class XMSSPublicKey:
             checksum = decoded_address[-4:]
 
             # Выбор функции хеширования
-            hash_func = self.hash_functions.get(hash_function_code, lambda: hashlib.shake_256())()
+            hash_func = self.hash_functions.get(hash_function_code, lambda: hashlib.shake_128())()
 
             # Повторное вычисление контрольной суммы
             hash_func.update(main_part)
@@ -508,10 +510,17 @@ def RAND_HASH(left: bytearray, right: bytearray, SEED: str, adrs: ADRS):
     return H(KEY, xor(left, BM_0) + xor(right, BM_1))
 
 
-def pseudorandom_function(seed, n):
+def pseudorandom_function(seed, n, hash_function_code = Protocol.DEFAULT_HASH_FUNCTION_CODE):
     # Создаем хеш из сида, предполагая, что seed является строкой.
     seed_bytes = seed.encode('utf-8')  # Преобразуем строку сида в байты
-    hash_digest = hashlib.sha256(seed_bytes).digest()  # Создаем хеш SHA-256 от сида
+    # hash_digest = hashlib.sha256(seed_bytes).digest()  # Создаем хеш SHA-256 от сида
+    # Выбор функции хеширования
+    hash_func = hash_functions.get(hash_function_code, lambda: hashlib.shake_128())()
+    # hash_func.update(seed_bytes)
+    # hash_func = hashlib.shake_256()
+
+    hash_func.update(seed_bytes)
+    hash_digest = hash_func.digest(n)
 
     # Обрезаем или дополняем хеш до нужной длины n, возвращаем как bytearray
     return bytearray(hash_digest)[:n]
@@ -609,13 +618,13 @@ def XMSS_keyGen(height: int, n: int, w: int in {4, 16}) -> XMSSKeypair:
     return KeyPair
 
 
-def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int) -> XMSSKeypair:
+def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE) -> XMSSKeypair:
     len_1, len_2, len_all = compute_lengths(n, w)
     wots_sk = []
 
     # Изменяем генерацию WOTS ключей, используя уникальный сид для каждого ключа
     for i in range(0, 2 ** height):
-        unique_seed = pseudorandom_function(seed + str(i), n)  # Генерация уникального сида для каждого ключа
+        unique_seed = pseudorandom_function(seed + str(i), n, hash_function_code)  # Генерация уникального сида для каждого ключа
         wots_sk.append(WOTS_genSK_from_seed(len_all, n, unique_seed))
 
     SK = XMSSPrivateKey()
@@ -873,12 +882,16 @@ import os
 import struct
 
 
-def create_extended_secret_key(height):
+def create_extended_secret_key(hash_function_code = Protocol.DEFAULT_HASH_FUNCTION_CODE, height = Protocol.DEFAULT_HEIGHT ):
     # Создаем секретный ключ размером 32 байта, чтобы общий размер с параметрами был 36 байт
     secret_key = os.urandom(35)  # 32 байта = 256 бит
 
     # Пакуем параметры в байты
-    parameters = struct.pack('B', height)  # 1 + 1 + 2 = 4 байта
+    # parameters = struct.pack('B', height)  # 1 + 1 + 2 = 4 байта
+
+    # Кодируем параметры в один байт
+    combined_parameters = (hash_function_code << 6) | height
+    parameters = struct.pack('B', combined_parameters)
 
     # Добавляем параметры к ключу
     extended_key = parameters + secret_key  # Общий размер: 4 + 32 = 36 байт
@@ -888,12 +901,18 @@ def create_extended_secret_key(height):
 
 def extract_parameters_from_key(extended_key):
     # Извлекаем параметры
-    height = struct.unpack('B', extended_key[:1])[0]
+    # height = struct.unpack('B', extended_key[:1])[0]
+
+    combined_parameters = struct.unpack('B', extended_key[:1])[0]
+
+    # Расшифровываем значения параметров
+    hash_function_code = (combined_parameters >> 6) & 0b11
+    height = combined_parameters & 0b111111
 
     # Остальная часть ключа
     # secret_key = extended_key[1:]
 
-    return height, extended_key
+    return hash_function_code, height, extended_key
 
 
 def key_to_seed_phrase(key):
@@ -932,7 +951,7 @@ class XMSS():
         self.keyPair = key_pair
 
     @classmethod
-    def create(cls, height=5, key=None, seed_phrase=None):
+    def create(cls, height=5, hash_function_code = Protocol.DEFAULT_HASH_FUNCTION_CODE, key=None, seed_phrase=None):
         # Установка параметров
         n = 32
         # n = 10
@@ -940,21 +959,21 @@ class XMSS():
 
         if key is None:
             # Создание расширенного ключа и его кодирование в сид-фразу
-            extended_key = create_extended_secret_key(height)
+            extended_key = create_extended_secret_key(hash_function_code , height)
         else:
             # восстанавливаем из ключа
             if isinstance(key, str):
                 key = bytes.fromhex(key)
-            height, extended_key = extract_parameters_from_key(key)
+            hash_function_code, height, extended_key = extract_parameters_from_key(key)
 
         if seed_phrase is None:
             seed_phrase = key_to_seed_phrase(extended_key)
 
         # Генерация пары ключей на основе сида
-        key_pair = XMSS_keyGen_from_seed(seed_phrase, height, n, w)
+        key_pair = XMSS_keyGen_from_seed(seed_phrase, height, n, w, hash_function_code)
 
         # Создание адреса
-        address = key_pair.PK.generate_address()
+        address = key_pair.PK.generate_address(hash_function_code)
 
         # Создание экземпляра XMSS с нужными параметрами
         return cls(height, n, w, seed_phrase, extended_key, address, key_pair)

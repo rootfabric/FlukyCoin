@@ -13,26 +13,22 @@ class Transaction:
         self.nonce = None
         self.fee = fee
         self.message_data = None
-        self.thash = None
+        self.txhash = None
         self.sign = None
-
-    # @property
-    # def txhash(self) -> bytes:
-    #     return self.get_data_hash()
 
     def as_dict(self):
         # Возвращает представление объекта в виде словаря
         data = {
             'tx_type': self.tx_type,
             'nonce': self.nonce,
-            'thash': self.thash,
+            'txhash': self.txhash,
             'fromAddress': self.fromAddress,
             'toAddress': self.toAddress,
             'amount': self.amount,
             'fee': self.fee
         }
         if self.message_data is not None:
-            data['message_data'] = self.message_data[:Protocol.MAX_MESSAGE_SIZE]  # Конвертируем Uint8Array в список для сериализации
+            data['message_data'] = self.message_data[:Protocol.MAX_MESSAGE_SIZE]
         return data
 
     def to_json(self):
@@ -41,10 +37,22 @@ class Transaction:
         return json.dumps(d)
 
     @classmethod
-    def from_json(cls, json_str):
-        # Создает и возвращает экземпляр класса из строки JSON
-        data = json.loads(json_str)
-        return cls(**data)
+    def from_json(cls, json_data):
+        # Создает и возвращает экземпляр класса из строки JSON или словаря
+        if isinstance(json_data, str):
+            data = json.loads(json_data)
+        else:
+            data = json_data
+
+        tx_type = data.get('tx_type')
+        if tx_type == 'transfer':
+            return TransferTransaction.from_dict(data)
+        elif tx_type == 'slave':
+            return SlaveTransaction.from_dict(data)
+        elif tx_type == 'coinbase':
+            return CoinbaseTransaction.from_dict(data)
+        else:
+            raise ValueError(f"Unknown transaction type: {tx_type}")
 
     def get_data_hash(self) -> bytes:
         """
@@ -54,8 +62,7 @@ class Transaction:
 
     def make_hash(self):
         """ Идентификатор транзакции """
-        self.thash = self.get_data_hash().hexdigest()
-        # print(self.thash)
+        self.txhash = self.get_data_hash().hexdigest()
 
     def sign_from_str(self, sign_str):
         """  требуется серилизация """
@@ -66,7 +73,20 @@ class TransferTransaction(Transaction):
     def __init__(self, fromAddress, toAddress, amount, fee=0, message_data=None):
         super().__init__('transfer', fromAddress, toAddress, amount, fee)
         if message_data:
-            self.message_data = message_data  # Преобразование message_data в Uint8Array
+            self.message_data = message_data[:Protocol.MAX_MESSAGE_SIZE]  # Преобразование message_data в Uint8Array
+
+    @classmethod
+    def from_dict(cls, data):
+        fromAddress = data['fromAddress']
+        toAddress = data['toAddress']
+        amount = data['amount']
+        fee = data['fee']
+        message_data = data.get('message_data')
+        tx = cls(fromAddress, toAddress, amount, fee, message_data)
+        tx.nonce = data.get('nonce')
+        tx.txhash = data.get('txhash')
+        return tx
+
 
 class SlaveTransaction(Transaction):
     def __init__(self, fromAddress, slaveAddress, slaveTypes, fee=0):
@@ -83,10 +103,31 @@ class SlaveTransaction(Transaction):
         })
         return data
 
+    @classmethod
+    def from_dict(cls, data):
+        fromAddress = data['fromAddress']
+        slaveAddress = data['slaveAddress']
+        slaveTypes = data['slaveTypes']
+        fee = data['fee']
+        tx = cls(fromAddress, slaveAddress, slaveTypes, fee)
+        tx.nonce = data.get('nonce')
+        tx.txhash = data.get('txhash')
+        return tx
+
 
 class CoinbaseTransaction(Transaction):
     def __init__(self, toAddress, amount):
         super().__init__('coinbase', Protocol.coinbase_address.hex(), toAddress, amount, 0)
+        self.make_hash()
+
+    @classmethod
+    def from_dict(cls, data):
+        toAddress = data['toAddress']
+        amount = data['amount']
+        tx = cls(toAddress, amount)
+        tx.nonce = data.get('nonce')
+        tx.txhash = data.get('txhash')
+        return tx
 
 
 if __name__ == '__main__':

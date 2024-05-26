@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import time
 
-from core.transaction import Transaction
+from core.transaction import Transaction, CoinbaseTransaction, TransferTransaction, SlaveTransaction
 from core.protocol import Protocol
 from core.BlockHeader import BlockHeader
 import os, json
@@ -70,15 +70,19 @@ class Block:
 
         # coinbase_tx = CoinBase.create(dev_config, total_reward_amount, miner_address, block_number)
 
-        coinbase_tx = Transaction(tx_type="coinbase", fromAddress=Protocol.coinbase_address.hex(),
-                                  toAddress=address_reward, amount=block_reward)
+        coinbase_tx = CoinbaseTransaction(toAddress=address_reward, amount=block_reward)
+        # количество выплат с генезис адреса
+        coinbase_tx.nonce = block_number+1
 
-        h = coinbase_tx.txhash.hexdigest()
+
+        h = coinbase_tx.txhash
         hashedtransactions.append(h)
+        block.transactions.append(coinbase_tx)
         # Block._copy_tx_pbdata_into_block(block, coinbase_tx)  # copy memory rather than sym link
         #
         for tx in transactions:
             hashedtransactions.append(tx.txhash)
+            block.transactions.append(tx)
         #     Block._copy_tx_pbdata_into_block(block, tx)  # copy memory rather than sym link
         #
         block.merkle_root = merkle_tx_hash(hashedtransactions)

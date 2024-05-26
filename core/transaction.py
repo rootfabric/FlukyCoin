@@ -10,8 +10,7 @@ class Transaction:
         self.toAddress = toAddress
         self.amount = amount
         self.fee = fee
-        self.txhash = None
-
+        self.thash = None
         self.sign = None
 
     @property
@@ -46,7 +45,7 @@ class Transaction:
 
     def make_hash(self):
         """ Идентификатор транзакции """
-        self.txhash = self.get_data_hash().hexdigest()
+        self.hash = self.get_data_hash().hexdigest()
 
     def sign_from_str(self, sign_str):
         """  требуется серилизация """

@@ -6,15 +6,13 @@ import math
 import uuid
 
 
-
-
 class Protocol:
     VERSION = "0.1"
     # ожидание подсоединения активных пиров
     WAIT_ACTIVE_PEERS_BEFORE_START = 30
 
     BLOCK_TIME_INTERVAL = 30
-    BLOCK_TIME_INTERVAL_LOG =BLOCK_TIME_INTERVAL/4
+    BLOCK_TIME_INTERVAL_LOG = BLOCK_TIME_INTERVAL / 4
 
     # 11 2-4 в день
     KEY_BLOCK_POROG = 11
@@ -25,6 +23,10 @@ class Protocol:
     coinbase_address = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
                        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
+    prev_hash_genesis_block = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
+                              b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
+                              b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
+                              b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
     @staticmethod
     def find_longest_common_substring(s1, s2):
@@ -64,8 +66,8 @@ class Protocol:
         return sum_of_codes % 2 == 0
 
     @staticmethod
-    def sequence(previousHash):
-        return base58.b58encode(previousHash).decode('utf-8').lower()
+    def sequence(prevHash):
+        return base58.b58encode(prevHash).decode('utf-8').lower()
 
     # def reward(self, addrr, sequence):
     #     ratio1, lcs = self.find_longest_common_substring(sequence, addrr.lower())

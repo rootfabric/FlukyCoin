@@ -37,16 +37,16 @@ class Block:
     @staticmethod
     def create(
             block_number: int,
-            prev_headerhash: bytes,
+            previousHash: bytes,
             prev_timestamp: int,
             transactions: list,
-            miner_PK: bytes,
+            miner_xmss: bytes,
             address_reward
     ):
 
         block = Block()
         block.block_number = block_number
-        block.previousHash = prev_headerhash
+        block.previousHash = Protocol.prev_hash_genesis_block if previousHash is None else previousHash
 
         # Process transactions
         hashedtransactions = []
@@ -57,8 +57,8 @@ class Block:
 
         # Prepare coinbase tx
         # total_reward_amount = BlockHeader.block_reward_calc(block_number, dev_config) + fee_reward
-
-        block_reward, ratio, lcs = Protocol.reward(block.signer, Protocol.sequence(block.previousHash))
+        sec =  Protocol.sequence(block.previousHash)
+        block_reward, ratio, lcs = Protocol.reward(block.signer,sec)
 
         total_reward_amount = block_reward + fee_reward
 
@@ -69,28 +69,28 @@ class Block:
 
 
         hashedtransactions.append(coinbase_tx.txhash)
-        Block._copy_tx_pbdata_into_block(block, coinbase_tx)  # copy memory rather than sym link
-
-        for tx in transactions:
-            hashedtransactions.append(tx.txhash)
-            Block._copy_tx_pbdata_into_block(block, tx)  # copy memory rather than sym link
-
-        txs_hash = merkle_tx_hash(hashedtransactions)  # FIXME: Find a better name, type changes
-
-        tmp_blockheader = BlockHeader.create(dev_config=dev_config,
-                                             blocknumber=block_number,
-                                             prev_headerhash=prev_headerhash,
-                                             prev_timestamp=prev_timestamp,
-                                             hashedtransactions=txs_hash,
-                                             fee_reward=fee_reward,
-                                             seed_height=seed_height,
-                                             seed_hash=seed_hash)
-
-        block.blockheader = tmp_blockheader
-
-        block._data.header.MergeFrom(tmp_blockheader.pbdata)
-
-        block.set_nonces(dev_config, 0, 0)
+        # Block._copy_tx_pbdata_into_block(block, coinbase_tx)  # copy memory rather than sym link
+        #
+        # for tx in transactions:
+        #     hashedtransactions.append(tx.txhash)
+        #     Block._copy_tx_pbdata_into_block(block, tx)  # copy memory rather than sym link
+        #
+        # txs_hash = merkle_tx_hash(hashedtransactions)  # FIXME: Find a better name, type changes
+        #
+        # tmp_blockheader = BlockHeader.create(dev_config=dev_config,
+        #                                      blocknumber=block_number,
+        #                                      prev_headerhash=prev_headerhash,
+        #                                      prev_timestamp=prev_timestamp,
+        #                                      hashedtransactions=txs_hash,
+        #                                      fee_reward=fee_reward,
+        #                                      seed_height=seed_height,
+        #                                      seed_hash=seed_hash)
+        #
+        # block.blockheader = tmp_blockheader
+        #
+        # block._data.header.MergeFrom(tmp_blockheader.pbdata)
+        #
+        # block.set_nonces(dev_config, 0, 0)
 
         return block
 

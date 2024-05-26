@@ -75,7 +75,7 @@ class Block:
         #     hashedtransactions.append(tx.txhash)
         #     Block._copy_tx_pbdata_into_block(block, tx)  # copy memory rather than sym link
         #
-        # txs_hash = merkle_tx_hash(hashedtransactions)  # FIXME: Find a better name, type changes
+        # txs_hash = merkle_tx_hash(hashedtransactions)
         #
         # tmp_blockheader = BlockHeader.create(dev_config=dev_config,
         #                                      blocknumber=block_number,

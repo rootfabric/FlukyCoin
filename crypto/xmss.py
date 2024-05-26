@@ -54,6 +54,14 @@ class XMSSPublicKey:
             2: lambda: hashlib.shake_256()  # Функция возвращает объект хеша
         }
         self.address_start = ""
+    def verify_sign(self, signature_str, message):
+        """ Проверка подписи  """
+        signature = SigXMSS.from_str(signature_str)
+
+        # Верификация подписи
+        verification_result = XMSS_verify(signature, message, self)
+
+        return verification_result
 
     def generate_address(self, hash_function_code=2):
         # Определение параметров
@@ -883,9 +891,9 @@ def extract_parameters_from_key(extended_key):
     height = struct.unpack('B', extended_key[:1])[0]
 
     # Остальная часть ключа
-    secret_key = extended_key[1:]
+    # secret_key = extended_key[1:]
 
-    return height, secret_key
+    return height, extended_key
 
 def key_to_seed_phrase(key):
     if len(key) != 36:
@@ -923,14 +931,21 @@ class XMSS():
         self.keyPair = key_pair
 
     @classmethod
-    def create(cls, height):
+    def create(cls, height=5, key = None):
         # Установка параметров
         # n = 32
         n = 10
         w = 16
 
-        # Создание расширенного ключа и его кодирование в сид-фразу
-        extended_key = create_extended_secret_key(height)
+        if key is None:
+            # Создание расширенного ключа и его кодирование в сид-фразу
+            extended_key = create_extended_secret_key(height)
+        else:
+            # восстанавливаем из ключа
+            if isinstance(key, str):
+                key = bytes.fromhex(key)
+            height, extended_key = extract_parameters_from_key(key)
+
         seed_phrase = key_to_seed_phrase(extended_key)
 
         # Генерация пары ключей на основе сида

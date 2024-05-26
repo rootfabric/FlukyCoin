@@ -34,6 +34,7 @@ if __name__ == '__main__':
     # Тестирование
     height, n, w = 6, 10, 16
     extended_key = create_extended_secret_key(height)
+    print(extended_key)
     print("Extended Secret Key:", extended_key.hex())
 
     seed_phrase = key_to_seed_phrase(extended_key)
@@ -41,6 +42,7 @@ if __name__ == '__main__':
 
     restored_extended_key = seed_phrase_to_key(seed_phrase)
     restored_height, restored_secret_key = extract_parameters_from_key(restored_extended_key)
+    print(restored_secret_key)
     print("Restored Parameters:", restored_height)
     print("Restored Secret Key:", restored_secret_key.hex())
-    print("Keys are the same:", extended_key[1:] == restored_secret_key)
+    print("Keys are the same:", extended_key == restored_secret_key)

@@ -21,13 +21,25 @@ if __name__ == '__main__':
     # print(t.txhash.hexdigest())
 
     t = 1716713605.5979075
-    block = Block().create(0, None, t,[], address_miner='1234567', address_reward="aaaaa")
-    # hash_block = block.calculate_hash()
+    block = Block.create(0, None, t,[], address_miner=xmss.address, address_reward="aaaaa")
+    print(block.previousHash)
     print(block.Hash)
+    print(xmss.address)
 
-    sign = block.make_sign(xmss).hex()
+    block.make_sign(xmss)
 
-    print(sign)
+    json_block =block.to_json()
+    print(json_block)
+
+
+    block2 = Block.from_json(json_block)
+    print(block2.to_json())
+
+    if not block2.validate():
+        print("Ошибка валидации")
+    else:
+        print("валидация ок")
+
 
 
 

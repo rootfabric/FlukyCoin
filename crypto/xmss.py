@@ -59,7 +59,7 @@ class XMSSPublicKey:
 
     def verify_sign(self, signature_str, message):
         """ Проверка подписи  """
-        signature = SigXMSS.from_str(signature_str)
+        signature = SigXMSS.from_base64(signature_str)
 
         # Верификация подписи
         verification_result = XMSS_verify(signature, message, self)
@@ -145,12 +145,26 @@ class XMSSPublicKey:
 
     @classmethod
     def from_str(cls, text_pk):
-        return XMSSPublicKey.from_json(XMSSPublicKey.from_bytes(base58.b58decode(text_pk)))
+        return XMSSPublicKey.from_json(XMSSPublicKey._from_bytes(base58.b58decode(text_pk)))
+
+    @classmethod
+    def _from_bytes(cls, bytes_data):
+        # Распаковка и десериализация объекта из сжатых байтов
+        return pickle.loads(zlib.decompress(bytes_data))
 
     @classmethod
     def from_bytes(cls, bytes_data):
         # Распаковка и десериализация объекта из сжатых байтов
-        return pickle.loads(zlib.decompress(bytes_data))
+        return XMSSPublicKey.from_json(pickle.loads(zlib.decompress(bytes_data)))
+
+    def to_hex(self):
+        return self.to_bytes().hex()
+
+    @classmethod
+    def from_hex(cls, pk_hex):
+        return XMSSPublicKey.from_bytes(bytes.fromhex(pk_hex))
+
+
 
     # def to_bytes(self):
     #     # Кодируем OID и SEED в байты
@@ -215,17 +229,24 @@ class SigXMSS:
         # Сериализация и сжатие объекта в байты
         return zlib.compress(pickle.dumps(self))
 
+    def to_hex(self):
+        return self.to_bytes().hex()
     @staticmethod
     def from_bytes(bytes_data):
         # Распаковка и десериализация объекта из сжатых байтов
         return pickle.loads(zlib.decompress(bytes_data))
 
-    def to_str(self):
-        return base58.b58encode(self.to_bytes())
+    @staticmethod
+    def from_hex(hex_data):
+        # Распаковка и десериализация объекта из сжатых байтов
+        return pickle.loads(zlib.decompress(bytes.fromhex(hex_data)))
+
+    def to_base64(self):
+        return base58.b58encode(self.to_bytes()).decode('utf-8')
 
     @classmethod
-    def from_str(cls, sign_str):
-        return SigXMSS.from_bytes(base58.b58decode(sign_str))
+    def from_base64(cls, sign_str):
+        return SigXMSS.from_bytes(base58.b58decode(sign_str.encode()))
 
 
 class SigWithAuthPath:
@@ -1049,14 +1070,14 @@ if __name__ == '__main__':
         f"Подпись: {signature_client1}, размер: {len(signature_client1.to_bytes())} байт  время: {datetime.datetime.now() - d}")
     print(len(base58.b58encode(signature_client1.to_bytes())))
 
-    sign_str = signature_client1.to_str()
-    pk_str = keyPair_client1.PK.to_str()
+    sign_str = signature_client1.to_base64()
+    pk_str = keyPair_client1.PK.to_hex()
     print("pk_str", pk_str)
     print("sign_str", sign_str)
 
     # распаковываем подписи
-    PK = XMSSPublicKey.from_str(pk_str)
-    signature = SigXMSS.from_str(sign_str)
+    PK = XMSSPublicKey.from_hex(pk_str)
+    signature = SigXMSS.from_base64(sign_str)
     print("OTS", signature.idx_sig)
 
     PK_client1_received = PK

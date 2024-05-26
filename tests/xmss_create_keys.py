@@ -17,7 +17,7 @@ if __name__ == '__main__':
 
     print("Address s_valid", keys.keyPair.PK.is_valid_address(keys.address))
 
-    pk_str = keys.keyPair.PK.to_str()
+    pk_str = keys.keyPair.PK.to_hex()
     # PK = keys.keyPair.PK
     # распаковываем подписи
 
@@ -30,8 +30,8 @@ if __name__ == '__main__':
     # print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")
 
     # публичный ключ из строки
-    PK = XMSSPublicKey.from_str(pk_str)
-    verification_result = PK.verify_sign(signature.to_str(), message=message)
+    PK = XMSSPublicKey.from_hex(pk_str)
+    verification_result = PK.verify_sign(signature.to_base64(), message=message)
     print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")
 
     keys2 = XMSS.create(key=private)
@@ -41,5 +41,3 @@ if __name__ == '__main__':
 
     keys3 = XMSS.create(seed_phrase=seed_phrase)
     print(keys3.address)
-
-

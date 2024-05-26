@@ -9,8 +9,9 @@ import os, json
 import random
 from storage.transaction_storage import TransactionStorage, TransactionGenerator
 import base64
-from crypto.xmss import XMSS
+from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
 from crypto.mercle import merkle_tx_hash
+from tools.logger import Log
 
 
 # from crypto.xmss import *
@@ -20,7 +21,6 @@ class Block:
 
     def __init__(self, previousHash=None):
 
-        # self.bh = BlockHeader()
         self.version = Protocol.VERSION
         self.timestamp_seconds = None
         self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if previousHash is None else previousHash
@@ -28,6 +28,7 @@ class Block:
 
         self.sign = None
         self.Hash = None
+        self.signer_pk = None
 
         # избыточные параметры
 
@@ -36,6 +37,7 @@ class Block:
         self.signer = None
 
         self.transactions = []
+        self.log = Log()
 
     @staticmethod
     def create(
@@ -49,7 +51,7 @@ class Block:
 
         block = Block()
         block.block_number = block_number
-        block.previousHash = Protocol.prev_hash_genesis_block if previousHash is None else previousHash
+        block.previousHash = Protocol.prev_hash_genesis_block.hex() if previousHash is None else previousHash
         block.timestamp_seconds = int(timestamp_seconds)
         block.signer = address_miner
         # Process transactions
@@ -104,24 +106,24 @@ class Block:
     def make_sign(self, xmss: XMSS) -> bytes:
         """ Подпись блока """
         signature = xmss.sign(bytes.fromhex(self.Hash))
-        print(f"Подпись: {signature}, размер: {len(signature.to_bytes())} байт")
-        self.sign =signature.to_bytes()
-        self.pk_signer = xmss.keyPair.PK.to_str()
-        return self.sign
+
+        self.sign = signature.to_base64()
+        self.signer_pk = xmss.keyPair.PK.to_hex()
+        print(f"Подпись размер: {len(self.sign)} ")
 
     def to_json(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON
         block_dict = {
             'index': self.block_number,
+            'version': self.version,
             'previousHash': self.previousHash,
             'time': self.timestamp_seconds,
             'transactions': [tr.to_json() for tr in self.transactions],
             'hash': self.Hash,
-            # 'diff_key_block': self.diff_key_block,
             'signer': self.signer,
+            'merkle_root': self.merkle_root,
             'sign': self.sign,
-            # 'winer_ratio': self.winer_ratio,
-            # 'winer_address': self.winer_address
+            'signer_pk': self.signer_pk
         }
         return json.dumps(block_dict)
 
@@ -131,14 +133,14 @@ class Block:
         block_dict = json.loads(json_str)
         block = cls(block_dict['previousHash'])
         block.block_number = block_dict['index']
+        block.version = block_dict['version']
         block.timestamp_seconds = block_dict['time']
+        block.merkle_root = block_dict['merkle_root']
         block.transactions = [Transaction.from_json(t) for t in block_dict['transactions']]
         block.Hash = block_dict['hash']
-        # block.diff_key_block = block_dict['diff_key_block']
         block.signer = block_dict['signer']
         block.sign = block_dict['sign']
-        # block.winer_ratio = block_dict['winer_ratio']
-        # block.winer_address = block_dict['winer_address']
+        block.signer_pk = block_dict['signer_pk']
         return block
 
     def hash_block(self):
@@ -152,7 +154,7 @@ class Block:
 
     def get_block_bytes(self):
         version_bytes = self.version.encode()
-        previous_hash_bytes = self.previousHash
+        previous_hash_bytes = self.previousHash.encode()
         merkle_root_bytes = self.merkle_root.encode()
 
         # Используем 8 байтов для представления временной метки
@@ -176,38 +178,35 @@ class Block:
                 self.nonce == other.nonce
                 )
 
+    def validate(self):
+        """ Проверка блока """
+
+        old_hash = self.Hash
+        new_hash = self.calculate_hash()
+
+        if old_hash != new_hash:
+            self.log.error("Ошибка валидации блока. не совпадает хеш")
+            return False
+
+        PK2 = XMSSPublicKey.from_hex(self.signer_pk)
+        if self.signer !=PK2.generate_address():
+            self.log.error("Ошибка валидации блока. не совпадает майнер")
+            return False
+
+        signature = SigXMSS.from_base64(self.sign)
+
+        # Верификация подписи
+        verf = XMSS_verify(signature, bytes.fromhex(new_hash), PK2)
+        if not verf:
+            self.log.error("Ошибка валидации блока. не совпадает подпись")
+            return False
+
+        """
+        
+        дополннительно нужна валидация в цепи
+        
+        """
+        return True
 
 if __name__ == '__main__':
     """ """
-    # r = random.Random(1)
-    # bits = 128
-    # sequence = r.getrandbits(bits).to_bytes(bits // 8, byteorder='big').hex()
-    # print(sequence)
-    # exit(0)
-
-    # transaction_storage = TransactionStorage()
-    #
-    # # Использование генератора транзакций
-    # generator = TransactionGenerator(address_count=2, transaction_count=100)
-    # transactions = generator.generate_transactions_from_genesis()
-    # for transaction in transactions:
-    #     transaction_storage.add_transaction(transaction)
-    #
-    # generator = TransactionGenerator(address_count=2, transaction_count=100)
-    # transactions = generator.generate_transactions()
-    # for transaction in transactions:
-    #     transaction_storage.add_transaction(transaction)
-    #
-    # # tr = [Transaction('0', 'a1', 10), Transaction("a1", "a2", 1)]
-    # block = Block(timeStamp=datetime.datetime.now(), previousHash="123",
-    #               transactions=transaction_storage)
-    #
-    # block.addresses = [a[0] for a in transaction_storage.get_addresses_sorted_by_balance()]
-    #
-    # for i in range(10000):
-    #     sequence = random.getrandbits(128).to_bytes(128 // 8, byteorder='big').hex()
-    #     block.addresses.append(sequence)
-    #
-    # block.find_winner()
-    # # block.save()
-    # print(block.nonce, block.hash)

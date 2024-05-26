@@ -35,6 +35,10 @@ class Protocol:
     # по умолчанию функция хехирования
     DEFAULT_HASH_FUNCTION_CODE = 1
     DEFAULT_HEIGHT = 10
+
+    MAX_MESSAGE_SIZE = 128
+
+
     @staticmethod
     def find_longest_common_substring(s1, s2):
         match = difflib.SequenceMatcher(None, s1, s2).find_longest_match(0, len(s1), 0, len(s2))

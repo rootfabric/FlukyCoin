@@ -54,6 +54,7 @@ class XMSSPublicKey:
             2: lambda: hashlib.shake_256()  # Функция возвращает объект хеша
         }
         self.address_start = ""
+
     def verify_sign(self, signature_str, message):
         """ Проверка подписи  """
         signature = SigXMSS.from_str(signature_str)
@@ -640,8 +641,6 @@ def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int) -> XMSSKeypair
     PK.n = n
     PK.w = w
 
-
-
     KeyPair = XMSSKeypair(SK, PK, height, n, w)
     return KeyPair
 
@@ -870,9 +869,9 @@ def load_keys_from_file(file_path: str) -> XMSSKeypair:
     return XMSSKeypair(SK, PK, height, n, w)
 
 
-
 import os
 import struct
+
 
 def create_extended_secret_key(height):
     # Создаем секретный ключ размером 32 байта, чтобы общий размер с параметрами был 36 байт
@@ -886,6 +885,7 @@ def create_extended_secret_key(height):
 
     return extended_key
 
+
 def extract_parameters_from_key(extended_key):
     # Извлекаем параметры
     height = struct.unpack('B', extended_key[:1])[0]
@@ -894,6 +894,7 @@ def extract_parameters_from_key(extended_key):
     # secret_key = extended_key[1:]
 
     return height, extended_key
+
 
 def key_to_seed_phrase(key):
     if len(key) != 36:
@@ -931,10 +932,10 @@ class XMSS():
         self.keyPair = key_pair
 
     @classmethod
-    def create(cls, height=5, key = None):
+    def create(cls, height=5, key=None, seed_phrase=None):
         # Установка параметров
-        # n = 32
-        n = 10
+        n = 32
+        # n = 10
         w = 16
 
         if key is None:
@@ -946,18 +947,17 @@ class XMSS():
                 key = bytes.fromhex(key)
             height, extended_key = extract_parameters_from_key(key)
 
-        seed_phrase = key_to_seed_phrase(extended_key)
+        if seed_phrase is None:
+            seed_phrase = key_to_seed_phrase(extended_key)
 
         # Генерация пары ключей на основе сида
         key_pair = XMSS_keyGen_from_seed(seed_phrase, height, n, w)
 
         # Создание адреса
         address = key_pair.PK.generate_address()
-        print("address", address)
 
         # Создание экземпляра XMSS с нужными параметрами
         return cls(height, n, w, seed_phrase, extended_key, address, key_pair)
-
 
     def sign(self, message):
         """ Подпись """

@@ -33,3 +33,11 @@ if __name__ == '__main__':
     print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")
 
     keys2 = XMSS.create(key=private)
+    print(keys2.address)
+
+    seed_phrase = keys2.seed_phrase
+
+    keys3 = XMSS.create(seed_phrase=seed_phrase)
+    print(keys3.address)
+
+

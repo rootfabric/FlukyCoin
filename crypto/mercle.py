@@ -124,6 +124,17 @@ class MerkleTools(object):
             return proof_hash == merkle_root
 
 
+def merkle_tx_hash(transaction_hash):
+    mt = MerkleTools(hash_type="SHA256")
+    for hex_data in transaction_hash:
+        mt.add_leaf(hex_data)
+
+    # leaf_count = mt.get_leaf_count()
+    mt.make_tree()
+    root_value = mt.get_merkle_root()
+    return root_value
+
+
 if __name__ == '__main__':
     mt = MerkleTools(hash_type="SHA256")  # default is sha256
     # valid hashTypes include all crypto hash algorithms
@@ -139,7 +150,7 @@ if __name__ == '__main__':
     mt.add_leaf(hex_data2)
     # mt.add_leaf(list_data, True)
 
-    leaf_count = mt.get_leaf_count();
+    leaf_count = mt.get_leaf_count()
     print("leaf_count", leaf_count)
 
     leaf_value = mt.get_leaf(1)

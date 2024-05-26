@@ -84,7 +84,7 @@ class Protocol:
     #     return ratio1 * ratio1 * 10, ratio1, lcs
 
     @staticmethod
-    def reward(self, addrr, sequence, block_number=0, initial_reward=3000000, halving_interval=1500000):
+    def reward(addrr, sequence, block_number=0, initial_reward=3000000, halving_interval=1500000):
         ratio1, lcs = Protocol.find_longest_common_substring(sequence, addrr.lower())
 
         # Определение количества прошедших халфингов

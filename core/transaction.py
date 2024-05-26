@@ -29,7 +29,8 @@ class Transaction:
 
     def to_json(self):
         # Сериализует объект в строку JSON
-        return json.dumps(self.as_dict())
+        d = self.as_dict()
+        return json.dumps(d)
 
     @classmethod
     def from_json(cls, json_str):

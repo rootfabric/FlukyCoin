@@ -5,6 +5,7 @@ from core.Block import Block
 from core.protocol import Protocol
 
 from crypto.xmss import XMSS
+from pprint import pprint
 
 from net.client import Client
 import random
@@ -29,11 +30,11 @@ if __name__ == '__main__':
     block.make_sign(xmss)
 
     json_block =block.to_json()
-    print(json_block)
+    pprint(json_block)
 
 
     block2 = Block.from_json(json_block)
-    print(block2.to_json())
+    pprint(block2.to_json())
 
     if not block2.validate():
         print("Ошибка валидации")

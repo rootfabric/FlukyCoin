@@ -2,13 +2,12 @@ import logging
 import os
 import datetime
 import sys
+import time
+import codecs
 
-
-class Log():
+class Log:
     '''
-
     Клас для ведения логов
-
     '''
 
     def __init__(self, log_name="fc", stdout=True, save_log=True, log_level_text="INFO", work_dir='logs'):
@@ -19,10 +18,10 @@ class Log():
         self.log_name = log_name
         self.log_level = log_level_text
         self.work_dir = work_dir if work_dir else 'logs'
+        self.current_date = datetime.date.today()
 
         if save_log:
             self.create_log_directory()
-
 
         # можно задавать уровень логирования, во избежания записи лишней информации в файл
         if log_level_text == "CRITICAL":
@@ -67,7 +66,13 @@ class Log():
         """ Проверка открытого файла для логирования"""
 
         if self.save_log:
-            if self.file_handler is None:
+            today = datetime.date.today()
+            if self.file_handler is None or self.current_date != today:
+                self.current_date = today
+                if self.file_handler:
+                    self._log.removeHandler(self.file_handler)
+                    self.file_handler.close()
+
                 # создаем файл единожды только после того как была попытка записи логов
                 if not os.path.isdir(self.work_dir):
                     os.mkdir(self.work_dir)
@@ -76,20 +81,18 @@ class Log():
                     '%(asctime)-15s::%(levelname)s::%(filename)s::%(funcName)s::%(lineno)d::%(message)s')
 
                 try:
-                    self.file_handler = logging.FileHandler(f"{self.work_dir}/{self.log_name}_{datetime.date.today()}.log")
-                except Exception as e:
-                    # Ошибка может возникнуть если нет доступа к указанной директории. Тогда по дефолту кидаем в рабочую
-                    # if not os.path.isdir("logs"):
-                    #     os.mkdir("logs")
-
                     self.file_handler = logging.FileHandler(
-                        f"logs/{self.log_name}_{datetime.date.today()}.log")
-
+                        f"{self.work_dir}/{self.log_name}_{self.current_date}.log", encoding='utf-8')
+                except Exception as e:
+                    self.file_handler = logging.FileHandler(
+                        f"logs/{self.log_name}_{self.current_date}.log", encoding='utf-8')
                 self.file_handler.setFormatter(log_formatter)
 
                 # Не накапливаем в потоках file_handler. Первый вывод в stdout. Второй в файл
                 if len(self._log.handlers) < 2:
                     self._log.addHandler(self.file_handler)
+                else:
+                    self._log.handlers[1] = self.file_handler
 
     def close(self):
         self._log.handlers = []
@@ -118,6 +121,9 @@ class Log():
         self._check_open_file()
         self._log.exception(" ".join(self.args_to_str(args)), **kwargs)
 
+
 if __name__ == '__main__':
-    log = Log()
-    log.info("тест")
+    log = Log("test_log")
+    while 1:
+        log.info("тест")
+        time.sleep(60*60)

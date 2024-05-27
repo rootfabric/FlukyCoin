@@ -176,7 +176,7 @@ class Block:
     def __equal__(self, other):
         return (self.block_number == other.blocks_count and
                 self.timeStamp == other.timestamp and
-                self.previousHash == other.previousHash and
+                self.previousHash == other._previousHash and
                 self.Hash == other.Hash and
                 self.transactions == other.transaction and
                 self.nonce == other.nonce

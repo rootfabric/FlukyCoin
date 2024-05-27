@@ -38,6 +38,7 @@ class Chain():
 
         self.history_hash = {}
 
+        self._previousHash = Protocol.prev_hash_genesis_block.hex()
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -102,7 +103,7 @@ class Chain():
         except Exception as e:
             self.log.error(f"Failed to load blockchain: {e}")
 
-    def validate_block_hash(self, block):
+    def validate_block_hash(self, block: Block):
         if block.previousHash != self.last_block_hash():
             self.log.warning("validateblock.previousHash != self.last_block_hash()")
             return False
@@ -216,7 +217,7 @@ class Chain():
 
     def last_block_hash(self) -> Block:
         return self.blocks[-1].hash_block() if len(
-            self.blocks) > 0 else "0000000000000000000000000000000000000000000000000000000000000000"
+            self.blocks) > 0 else Protocol.prev_hash_genesis_block.hex()
 
     def last_block(self) -> Block:
 
@@ -295,9 +296,9 @@ class Chain():
         if not self.validate_candidate(block):
             return False
 
-        self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if self.last_block() is None else self.last_block().Hash
+        self._previousHash = Protocol.prev_hash_genesis_block.hex() if self.last_block() is None else self.last_block().Hash
 
-        is_key_block = self.protocol.is_key_block(self.previousHash)
+        is_key_block = self.protocol.is_key_block(self._previousHash)
         # print(f"Key block: {is_key_block}")
 
         # при ключевом блоке проверяем, не является ли адрем новым
@@ -318,7 +319,7 @@ class Chain():
                 return True
 
         win_address = self.protocol.winner(self.block_candidate.signer, block.signer,
-                                           self.protocol.sequence(self.previousHash))
+                                           self.protocol.sequence(self._previousHash))
         # print("---------------------------------------------", self.protocol.sequence(self.previousHash))
         # print(self.block_candidate.signer)
         # print(block.signer)

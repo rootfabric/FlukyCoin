@@ -23,10 +23,10 @@ if __name__ == '__main__':
 
     # пользователи создают блоки
     t = 1716710000
-    xmss1_b0 = Block.create(0, None, t, [], address_miner=xmss1.address, address_reward=xmss1.address)
+    xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.address, address_reward=xmss1.address)
 
     t = 1716710001
-    xmss2_b0 = Block.create(0, None, t, [], address_miner=xmss2.address, address_reward=xmss2.address)
+    xmss2_b0 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [], address_miner=xmss2.address, address_reward=xmss2.address)
 
     """ Добавление блоков """
     c1.add_block_candidate(xmss1_b0)
@@ -46,4 +46,36 @@ if __name__ == '__main__':
 
     """ Создание транзакции и валидация в цепи """
 
+    tt = TransferTransaction("RL4PCLryvUMt46oiiSYFTa589Uey13oYEcJZWXvCS2He5eYuwcTr", ["1111111111111111111111111111111111111111111111111111"], [100])
+    tt.nonce = c1.address_nonce(tt.fromAddress)+1
+    tt.make_hash()
+    tt.make_sign(xmss2)
+
+    c1.validate_transaction(tt)
+
     """ Создание блока с транзакциями и валидация в цепи """
+    # пользователи создают блоки
+    t = 1716720000
+    xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [tt], address_miner=xmss1.address, address_reward=xmss1.address)
+
+    t = 1716720001
+    xmss2_b1 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [tt], address_miner=xmss2.address, address_reward="2222222222222222222222222222222222222222222222222222")
+
+    """ Добавление блоков """
+    c1.add_block_candidate(xmss1_b1)
+    c1.add_block_candidate(xmss2_b1)
+
+    c2.add_block_candidate(xmss2_b1)
+    c2.add_block_candidate(xmss1_b1)
+
+    c1.close_block()
+    c2.close_block()
+
+    print(c1.last_block_hash())
+    print(c2.last_block_hash())
+
+    pprint(c1.transaction_storage.get_all_balances())
+    pprint(c2.transaction_storage.get_all_balances())
+
+
+

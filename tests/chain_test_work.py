@@ -47,7 +47,7 @@ if __name__ == '__main__':
     """ Создание транзакции и валидация в цепи """
 
     tt = TransferTransaction("RL4PCLryvUMt46oiiSYFTa589Uey13oYEcJZWXvCS2He5eYuwcTr", ["1111111111111111111111111111111111111111111111111111"], [100])
-    tt.nonce = c1.address_nonce(tt.fromAddress)+1
+    tt.nonce = c1.next_address_nonce(tt.fromAddress)
     tt.make_hash()
     tt.make_sign(xmss2)
 

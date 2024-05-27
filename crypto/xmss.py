@@ -56,6 +56,9 @@ class XMSSPublicKey:
         self.w = w
         self.hash_functions = Protocol.hash_functions
         self.address_start = ""
+    def max_height(self):
+        """ Максимальное количество подписей """
+        return 2 ** self.height
 
     def verify_sign(self, signature_str, message):
         """ Проверка подписи  """

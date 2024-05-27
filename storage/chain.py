@@ -39,6 +39,7 @@ class Chain():
         self.history_hash = {}
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
+
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -125,9 +126,9 @@ class Chain():
             return False
         return True
 
-    def address_nonce(self, address):
+    def next_address_nonce(self, address):
         """ сколько раз использовался адрес в цепи """
-        return self.transaction_storage.get_nonce(address)
+        return self.transaction_storage.get_nonce(address)+1
 
     def address_ballance(self, address):
         """ Баланс адреса """
@@ -137,18 +138,26 @@ class Chain():
         """ Проверка транзакции """
 
         """ Проверка  nonce"""
-        if transaction.nonce != self.address_nonce(transaction.fromAddress) + 1:
+        address_nonce = self.next_address_nonce(transaction.fromAddress)
+        if transaction.nonce != address_nonce :
             self.log.warning(
-                f"Транзакция не валидна. nonce цепи: {self.address_nonce(transaction.fromAddress)} nonce транзакции:{transaction.nonce}")
+                f"Транзакция не валидна. nonce цепи: {address_nonce} nonce транзакции:{transaction.nonce}")
             return False
 
         # coinbase не подписывается
-        if transaction.tx_type!="coinbase" and not transaction.validate_sign():
+        if transaction.tx_type != "coinbase" and not transaction.validate_sign():
             self.log.warning(f"Транзакция не валидна no подписи")
             return False
 
+        """ Проверка на максимальные подписи"""
+        if transaction.tx_type != "coinbase":
+            if transaction.PK.max_height() <= address_nonce:
+                self.log.warning(f"Транзакция не валидна: превышен порог подписей")
+                return False
+
         """ Проверка  баланса"""
         if transaction.tx_type == "transfer":
+
             if self.address_ballance(transaction.fromAddress) < transaction.all_amounts():
                 self.log.warning(
                     f"Транзакция не валидна. Остаток: {self.address_ballance(transaction.fromAddress)} < amounts:{transaction.all_amounts()}")

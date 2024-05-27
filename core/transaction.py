@@ -3,6 +3,8 @@ import hashlib
 from core.protocol import Protocol
 from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
 from tools.logger import Log
+
+
 class Transaction:
 
     def __init__(self, tx_type, fromAddress, toAddress, amounts, fee=0):
@@ -17,6 +19,7 @@ class Transaction:
         self.public_key = None
         self.signature = None
         self.log = Log()
+        self.PK = None
 
     def as_dict(self):
         # Возвращает представление объекта в виде словаря
@@ -35,7 +38,7 @@ class Transaction:
             data['message_data'] = self.message_data[:Protocol.MAX_MESSAGE_SIZE]
         return data
 
-    def to_json(self, for_sign = False):
+    def to_json(self, for_sign=False):
         # Сериализует объект в строку JSON
         d = self.as_dict()
         if for_sign:
@@ -67,22 +70,28 @@ class Transaction:
         """
         This method returns the hashes of the transaction data.
         """
-        return hashlib.sha256(self.to_json(for_sign = True).encode())
+        return hashlib.sha256(self.to_json(for_sign=True).encode())
 
     def make_hash(self):
         """ Идентификатор транзакции """
         self.txhash = self.get_data_hash().hexdigest()
 
     def make_sign(self, xmss: XMSS) -> bytes:
-            """ Подпись блока """
-            signature = xmss.sign(bytes.fromhex(self.txhash))
+        """ Подпись блока """
+        signature = xmss.sign(bytes.fromhex(self.txhash))
 
-            self.signature = signature.to_base64()
-            self.public_key = xmss.keyPair.PK.to_hex()
-            print(f"Подпись размер: {len(self.signature)} ")
+        self.signature = signature.to_base64()
+        self.public_key = xmss.keyPair.PK.to_hex()
+        print(f"Подпись размер: {len(self.signature)} ")
+
     def all_amounts(self):
         """ вся сумма транзакции """
         return sum(self.amounts)
+
+    def make_XMSSPublicKey(self):
+        """Воссоздание публичного ключа по строке """
+        self.PK = XMSSPublicKey.from_hex(self.public_key)
+        return self.PK
 
     def validate_sign(self):
         """ проверка подписи транзакции """
@@ -94,15 +103,17 @@ class Transaction:
             self.log.error("Ошибка валидации транзакции. не совпадает хеш")
             return False
 
-        PK2 = XMSSPublicKey.from_hex(self.public_key)
-        if self.fromAddress !=PK2.generate_address():
+        # self.PK = XMSSPublicKey.from_hex(self.public_key)
+        self.PK = self.make_XMSSPublicKey()
+
+        if self.fromAddress != self.PK.generate_address():
             self.log.error("Ошибка валидации транзакции. не совпадает отправитель")
             return False
 
         signature = SigXMSS.from_base64(self.signature)
 
         # Верификация подписи
-        verf = XMSS_verify(signature, bytes.fromhex(self.txhash), PK2)
+        verf = XMSS_verify(signature, bytes.fromhex(self.txhash), self.PK)
         if not verf:
             self.log.error("Ошибка валидации транзакции. не совпадает подпись")
             return False
@@ -188,7 +199,6 @@ if __name__ == '__main__':
     # t.nonce = 1
     # t.make_hash()
     # print(t.to_json())
-
 
     xmss = XMSS.create()
     print(xmss.address)

@@ -5,11 +5,11 @@ from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
 from tools.logger import Log
 class Transaction:
 
-    def __init__(self, tx_type, fromAddress, toAddress, amount, fee=0):
+    def __init__(self, tx_type, fromAddress, toAddress, amounts, fee=0):
         self.tx_type = tx_type
         self.fromAddress = fromAddress
         self.toAddress = toAddress
-        self.amount = amount
+        self.amounts = amounts
         self.nonce = None
         self.fee = fee
         self.message_data = None
@@ -26,7 +26,7 @@ class Transaction:
             'txhash': self.txhash,
             'fromAddress': self.fromAddress,
             'toAddress': self.toAddress,
-            'amount': self.amount,
+            'amounts': self.amounts,
             'fee': self.fee,
             'public_key': self.public_key,
             'signature': self.signature
@@ -80,9 +80,12 @@ class Transaction:
             self.signature = signature.to_base64()
             self.public_key = xmss.keyPair.PK.to_hex()
             print(f"Подпись размер: {len(self.signature)} ")
+    def all_amounts(self):
+        """ вся сумма транзакции """
+        return sum(self.amounts)
 
-    def validate(self):
-        """ проверка транзакции """
+    def validate_sign(self):
+        """ проверка подписи транзакции """
 
         old_hash = self.txhash
 
@@ -112,8 +115,8 @@ class Transaction:
 
 
 class TransferTransaction(Transaction):
-    def __init__(self, fromAddress, toAddress, amount, fee=0, message_data=None):
-        super().__init__('transfer', fromAddress, toAddress, amount, fee)
+    def __init__(self, fromAddress, toAddress, amounts, fee=0, message_data=None):
+        super().__init__('transfer', fromAddress, toAddress, amounts, fee)
         if message_data:
             self.message_data = message_data[:Protocol.MAX_MESSAGE_SIZE]  # Преобразование message_data в Uint8Array
 
@@ -121,10 +124,10 @@ class TransferTransaction(Transaction):
     def from_dict(cls, data):
         fromAddress = data['fromAddress']
         toAddress = data['toAddress']
-        amount = data['amount']
+        amounts = data['amounts']
         fee = data['fee']
         message_data = data.get('message_data')
-        tx = cls(fromAddress, toAddress, amount, fee, message_data)
+        tx = cls(fromAddress, toAddress, amounts, fee, message_data)
         tx.nonce = data.get('nonce')
         tx.txhash = data.get('txhash')
         tx.public_key = data.get('public_key')
@@ -142,7 +145,7 @@ class SlaveTransaction(Transaction):
         # Возвращает представление объекта в виде словаря
         data = super().as_dict()
         del data['toAddress']
-        del data['amount']
+        del data['amounts']
         data.update({
             'slaveAddress': self.slaveAddress,
             'slaveTypes': self.slaveTypes
@@ -166,15 +169,15 @@ class SlaveTransaction(Transaction):
 
 
 class CoinbaseTransaction(Transaction):
-    def __init__(self, toAddress, amount):
-        super().__init__('coinbase', Protocol.coinbase_address.hex(), toAddress, amount, 0)
+    def __init__(self, toAddress, amounts):
+        super().__init__('coinbase', Protocol.coinbase_address.hex(), toAddress, amounts, 0)
         self.make_hash()
 
     @classmethod
     def from_dict(cls, data):
         toAddress = data['toAddress']
-        amount = data['amount']
-        tx = cls(toAddress, amount)
+        amounts = data['amounts']
+        tx = cls(toAddress, amounts)
         tx.nonce = data.get('nonce')
         tx.txhash = data.get('txhash')
         return tx
@@ -196,13 +199,13 @@ if __name__ == '__main__':
     tt.make_sign(xmss)
     json_transaction = tt.to_json()
     print(json_transaction)
-    tt.validate()
+    tt.validate_sign()
 
-    # tt = TransferTransaction("1", ["2", "3", "4"], [100, 100, 100])
-    # tt.nonce = 1
-    # tt.make_hash()
-    # tt.make_sign(xmss)
-    # print(tt.to_json())
+    tt = TransferTransaction("1", ["2", "3", "4"], [100, 100, 100])
+    tt.nonce = 1
+    tt.make_hash()
+    tt.make_sign(xmss)
+    print(tt.to_json())
     #
     # st = SlaveTransaction("1", ["slaveAddress123"], ["TRANSFER", "MINING"], 0.01)
     # st.nonce = 1
@@ -212,5 +215,5 @@ if __name__ == '__main__':
 
     tt2 = Transaction.from_json(json_transaction)
     print(tt2.to_json())
-    if tt2.validate():
+    if tt2.validate_sign():
         print("Валидация успешна")

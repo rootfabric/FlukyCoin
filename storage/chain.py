@@ -6,6 +6,7 @@ import base64
 # # Пример использования класса
 from storage.transaction_storage import TransactionStorage
 from core.protocol import Protocol
+from core.transaction import Transaction
 from storage.mempool import Mempool
 import copy
 import time
@@ -13,8 +14,10 @@ from tools.time_sync import NTPTimeSynchronizer
 import os
 import pickle
 from tools.logger import Log
+
+
 class Chain():
-    def __init__(self, config = None, time_ntpt = None, mempool=None, log = Log()):
+    def __init__(self, config=None, time_ntpt=None, mempool=None, log=Log()):
         self.blocks: Block = []
         self.transaction_storage = TransactionStorage()
         self.mempool: Mempool = mempool
@@ -23,7 +26,7 @@ class Chain():
 
         self.block_candidate: Block = None
 
-        self.time_ntpt = NTPTimeSynchronizer(log = self.log) if time_ntpt is None else time_ntpt
+        self.time_ntpt = NTPTimeSynchronizer(log=self.log) if time_ntpt is None else time_ntpt
 
         self.miners = set()
 
@@ -35,8 +38,6 @@ class Chain():
 
         self.history_hash = {}
 
-
-
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -46,6 +47,7 @@ class Chain():
 
     def reset_block_candidat(self):
         self.block_candidate = None
+
     def check_hash(self, block_hash):
         """"""
         # TODO нужно смотреть блоки в цепи
@@ -58,6 +60,7 @@ class Chain():
         # if self.block_candidate is not None and block_hash ==self.block_candidate.hash_block():
         #     return True
         return None
+
     def save_chain_to_disk(self, dir="", filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
         dir = dir.replace(":", "_")
@@ -91,7 +94,7 @@ class Chain():
                 self.blocks, self.transaction_storage, self.block_candidate = pickle.load(file)
 
             for block in self.blocks:
-                    self.miners.add(block.signer)
+                self.miners.add(block.signer)
 
             self.log.info(f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.miners)}")
         except FileNotFoundError:
@@ -113,11 +116,43 @@ class Chain():
             self.log.warning("Блок не проходит валидацию по времени")
             return False
         return True
+
     def validate_block_number(self, block: Block):
 
         if block.block_number != self.blocks_count():
             self.log.warning("Блок не проходит валидацию по номеру")
             return False
+        return True
+
+    def address_nonce(self, address):
+        """ сколько раз использовался адрес в цепи """
+        return self.transaction_storage.get_nonce(address)
+
+    def address_ballance(self, address):
+        """ Баланс адреса """
+        return self.transaction_storage.get_balance(address)
+
+    def validate_transaction(self, transaction: Transaction):
+        """ Проверка транзакции """
+
+        """ Проверка  nonce"""
+        if transaction.nonce != self.address_nonce(transaction.fromAddress) + 1:
+            self.log.warning(
+                f"Транзакция не валидна. nonce цепи: {self.address_nonce(transaction.fromAddress)} nonce транзакции:{transaction.nonce}")
+            return False
+
+        # coinbase не подписывается
+        if transaction.tx_type!="coinbase" and not transaction.validate_sign():
+            self.log.warning(f"Транзакция не валидна no подписи")
+            return False
+
+        """ Проверка  баланса"""
+        if transaction.tx_type == "transfer":
+            if self.address_ballance(transaction.fromAddress) < transaction.all_amounts():
+                self.log.warning(
+                    f"Транзакция не валидна. Остаток: {self.address_ballance(transaction.fromAddress)} < amounts:{transaction.all_amounts()}")
+                return False
+
         return True
 
     def validate_block(self, block):
@@ -131,7 +166,10 @@ class Chain():
         if not self.validate_block_number(block):
             return False
 
-
+        for transaction in block.transactions:
+            if not self.validate_transaction(transaction):
+                self.log.warning(f"Транзакция {transaction.txhash} не валидна")
+                return False
 
         return True
 
@@ -146,6 +184,7 @@ class Chain():
 
         self.add_block(block)
         return True
+
     def add_block(self, block):
         """  """
         self.blocks.append(block)
@@ -174,8 +213,10 @@ class Chain():
         #         self.nodes_rating[new_node] = 0
 
         return self.nodes_rating
+
     def last_block_hash(self) -> Block:
-        return self.blocks[-1].hash_block() if len(self.blocks) > 0 else "0000000000000000000000000000000000000000000000000000000000000000"
+        return self.blocks[-1].hash_block() if len(
+            self.blocks) > 0 else "0000000000000000000000000000000000000000000000000000000000000000"
 
     def last_block(self) -> Block:
 
@@ -211,7 +252,7 @@ class Chain():
     def check_miners(self, addr):
         return addr in self.miners
 
-    def validate_candidate(self, block:Block):
+    def validate_candidate(self, block: Block):
         """ Является ли блок кандидатом """
 
         if self.last_block() is None:
@@ -221,7 +262,7 @@ class Chain():
             # print("Chain: ошибка проверки кандидата, хеш не подходит")
             return False
 
-        if block.timestamp_seconds<self.last_block().timestamp_seconds:
+        if block.timestamp_seconds < self.last_block().timestamp_seconds:
             # print("Chain: ошибка проверки кандидата, время меньше предыдущего блока")
             return False
 
@@ -302,17 +343,14 @@ class Chain():
             self.reset_block_candidat()
             return False
 
-
     def need_close_block(self):
         """ Если со времни появления последнего блока прошло более минуты, можно закреплять блок """
-
 
         if self.block_candidate is None:
             return False
         # print(f"Check: {self.blocks_count()} txs[{self.mempool.size()}] delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.2f}  {self.block_candidate.hash_block()[:5]}...{self.block_candidate.hash_block()[-5:]}  singer: ...{self.block_candidate.signer [-5:]}")
 
-        if self.block_candidate.timestamp_seconds >self.time_ntpt.get_corrected_time():
-
+        if self.block_candidate.timestamp_seconds > self.time_ntpt.get_corrected_time():
             return False
 
         return True

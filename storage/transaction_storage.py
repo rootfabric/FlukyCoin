@@ -4,6 +4,10 @@ class TransactionStorage:
     def __init__(self):
         # Словарь для хранения балансов адресов. Ключ - адрес, значение - баланс.
         self.balances = {}
+
+        # Словарь для хранения nonce адресов. Ключ - адрес, значение - nonce.
+        self.nonces = {}
+
         # Список для хранения всех транзакций
         self.transactions = []
 
@@ -11,27 +15,30 @@ class TransactionStorage:
         """
         Добавляет транзакцию и обновляет балансы адресов, если у отправителя достаточно средств.
 
-        :param transaction: словарь с данными транзакции
+        :param transaction: объект транзакции
         """
         from_address = transaction.fromAddress
-        amount = transaction.amount
+        amounts = transaction.all_amounts()
         to_address = transaction.toAddress
         # Проверка наличия средств
-        if (transaction.tx_type !="coinbase"
-                and self.get_balance(from_address) < amount):
-            # print(f"Ошибка: недостаточно средств на адресе {from_address}")
+        if transaction.tx_type != "coinbase" and self.get_balance(from_address) < amounts:
             return False
 
         # Добавление транзакции в список транзакций
         self.transactions.append(transaction)
 
-        # Вычитание суммы из баланса отправителя
-        self.balances[from_address] = self.balances.get(from_address, 0) - amount
+        # Обновление баланса отправителя и получателя
+        self.balances[from_address] = self.balances.get(from_address, 0) - amounts
+        for i, address in enumerate(to_address):
+            self.balances[address] = self.balances.get(address, 0) + transaction.amounts[i]
 
-        # Добавление суммы к балансу получателя
-        self.balances[to_address] = self.balances.get(to_address, 0) + amount
+        # Обновление nonce для адреса отправителя
+        if from_address in self.nonces:
+            self.nonces[from_address] += 1
+        else:
+            self.nonces[from_address] = 1
+
         return True
-
     def get_balance(self, address):
         """
         Возвращает текущий баланс по указанному адресу.
@@ -40,6 +47,15 @@ class TransactionStorage:
         :return: баланс адреса
         """
         return self.balances.get(address, 0)
+
+    def get_nonce(self, address):
+        """
+        Возвращает текущий nonce по указанному адресу. Возвращает None, если адрес не найден.
+
+        :param address: адрес для получения nonce
+        :return: nonce адреса или None, если адрес не найден
+        """
+        return self.nonces.get(address, 0)
 
     def get_all_balances(self):
         """

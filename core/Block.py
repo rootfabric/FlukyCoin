@@ -70,7 +70,7 @@ class Block:
 
         # coinbase_tx = CoinBase.create(dev_config, total_reward_amount, miner_address, block_number)
 
-        coinbase_tx = CoinbaseTransaction(toAddress=address_reward, amount=block_reward)
+        coinbase_tx = CoinbaseTransaction(toAddress=[address_reward], amounts=[block_reward])
         # количество выплат с генезис адреса
         coinbase_tx.nonce = block_number+1
 

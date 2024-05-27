@@ -16,9 +16,8 @@ class TransactionStorage:
         from_address = transaction.fromAddress
         amount = transaction.amount
         to_address = transaction.toAddress
-
         # Проверка наличия средств
-        if (from_address !="0000000000000000000000000000000000"
+        if (transaction.tx_type !="coinbase"
                 and self.get_balance(from_address) < amount):
             # print(f"Ошибка: недостаточно средств на адресе {from_address}")
             return False

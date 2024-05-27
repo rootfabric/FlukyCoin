@@ -105,13 +105,43 @@ class Chain():
             return False
         return True
 
+    def validate_block_time(self, block: Block):
+        if self.last_block() is None:
+            return True
+
+        if block.timestamp_seconds <= self.last_block().timestamp_seconds:
+            self.log.warning("Блок не проходит валидацию по времени")
+            return False
+        return True
+    def validate_block_number(self, block: Block):
+
+        if block.block_number != self.blocks_count():
+            self.log.warning("Блок не проходит валидацию по номеру")
+            return False
+        return True
+
+    def validate_block(self, block):
+        """ Проверка блока в цепи """
+        if not self.validate_block_hash(block):
+            return False
+
+        if not self.validate_block_time(block):
+            return False
+
+        if not self.validate_block_number(block):
+            return False
+
+
+
+        return True
+
     def validate_and_add_block(self, block):
 
         if block is None:
             self.log.warning("validate block is None")
             return False
 
-        if not self.validate_block_hash(block):
+        if not self.validate_block(block):
             return False
 
         self.add_block(block)
@@ -205,13 +235,15 @@ class Chain():
 
         # первый блок
         if self.last_block() is None and self.block_candidate is None:
-            self.block_candidate = copy.deepcopy(block)
+            # self.block_candidate = copy.deepcopy(block)
+            self.block_candidate = Block.from_json(block.to_json())
             self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
             return True
 
         # print("Исходный block:", block)
         if self.block_candidate is None:
-            self.block_candidate = copy.deepcopy(block)
+            # self.block_candidate = copy.deepcopy(block)
+            self.block_candidate = Block.from_json(block.to_json())
             self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
             return True
 
@@ -238,7 +270,8 @@ class Chain():
             if not self.check_miners(self.block_candidate.signer) and self.check_miners(block.signer):
                 """ кандидат в списках майнеров, а текущий нет """
                 # print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
-                self.block_candidate = copy.deepcopy(block)
+                # self.block_candidate = copy.deepcopy(block)
+                self.block_candidate = Block.from_json(block.to_json())
                 # print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
                 self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
                 return True
@@ -252,7 +285,8 @@ class Chain():
         if win_address == self.block_candidate.signer:
             return False
         # новый победитель
-        self.block_candidate = copy.deepcopy(block)
+        # self.block_candidate = copy.deepcopy(block)
+        self.block_candidate = Block.from_json(block.to_json())
         self.log.info("New candidate", self.block_candidate.Hash, self.block_candidate.signer)
 
         return True
@@ -260,7 +294,7 @@ class Chain():
     def close_block(self):
         """ Берем блок кандидата как верный """
 
-        if self.validate_and_add_block(copy.deepcopy(self.block_candidate)):
+        if self.validate_and_add_block(Block.from_json(self.block_candidate.to_json())):
             self.reset_block_candidat()
             return True
         else:

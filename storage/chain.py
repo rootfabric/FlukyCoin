@@ -128,7 +128,7 @@ class Chain():
 
     def next_address_nonce(self, address):
         """ сколько раз использовался адрес в цепи """
-        return self.transaction_storage.get_nonce(address)+1
+        return self.transaction_storage.get_nonce(address) + 1
 
     def address_ballance(self, address):
         """ Баланс адреса """
@@ -139,7 +139,7 @@ class Chain():
 
         """ Проверка  nonce"""
         address_nonce = self.next_address_nonce(transaction.fromAddress)
-        if transaction.nonce != address_nonce :
+        if transaction.nonce != address_nonce:
             self.log.warning(
                 f"Транзакция не валидна. nonce цепи: {address_nonce} nonce транзакции:{transaction.nonce}")
             return False
@@ -158,9 +158,9 @@ class Chain():
         """ Проверка  баланса"""
         if transaction.tx_type == "transfer":
 
-            if self.address_ballance(transaction.fromAddress) < transaction.all_amounts():
+            if self.address_ballance(transaction.fromAddress) < transaction.all_amounts() + transaction.fee:
                 self.log.warning(
-                    f"Транзакция не валидна. Остаток: {self.address_ballance(transaction.fromAddress)} < amounts:{transaction.all_amounts()}")
+                    f"Транзакция не валидна. Остаток: {self.address_ballance(transaction.fromAddress)} < amounts:{transaction.all_amounts()} + fee {transaction.fee}")
                 return False
 
         return True
@@ -195,15 +195,23 @@ class Chain():
         self.add_block(block)
         return True
 
-    def add_block(self, block):
+    def add_block(self, block:Block):
         """  """
         self.blocks.append(block)
 
         # for new_node in block.new_nodes:
         #     self.nodes_rating[new_node] = 0
+        address_reward = None
+        for transaction in block.transactions:
+            if transaction.tx_type == "coinbase":
+                address_reward = transaction.toAddress[0]
+                break
+
+
+
 
         for transaction in block.transactions:
-            self.transaction_storage.add_transaction(transaction)
+            self.transaction_storage.add_transaction(transaction, address_reward)
 
             # # при любом вознаграждении повышаем рейтинг
             # if transaction.fromAddress == '0000000000000000000000000000000000':

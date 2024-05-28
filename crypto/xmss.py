@@ -642,21 +642,22 @@ def XMSS_keyGen(height: int, n: int, w: int in {4, 16}) -> XMSSKeypair:
     return KeyPair
 
 
-def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE) -> XMSSKeypair:
+
+def XMSS_keyGen_from_private_key(private_key_hex: str, height: int, n: int, w: int, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE) -> XMSSKeypair:
     len_1, len_2, len_all = compute_lengths(n, w)
     wots_sk = []
 
     # Изменяем генерацию WOTS ключей, используя уникальный сид для каждого ключа
     for i in range(0, 2 ** height):
-        unique_seed = pseudorandom_function(seed + str(i), n, hash_function_code)  # Генерация уникального сида для каждого ключа
+        unique_seed = pseudorandom_function(private_key_hex + str(i), n, hash_function_code)  # Генерация уникального сида для каждого ключа
         wots_sk.append(WOTS_genSK_from_seed(len_all, n, unique_seed))
 
     SK = XMSSPrivateKey()
     PK = XMSSPublicKey()
     idx = 0
 
-    SK.SK_PRF = generate_random_value(n, seed + "SK_PRF")  # Генерация SK_PRF на основе сида
-    SEED = generate_random_value(n, seed + "SEED")  # Генерация SEED на основе сида
+    SK.SK_PRF = generate_random_value(n, private_key_hex + "SK_PRF")  # Генерация SK_PRF на основе сида
+    SEED = generate_random_value(n, private_key_hex + "SEED")  # Генерация SEED на основе сида
     SK.SEED = SEED
     SK.wots_private_keys = wots_sk
 
@@ -667,7 +668,7 @@ def XMSS_keyGen_from_seed(seed: str, height: int, n: int, w: int, hash_function_
     SK.idx = idx
     SK.root_value = root
 
-    PK.OID = generate_random_value(n, seed + "OID")  # Генерация OID на основе сида
+    PK.OID = generate_random_value(n, private_key_hex + "OID")  # Генерация OID на основе сида
     PK.root_value = root
     PK.SEED = SEED
     PK.height = height
@@ -981,20 +982,25 @@ class XMSS():
         # n = 10
         w = 16
 
-        if key is None:
+        if key is None and seed_phrase is None:
             # Создание расширенного ключа и его кодирование в сид-фразу
             extended_key = create_extended_secret_key(hash_function_code , height)
-        else:
+
+        elif key is not None and  seed_phrase is None:
             # восстанавливаем из ключа
             if isinstance(key, str):
                 key = bytes.fromhex(key)
             hash_function_code, height, extended_key = extract_parameters_from_key(key)
 
+        elif key is None and seed_phrase is not None:
+            key = seed_phrase_to_key(seed_phrase)
+            hash_function_code, height, extended_key = extract_parameters_from_key(key)
+
         if seed_phrase is None:
             seed_phrase = key_to_seed_phrase(extended_key)
-
         # Генерация пары ключей на основе сида
-        key_pair = XMSS_keyGen_from_seed(seed_phrase, height, n, w, hash_function_code)
+        # key_pair = XMSS_keyGen_from_seed(seed_phrase, height, n, w, hash_function_code)
+        key_pair = XMSS_keyGen_from_private_key(extended_key.hex(), height, n, w, hash_function_code)
 
         # Создание адреса
         address = key_pair.PK.generate_address(hash_function_code)
@@ -1044,7 +1050,9 @@ if __name__ == '__main__':
 
     print("Количество подписей", 2 ** height)
     # Генерация пары ключей на основе сида
-    keyPair_client1 = XMSS_keyGen_from_seed(seed_client1, height, n, w)
+    keyPair_client1 = XMSS_keyGen_from_private_key(seed_client1, height, n, w)
+    private_key = '45be862faf6e0dd0ec3d4b9da8f8e12b3e4e130f8ba5c7ce67d8b1894b80c1a7e4d9c29d'
+    keyPair_client1 = XMSS_keyGen_from_private_key(private_key, height, n, w)
 
     # save_keys_to_file(keyPair_client1, "client1.key")
     # keyPair_client1 = load_keys_from_file("client1.key")

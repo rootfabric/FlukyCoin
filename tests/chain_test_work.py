@@ -46,10 +46,14 @@ if __name__ == '__main__':
 
     """ Создание транзакции и валидация в цепи """
 
-    tt = TransferTransaction("RL4PCLryvUMt46oiiSYFTa589Uey13oYEcJZWXvCS2He5eYuwcTr", ["1111111111111111111111111111111111111111111111111111"], [100])
+    tt = TransferTransaction("KziK2EjThDUuXU7W4wjxvQgcfyVWbG8WFZhyCakhrpUvrkUH76zt",
+                             ["1111111111111111111111111111111111111111111111111111"],
+                             [100],
+                             fee=10
+                             )
     tt.nonce = c1.next_address_nonce(tt.fromAddress)
     tt.make_hash()
-    tt.make_sign(xmss2)
+    tt.make_sign(xmss1)
 
     c1.validate_transaction(tt)
 
@@ -62,11 +66,11 @@ if __name__ == '__main__':
     xmss2_b1 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [tt], address_miner=xmss2.address, address_reward="2222222222222222222222222222222222222222222222222222")
 
     """ Добавление блоков """
-    c1.add_block_candidate(xmss1_b1)
+    # c1.add_block_candidate(xmss1_b1)
     c1.add_block_candidate(xmss2_b1)
 
     c2.add_block_candidate(xmss2_b1)
-    c2.add_block_candidate(xmss1_b1)
+    # c2.add_block_candidate(xmss1_b1)
 
     c1.close_block()
     c2.close_block()

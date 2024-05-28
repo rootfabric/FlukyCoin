@@ -10,6 +10,7 @@ if __name__ == '__main__':
     keys = XMSS.create(5)
     private = keys.private_key.hex()
     print("private key", keys.private_key.hex())
+    print("seed_phrase", keys.seed_phrase)
     message = b"123"
     signature = keys.sign(message=message)
     # print(len(sign.to_str()))
@@ -18,16 +19,6 @@ if __name__ == '__main__':
     print("Address s_valid", keys.keyPair.PK.is_valid_address(keys.address))
 
     pk_str = keys.keyPair.PK.to_hex()
-    # PK = keys.keyPair.PK
-    # распаковываем подписи
-
-    # PK = XMSSPublicKey.from_str(pk_str)
-    # signature = SigXMSS.from_str(signature.to_str())
-    # print("OTS", signature.idx_sig)
-    # # Верификация подписи
-    # verification_result = XMSS_verify(signature, message, PK)
-    #
-    # print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")
 
     # публичный ключ из строки
     PK = XMSSPublicKey.from_hex(pk_str)
@@ -36,8 +27,15 @@ if __name__ == '__main__':
 
     keys2 = XMSS.create(key=private)
     print(keys2.address)
+    print("seed_phrase", keys2.seed_phrase)
+    print("private key", keys2.private_key.hex())
+
+    '453952263c8ffc8f7ed251b7cbce2e53116a643cb3bff99554d975a2e6803d04c51ec16e'
+
 
     seed_phrase = keys2.seed_phrase
 
     keys3 = XMSS.create(seed_phrase=seed_phrase)
     print(keys3.address)
+    print("seed_phrase", keys3.seed_phrase)
+    print("private key", keys3.private_key.hex())

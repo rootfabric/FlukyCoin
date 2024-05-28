@@ -11,7 +11,7 @@ class TransactionStorage:
         # Список для хранения всех транзакций
         self.transactions = []
 
-    def add_transaction(self, transaction: Transaction):
+    def add_transaction(self, transaction: Transaction, address_reward:str):
         """
         Добавляет транзакцию и обновляет балансы адресов, если у отправителя достаточно средств.
 
@@ -19,6 +19,7 @@ class TransactionStorage:
         """
         from_address = transaction.fromAddress
         amounts = transaction.all_amounts()
+        fee = transaction.fee
         to_address = transaction.toAddress
         # Проверка наличия средств
         if transaction.tx_type != "coinbase" and self.get_balance(from_address) < amounts:
@@ -28,7 +29,11 @@ class TransactionStorage:
         self.transactions.append(transaction)
 
         # Обновление баланса отправителя и получателя
-        self.balances[from_address] = self.balances.get(from_address, 0) - amounts
+        self.balances[from_address] = self.balances.get(from_address, 0) - amounts - fee
+
+        # награда на адрес который указал майнер для получения
+        self.balances[address_reward] = self.balances.get(address_reward, 0) + fee
+
         for i, address in enumerate(to_address):
             self.balances[address] = self.balances.get(address, 0) + transaction.amounts[i]
 

@@ -54,6 +54,7 @@ class Block:
         block.previousHash = Protocol.prev_hash_genesis_block.hex() if previousHash is None else previousHash
         block.timestamp_seconds = int(timestamp_seconds)
         block.signer = address_miner
+
         # Process transactions
         hashedtransactions = []
         fee_reward = 0

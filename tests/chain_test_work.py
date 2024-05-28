@@ -24,10 +24,11 @@ if __name__ == '__main__':
     # пользователи создают блоки
     t = 1716710000
     xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.address, address_reward=xmss1.address)
+    xmss1_b0.make_sign(xmss1)
 
     t = 1716710001
     xmss2_b0 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [], address_miner=xmss2.address, address_reward=xmss2.address)
-
+    xmss2_b0.make_sign(xmss2)
     """ Добавление блоков """
     c1.add_block_candidate(xmss1_b0)
     c1.add_block_candidate(xmss2_b0)
@@ -61,10 +62,10 @@ if __name__ == '__main__':
     # пользователи создают блоки
     t = 1716720000
     xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [tt], address_miner=xmss1.address, address_reward=xmss1.address)
-
+    xmss1_b1.make_sign(xmss1)
     t = 1716720001
     xmss2_b1 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [tt], address_miner=xmss2.address, address_reward="2222222222222222222222222222222222222222222222222222")
-
+    xmss2_b1.make_sign(xmss2)
     """ Добавление блоков """
     # c1.add_block_candidate(xmss1_b1)
     c1.add_block_candidate(xmss2_b1)

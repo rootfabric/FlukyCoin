@@ -10,7 +10,7 @@ import random
 from storage.transaction_storage import TransactionStorage, TransactionGenerator
 import base64
 from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
-from crypto.mercle import merkle_tx_hash
+from crypto.mercle import merkle_tx_hash, MerkleTools
 from tools.logger import Log
 
 
@@ -208,10 +208,22 @@ class Block:
 
         """
         дополнительно нужна валидация дерева меркле
-        
-        дополннительно нужна валидация в цепи
-        
         """
+
+        mt = MerkleTools(hash_type="SHA256")
+
+        for transaction in self.transactions:
+            mt.add_leaf(transaction.txhash)
+        mt.make_tree()
+        if not mt.is_ready:
+            self.log.error("Ошибка валидации MerkleTools. is_ready False")
+            return False
+
+        if mt.get_merkle_root() !=self.merkle_root:
+            self.log.error("Ошибка валидации MerkleTools. Не верный merkle_root")
+            return False
+
+
         return True
 
 if __name__ == '__main__':

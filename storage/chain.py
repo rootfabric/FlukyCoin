@@ -167,6 +167,10 @@ class Chain():
 
     def validate_block(self, block):
         """ Проверка блока в цепи """
+
+        if not block.validate():
+            return False
+
         if not self.validate_block_hash(block):
             return False
 
@@ -176,10 +180,17 @@ class Chain():
         if not self.validate_block_number(block):
             return False
 
+        count_coinbase = 0
         for transaction in block.transactions:
+            if transaction.tx_type=="coinbase":
+                count_coinbase+=1
             if not self.validate_transaction(transaction):
                 self.log.warning(f"Транзакция {transaction.txhash} не валидна")
                 return False
+
+        if count_coinbase!=1:
+            self.log.warning(f"Неверно количество coinbase транзакций: {count_coinbase} шт")
+            return False
 
         return True
 

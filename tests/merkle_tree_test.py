@@ -11,7 +11,7 @@ if __name__ == '__main__':
 
     hex_data = 'fd3da3e394098269fe8f31e9bd94b72bd343a3dceee8270672c22b93cf1e53b9'
     hex_data2 = '3564ed0691dac7b73b78a320d71fcde904a0f62e2746ae6fce26cee9d1f91f2c'
-    # list_data = ['Some text data', 'perhaps']
+
 
     mt.add_leaf(hex_data)
     # mt.add_leaf(hex_data2)

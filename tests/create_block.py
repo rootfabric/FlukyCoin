@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     t = 1716713605.5979075
     block = Block.create(0, None, t,[], address_miner=xmss.address, address_reward="aaaaa")
-    print(block._previousHash)
+    print(block.previousHash)
     print(block.Hash)
     print(xmss.address)
 

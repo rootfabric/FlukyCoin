@@ -201,9 +201,9 @@ if __name__ == '__main__':
     # print(t.to_json())
 
     xmss = XMSS.create()
-    print(xmss.wallet_address)
+    print(xmss.address)
 
-    tt = TransferTransaction(xmss.wallet_address, ["2"], [100], message_data=["test message"])
+    tt = TransferTransaction(xmss.address, ["2"], [100], message_data=["test message"])
     tt.nonce = 1
     tt.make_hash()
     tt.make_sign(xmss)

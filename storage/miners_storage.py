@@ -23,8 +23,8 @@ class MinerStorage:
         for i in range(size):
             xmss = XMSS.create(height)
             count_sign += xmss.keyPair.PK.max_height()
-            self.keys[xmss.wallet_address] = xmss
-            self.log.info(f"[{i + 1}/{size}]  {xmss.wallet_address} signs:{xmss.keyPair.PK.max_height()}")
+            self.keys[xmss.address] = xmss
+            self.log.info(f"[{i + 1}/{size}]  {xmss.address} signs:{xmss.keyPair.PK.max_height()}")
 
         self.log.info(f"Ключей создано: {size}, подписей:  {count_sign}")
 

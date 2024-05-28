@@ -12,7 +12,7 @@ if __name__ == '__main__':
     """ """
 
     xmss = XMSS.create()
-    print(xmss.wallet_address)
+    print(xmss.address)
 
 
     t = TransferTransaction("aaaaa", ['bbbbb'], ["100000000"], "1000")

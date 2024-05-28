@@ -16,7 +16,7 @@ if __name__ == '__main__':
     # print(len(sign.to_str()))
     # print(sign.to_str())
 
-    print("Address s_valid", keys.keyPair.PK.is_valid_address(keys.address))
+    print("Address s_valid", keys.keyPair.PK.is_valid_address(keys.wallet_address))
 
     pk_str = keys.keyPair.PK.to_hex()
 
@@ -26,7 +26,7 @@ if __name__ == '__main__':
     print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")
 
     keys2 = XMSS.create(key=private)
-    print(keys2.address)
+    print(keys2.wallet_address)
     print("seed_phrase", keys2.seed_phrase)
     print("private key", keys2.private_key.hex())
 
@@ -36,6 +36,6 @@ if __name__ == '__main__':
     seed_phrase = keys2.seed_phrase
 
     keys3 = XMSS.create(seed_phrase=seed_phrase)
-    print(keys3.address)
+    print(keys3.wallet_address)
     print("seed_phrase", keys3.seed_phrase)
     print("private key", keys3.private_key.hex())

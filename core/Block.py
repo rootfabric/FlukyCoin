@@ -27,7 +27,7 @@ class Block:
         self.merkle_root = None
 
         self.sign = None
-        self.Hash = None
+        self.hash = None
         self.signer_pk = None
 
         # избыточные параметры
@@ -65,7 +65,7 @@ class Block:
         # Prepare coinbase tx
         # total_reward_amount = BlockHeader.block_reward_calc(block_number, dev_config) + fee_reward
         sec = Protocol.sequence(block.previousHash)
-        block_reward, ratio, lcs = Protocol.reward(block.signer, sec)
+        block_reward, ratio, lcs = Protocol.reward(block.signer, sec, block_number=block_number)
 
         total_reward_amount = block_reward + fee_reward
 
@@ -110,7 +110,7 @@ class Block:
 
     def make_sign(self, xmss: XMSS) -> bytes:
         """ Подпись блока """
-        signature = xmss.sign(bytes.fromhex(self.Hash))
+        signature = xmss.sign(bytes.fromhex(self.hash))
 
         self.sign = signature.to_base64()
         self.signer_pk = xmss.keyPair.PK.to_hex()
@@ -124,7 +124,7 @@ class Block:
             'previousHash': self.previousHash,
             'time': self.timestamp_seconds,
             'transactions': [tr.to_json() for tr in self.transactions],
-            'hash': self.Hash,
+            'hash': self.hash,
             'signer': self.signer,
             'merkle_root': self.merkle_root,
             'sign': self.sign,
@@ -142,7 +142,7 @@ class Block:
         block.timestamp_seconds = block_dict['time']
         block.merkle_root = block_dict['merkle_root']
         block.transactions = [Transaction.from_json(t) for t in block_dict['transactions']]
-        block.Hash = block_dict['hash']
+        block.hash = block_dict['hash']
         block.signer = block_dict['signer']
         block.sign = block_dict['sign']
         block.signer_pk = block_dict['signer_pk']
@@ -150,9 +150,9 @@ class Block:
 
     def hash_block(self):
         """ Формирование блока"""
-        if self.Hash is None:
-            self.Hash = self.calculate_hash()
-        return self.Hash
+        if self.hash is None:
+            self.hash = self.calculate_hash()
+        return self.hash
 
     def add_transaction(self, transaction):
         self.transactions.append(transaction)
@@ -178,7 +178,7 @@ class Block:
         return (self.block_number == other.blocks_count and
                 self.timeStamp == other.timestamp and
                 self.previousHash == other._previousHash and
-                self.Hash == other.Hash and
+                self.hash == other.hash and
                 self.transactions == other.transaction and
                 self.nonce == other.nonce
                 )
@@ -186,7 +186,7 @@ class Block:
     def validate(self):
         """ Проверка блока """
 
-        old_hash = self.Hash
+        old_hash = self.hash
         new_hash = self.calculate_hash()
 
         if old_hash != new_hash:

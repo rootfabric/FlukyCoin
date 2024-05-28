@@ -16,18 +16,18 @@ if __name__ == '__main__':
 
     xmss1 = XMSS.create(key='45be862faf6e0dd0ec3d4b9da8f8e12b3e4e130f8ba5c7ce67d8b1894b80c1a7e4d9c29d')
     # print('xmss1', xmss1.private_key.hex())
-    print('xmss1', xmss1.address)
+    print('xmss1', xmss1.wallet_address)
     xmss2 = XMSS.create(key='45f82094df93616c349d2cbb587bea590e8396a44e457f99ce11324bc11d5e190c9bb9e9')
     # print(xmss2.private_key.hex())
-    print('xmss2', xmss2.address)
+    print('xmss2', xmss2.wallet_address)
 
     # пользователи создают блоки
     t = 1716710000
-    xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.address, address_reward=xmss1.address)
+    xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.wallet_address, address_reward=xmss1.wallet_address)
     xmss1_b0.make_sign(xmss1)
 
     t = 1716710001
-    xmss2_b0 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [], address_miner=xmss2.address, address_reward=xmss2.address)
+    xmss2_b0 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [], address_miner=xmss2.wallet_address, address_reward=xmss2.wallet_address)
     xmss2_b0.make_sign(xmss2)
     """ Добавление блоков """
     c1.add_block_candidate(xmss1_b0)
@@ -55,16 +55,17 @@ if __name__ == '__main__':
     tt.nonce = c1.next_address_nonce(tt.fromAddress)
     tt.make_hash()
     tt.make_sign(xmss1)
+    print("transaction hash",  tt.txhash)
 
     c1.validate_transaction(tt)
 
     """ Создание блока с транзакциями и валидация в цепи """
     # пользователи создают блоки
     t = 1716720000
-    xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [tt], address_miner=xmss1.address, address_reward=xmss1.address)
+    xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [tt], address_miner=xmss1.wallet_address, address_reward=xmss1.wallet_address)
     xmss1_b1.make_sign(xmss1)
     t = 1716720001
-    xmss2_b1 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [tt], address_miner=xmss2.address, address_reward="2222222222222222222222222222222222222222222222222222")
+    xmss2_b1 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [tt], address_miner=xmss2.wallet_address, address_reward="2222222222222222222222222222222222222222222222222222")
     xmss2_b1.make_sign(xmss2)
     """ Добавление блоков """
     # c1.add_block_candidate(xmss1_b1)

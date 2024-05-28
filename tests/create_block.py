@@ -13,7 +13,7 @@ if __name__ == '__main__':
     """ """
 
     xmss = XMSS.create()
-    print(xmss.address)
+    print(xmss.wallet_address)
 
 
     # t = Transaction("coinbase", random.randint(0,100000), "2", "100")
@@ -22,10 +22,10 @@ if __name__ == '__main__':
     # print(t.txhash.hexdigest())
 
     t = 1716713605.5979075
-    block = Block.create(0, None, t,[], address_miner=xmss.address, address_reward="aaaaa")
+    block = Block.create(0, None, t, [], address_miner=xmss.wallet_address, address_reward="aaaaa")
     print(block.previousHash)
-    print(block.Hash)
-    print(xmss.address)
+    print(block.hash)
+    print(xmss.wallet_address)
 
     block.make_sign(xmss)
 

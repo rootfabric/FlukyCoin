@@ -846,9 +846,8 @@ def XMSS_demo_seed(messages: List[bytearray]):
 
 import os
 
-
-def save_keys_to_file(keypair: XMSSKeypair, file_path: str):
-    data = {
+def keypair_to_json(keypair: XMSSKeypair):
+    return {
         'height': keypair.height,
         'n': keypair.n,
         'w': keypair.w,
@@ -867,17 +866,16 @@ def save_keys_to_file(keypair: XMSSKeypair, file_path: str):
         }
 
     }
+def save_keys_to_file(keypair: XMSSKeypair, file_path: str):
+    data = keypair_to_json(keypair)
     with open(file_path, 'w') as file:
         json.dump(data, file)
 
 
-def load_keys_from_file(file_path: str) -> XMSSKeypair:
-    with open(file_path, 'r') as file:
-        data = json.load(file)
-
-    height = data['height']
-    n = data['n']
-    w = data['w']
+def keypair_from_json(keypair_json):
+    height = keypair_json['height']
+    n = keypair_json['n']
+    w = keypair_json['w']
 
     SK = XMSSPrivateKey()
     PK = XMSSPublicKey()
@@ -885,23 +883,28 @@ def load_keys_from_file(file_path: str) -> XMSSKeypair:
     # Исправлено: корректная обработка структуры данных
     SK.wots_private_keys = [
         [bytes.fromhex(key_hex) for key_hex in wots_key]
-        for wots_key in data['private_key']['wots_private_keys']
+        for wots_key in keypair_json['private_key']['wots_private_keys']
     ]
-    SK.idx = data['private_key']['idx']
-    SK.SK_PRF = data['private_key']['SK_PRF']
-    SK.root_value = bytearray.fromhex(data['private_key']['root_value'])
+    SK.idx = keypair_json['private_key']['idx']
+    SK.SK_PRF = keypair_json['private_key']['SK_PRF']
+    SK.root_value = bytearray.fromhex(keypair_json['private_key']['root_value'])
 
-    SK.SEED = data['private_key']['SEED']
+    SK.SEED = keypair_json['private_key']['SEED']
 
-    PK.OID = data['public_key']['OID']
-    PK.root_value = bytes.fromhex(data['public_key']['root_value'])
-    PK.SEED = data['public_key']['SEED']
+    PK.OID = keypair_json['public_key']['OID']
+    PK.root_value = bytes.fromhex(keypair_json['public_key']['root_value'])
+    PK.SEED = keypair_json['public_key']['SEED']
     PK.height = height
     PK.n = n
     PK.w = w
 
     return XMSSKeypair(SK, PK, height, n, w)
 
+def load_keys_from_file(file_path: str) -> XMSSKeypair:
+    with open(file_path, 'r') as file:
+        data = json.load(file)
+
+    return keypair_from_json(data)
 
 import os
 import struct
@@ -973,7 +976,7 @@ class XMSS():
         self.seed_phrase = seed_phrase
         self.private_key = private_key
         self.address = address
-        self.keyPair = key_pair
+        self.keyPair :XMSSKeypair= key_pair
 
     @classmethod
     def create(cls, height=5, hash_function_code = Protocol.DEFAULT_HASH_FUNCTION_CODE, key=None, seed_phrase=None):
@@ -1013,6 +1016,29 @@ class XMSS():
         signature = XMSS_sign(message, self.keyPair.SK, self.n, self.w, ADRS(), self.height)
         print(f"Подпись: {signature}, размер: {len(signature.to_bytes())} байт")
         return signature
+
+    def to_json(self):
+        return {
+        'height': self.height,
+        'n': self.n,
+        'w': self.w,
+        'seed_phrase': self.seed_phrase,
+        'private_key': self.private_key.hex(),
+        'address': self.address,
+        'keyPair': keypair_to_json(self.keyPair),
+        }
+
+    @classmethod
+    def from_json(cls, json_data):
+        height = json_data['height']
+        n = json_data['n']
+        w = json_data['w']
+        seed_phrase = json_data['seed_phrase']
+        private_key = bytes.fromhex(json_data['private_key'])  # Преобразуем обратно из строки hex
+        address = json_data['address']
+        key_pair = keypair_from_json(json_data['keyPair'])
+
+        return cls(height, n, w, seed_phrase, private_key, address, key_pair)
 
 
 if __name__ == '__main__':

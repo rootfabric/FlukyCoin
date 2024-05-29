@@ -1,4 +1,5 @@
 from core.transaction import Transaction
+import json
 
 class TransactionStorage:
     def __init__(self):
@@ -78,6 +79,27 @@ class TransactionStorage:
         """
         return sorted(self.balances.items(), key=lambda x: x[1]/100000000, reverse=True)
 
+    def to_json(self):
+        """
+        Сериализует объект TransactionStorage в JSON-строку.
+        """
+        return json.dumps({
+            'balances': self.balances,
+            'nonces': self.nonces,
+            'transactions': [t.to_json() for t in self.transactions]
+        })
+
+    @classmethod
+    def from_json(cls, json_str):
+        """
+        Десериализует объект TransactionStorage из JSON-строки.
+        """
+        data = json.loads(json_str)
+        storage = cls()
+        storage.balances = data['balances']
+        storage.nonces = data['nonces']
+        storage.transactions = [Transaction.from_json(t) for t in data['transactions']]
+        return storage
 # # Пример использования класса
 transaction_storage = TransactionStorage()
 

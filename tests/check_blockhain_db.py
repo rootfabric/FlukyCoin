@@ -31,7 +31,7 @@ if __name__ == '__main__':
             t = b1.timestamp_seconds - b0.timestamp_seconds
             list_time.append(t)
 
-            print(block.datetime(), b0.hash, block.signer)
+            print(block.datetime(), b0.hash, block.signer, block.mining_reward()/10000000)
             # print(b0.hash, b1.previousHash, t)
 
     print(list_time)

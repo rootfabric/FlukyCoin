@@ -78,7 +78,13 @@ class Chain():
 
         # Сохранение данных
         with open(full_path, 'wb') as file:
-            pickle.dump([self.blocks, self.transaction_storage, self.block_candidate], file)
+
+            # pickle.dump([[b.to_json() for b in self.blocks], self.transaction_storage, None if self.block_candidate is None else self.block_candidate.to_json()], file)
+            pickle.dump([[b.to_json() for b in self.blocks], self.transaction_storage.to_json(), None if self.block_candidate is None else self.block_candidate.to_json()], file)
+
+
+            # pickle.dump([[b.to_json() for b in self.blocks],  None if self.block_candidate is None else self.block_candidate.to_json()], file)
+
 
         # print(f"Blockchain saved to disk at {full_path}.")
 
@@ -93,7 +99,13 @@ class Chain():
 
         try:
             with open(full_path, 'rb') as file:
-                self.blocks, self.transaction_storage, self.block_candidate = pickle.load(file)
+                blocks_json, transaction_storage_json, block_candidate_json = pickle.load(file)
+                if block_candidate_json is not None:
+                    self.block_candidate.from_json(block_candidate_json)
+
+                self.transaction_storage = TransactionStorage.from_json(transaction_storage_json)
+
+                self.blocks = [Block.from_json(j) for j in blocks_json]
 
             for block in self.blocks:
                 self.miners.add(block.signer)

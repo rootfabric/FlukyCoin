@@ -36,8 +36,14 @@ class Block:
         # адрес публичного ключ того кто сделал блок.
         self.signer = None
 
-        self.transactions = []
+        self.transactions:[Transaction] = []
         self.log = Log()
+
+    def mining_reward(self):
+        for tx in self.transactions:
+            if tx.tx_type =="coinbase":
+                return tx.all_amounts()
+
 
     @staticmethod
     def create(

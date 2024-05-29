@@ -12,7 +12,8 @@ class Protocol:
     # WAIT_ACTIVE_PEERS_BEFORE_START = 30
     WAIT_ACTIVE_PEERS_BEFORE_START = 1
 
-    BLOCK_TIME_INTERVAL = 30
+    # BLOCK_TIME_INTERVAL = 30
+    BLOCK_TIME_INTERVAL = 10
     BLOCK_TIME_INTERVAL_LOG = BLOCK_TIME_INTERVAL / 4
 
     # 11 2-4 в день
@@ -108,8 +109,8 @@ class Protocol:
         # # Умножаем текущую награду на скорректированный коэффициент
         reward = int(current_reward * adjusted_ratio)
 
-        # Округление награды до ближайшего миллиона
-        reward = round(reward / 1000000) * 1000000
+        # Округление награды до миллиона
+        reward = round(reward, -6)
 
         return reward, ratio1, lcs
 

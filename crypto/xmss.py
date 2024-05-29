@@ -38,11 +38,13 @@ class XMSSPrivateKey:
         self.root_value = None
         self.SEED = None
 
+
 hash_functions = {
-            0: hashlib.sha256(),
-            1: lambda: hashlib.shake_128(),  # Функция возвращает объект хеша
-            2: lambda: hashlib.shake_256()  # Функция возвращает объект хеша
-        }
+    0: hashlib.sha256(),
+    1: lambda: hashlib.shake_128(),  # Функция возвращает объект хеша
+    2: lambda: hashlib.shake_256()  # Функция возвращает объект хеша
+}
+
 
 class XMSSPublicKey:
 
@@ -56,6 +58,7 @@ class XMSSPublicKey:
         self.w = w
         self.hash_functions = Protocol.hash_functions
         self.address_start = ""
+
     def max_height(self):
         """ Максимальное количество подписей """
         return 2 ** self.height
@@ -167,8 +170,6 @@ class XMSSPublicKey:
     def from_hex(cls, pk_hex):
         return XMSSPublicKey.from_bytes(bytes.fromhex(pk_hex))
 
-
-
     # def to_bytes(self):
     #     # Кодируем OID и SEED в байты
     #     oid_bytes = self.OID.encode('utf-8') if self.OID is not None else b''
@@ -213,9 +214,9 @@ class XMSSPublicKey:
 
 class XMSSKeypair:
 
-    def __init__(self, SK, PK, height=4, n=4, w=32):
-        self.SK = SK
-        self.PK = PK
+    def __init__(self, SK: XMSSPrivateKey, PK: XMSSPublicKey, height=4, n=4, w=32):
+        self.SK: XMSSPrivateKey = SK
+        self.PK: XMSSPublicKey = PK
         self.height = height
         self.n = n
         self.w = w
@@ -234,6 +235,7 @@ class SigXMSS:
 
     def to_hex(self):
         return self.to_bytes().hex()
+
     @staticmethod
     def from_bytes(bytes_data):
         # Распаковка и десериализация объекта из сжатых байтов
@@ -534,7 +536,7 @@ def RAND_HASH(left: bytearray, right: bytearray, SEED: str, adrs: ADRS):
     return H(KEY, xor(left, BM_0) + xor(right, BM_1))
 
 
-def pseudorandom_function(seed, n, hash_function_code = Protocol.DEFAULT_HASH_FUNCTION_CODE):
+def pseudorandom_function(seed, n, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE):
     # Создаем хеш из сида, предполагая, что seed является строкой.
     seed_bytes = seed.encode('utf-8')  # Преобразуем строку сида в байты
     # hash_digest = hashlib.sha256(seed_bytes).digest()  # Создаем хеш SHA-256 от сида
@@ -642,14 +644,15 @@ def XMSS_keyGen(height: int, n: int, w: int in {4, 16}) -> XMSSKeypair:
     return KeyPair
 
 
-
-def XMSS_keyGen_from_private_key(private_key_hex: str, height: int, n: int, w: int, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE) -> XMSSKeypair:
+def XMSS_keyGen_from_private_key(private_key_hex: str, height: int, n: int, w: int,
+                                 hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE) -> XMSSKeypair:
     len_1, len_2, len_all = compute_lengths(n, w)
     wots_sk = []
 
     # Изменяем генерацию WOTS ключей, используя уникальный сид для каждого ключа
     for i in range(0, 2 ** height):
-        unique_seed = pseudorandom_function(private_key_hex + str(i), n, hash_function_code)  # Генерация уникального сида для каждого ключа
+        unique_seed = pseudorandom_function(private_key_hex + str(i), n,
+                                            hash_function_code)  # Генерация уникального сида для каждого ключа
         wots_sk.append(WOTS_genSK_from_seed(len_all, n, unique_seed))
 
     SK = XMSSPrivateKey()
@@ -846,6 +849,7 @@ def XMSS_demo_seed(messages: List[bytearray]):
 
 import os
 
+
 def keypair_to_json(keypair: XMSSKeypair):
     return {
         'height': keypair.height,
@@ -866,6 +870,8 @@ def keypair_to_json(keypair: XMSSKeypair):
         }
 
     }
+
+
 def save_keys_to_file(keypair: XMSSKeypair, file_path: str):
     data = keypair_to_json(keypair)
     with open(file_path, 'w') as file:
@@ -900,17 +906,19 @@ def keypair_from_json(keypair_json):
 
     return XMSSKeypair(SK, PK, height, n, w)
 
+
 def load_keys_from_file(file_path: str) -> XMSSKeypair:
     with open(file_path, 'r') as file:
         data = json.load(file)
 
     return keypair_from_json(data)
 
+
 import os
 import struct
 
 
-def create_extended_secret_key(hash_function_code = Protocol.DEFAULT_HASH_FUNCTION_CODE, height = Protocol.DEFAULT_HEIGHT ):
+def create_extended_secret_key(hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE, height=Protocol.DEFAULT_HEIGHT):
     # Создаем секретный ключ размером 32 байта, чтобы общий размер с параметрами был 36 байт
     secret_key = os.urandom(35)  # 32 байта = 256 бит
 
@@ -976,10 +984,14 @@ class XMSS():
         self.seed_phrase = seed_phrase
         self.private_key = private_key
         self.address = address
-        self.keyPair :XMSSKeypair= key_pair
+        self.keyPair: XMSSKeypair = key_pair
+
+    def count_sign(self):
+        """ Количество оставшихся подписей """
+        return self.keyPair.PK.max_height() - self.keyPair.SK.idx -1
 
     @classmethod
-    def create(cls, height=5, hash_function_code = Protocol.DEFAULT_HASH_FUNCTION_CODE, key=None, seed_phrase=None):
+    def create(cls, height=5, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE, key=None, seed_phrase=None):
         # Установка параметров
         n = 32
         # n = 10
@@ -987,9 +999,9 @@ class XMSS():
 
         if key is None and seed_phrase is None:
             # Создание расширенного ключа и его кодирование в сид-фразу
-            extended_key = create_extended_secret_key(hash_function_code , height)
+            extended_key = create_extended_secret_key(hash_function_code, height)
 
-        elif key is not None and  seed_phrase is None:
+        elif key is not None and seed_phrase is None:
             # восстанавливаем из ключа
             if isinstance(key, str):
                 key = bytes.fromhex(key)
@@ -1019,13 +1031,13 @@ class XMSS():
 
     def to_json(self):
         return {
-        'height': self.height,
-        'n': self.n,
-        'w': self.w,
-        'seed_phrase': self.seed_phrase,
-        'private_key': self.private_key.hex(),
-        'address': self.address,
-        'keyPair': keypair_to_json(self.keyPair),
+            'height': self.height,
+            'n': self.n,
+            'w': self.w,
+            'seed_phrase': self.seed_phrase,
+            'private_key': self.private_key.hex(),
+            'address': self.address,
+            'keyPair': keypair_to_json(self.keyPair),
         }
 
     @classmethod

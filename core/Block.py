@@ -122,21 +122,24 @@ class Block:
         self.signer_pk = xmss.keyPair.PK.to_hex()
         print(f"Подпись размер: {len(self.sign)} ")
 
-    def to_json(self):
+    def to_dict(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON
         block_dict = {
             'index': self.block_number,
             'version': self.version,
             'previousHash': self.previousHash,
             'time': self.timestamp_seconds,
-            'transactions': [tr.to_json() for tr in self.transactions],
+            'transactions': [tr.to_dict() for tr in self.transactions],
             'hash': self.hash,
             'signer': self.signer,
             'merkle_root': self.merkle_root,
             'sign': self.sign,
             'signer_pk': self.signer_pk
         }
-        return json.dumps(block_dict)
+        return block_dict
+    def to_json(self):
+        # Преобразование объекта Block в словарь для последующей сериализации в JSON
+        return json.dumps(self.to_dict())
 
     @classmethod
     def from_json(cls, json_str):

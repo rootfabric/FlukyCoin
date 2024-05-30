@@ -38,15 +38,18 @@ class Transaction:
             data['message_data'] = self.message_data[:Protocol.MAX_MESSAGE_SIZE]
         return data
 
-    def to_json(self, for_sign=False):
-        # Сериализует объект в строку JSON
+    def to_dict(self, for_sign=False):
+
         d = self.as_dict()
         if for_sign:
-            # данные для подбиси. Убираем поля которых не должно быть
+            # данные для подписи. Убираем поля которых не должно быть
             d['public_key'] = None
             d['signature'] = None
             d['txhash'] = None
-        return json.dumps(d)
+        return d
+    def to_json(self, for_sign=False):
+        # Сериализует объект в строку JSON
+        return json.dumps(self.to_dict(for_sign))
 
     @classmethod
     def from_json(cls, json_data):

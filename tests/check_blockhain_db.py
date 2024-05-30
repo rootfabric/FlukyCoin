@@ -6,6 +6,7 @@ if __name__ == '__main__':
     """ """
 
     chain = Chain()
+    chain2 = Chain()
 
     chain.load_from_disk(dir = "test_db")
 
@@ -20,6 +21,10 @@ if __name__ == '__main__':
 
     list_time =[]
     for i, block in enumerate(chain.blocks):
+
+        chain2.add_block_candidate(block)
+        chain2.close_block()
+
         is_key = Protocol.is_key_block(block.hash_block())
         if is_key:
             print(i)
@@ -35,3 +40,6 @@ if __name__ == '__main__':
             # print(b0.hash, b1.previousHash, t)
 
     print(list_time)
+
+    print(len(chain.blocks))
+    print(len(chain2.blocks))

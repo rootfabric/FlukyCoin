@@ -601,7 +601,9 @@ class NetworkManager:
                         block_sync = False
                         # берем очередной блок которого нет в ноде
                         block_num = self.chain.blocks_count()
+                        print(block_num)
                         response = client.send_request({'command': 'getblock', 'block_number': block_num})
+                        print(response)
                         block_data = response.get('block')
                         if block_data:
                             # Проверяем и добавляем блок в локальную цепочку

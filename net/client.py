@@ -64,7 +64,7 @@ import json
 import time
 import datetime
 from tools.logger import Log
-
+import struct
 
 class Client:
     def __init__(self, host="localhost", port=5555, timeout=5.0, log=Log()):
@@ -100,17 +100,27 @@ class Client:
     def send_request(self, request):
         try:
             self.client_socket.sendall(json.dumps(request).encode('utf-8'))
-            response = self.client_socket.recv(1024)
+
+            # Используем цикл для приёма всех данных
+            response = b""
+            while True:
+                part = self.client_socket.recv(4096)  # Увеличиваем размер буфера для получения данных
+                response += part
+                if len(part) < 4096:
+                    break
+            # response = self.client_socket.recv(1024)
             if response:
                 return json.loads(response.decode('utf-8'))
+
             else:
-                # print("No response from server")
                 return {'error': 'No response from server'}
+
         except socket.timeout:
             # print(f"Timeout occurred when connecting to {self.host}:{self.port}")
             return {'error': 'Timeout occurred'}
         except Exception as e:
             # print(f"An error occurred: {e}")
+            print(response)
             return {'error': str(e)}
 
     def close(self):

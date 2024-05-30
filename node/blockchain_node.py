@@ -12,6 +12,7 @@ from net.client import Client
 from net.network_manager import NetworkManager
 from tools.time_sync import NTPTimeSynchronizer
 from tools.logger import Log
+import json
 
 class BlockchainNode:
     def __init__(self, config, log = Log()):
@@ -165,11 +166,14 @@ class BlockchainNode:
         # print("get_info", "block_candidat", answ['block_candidat'])
         return answ
 
+    # def get_block(self, block_number):
+    #     block = self.chain.blocks[block_number]
+    #     mess = {'block': block.to_json()}
+    #     return mess
     def get_block(self, block_number):
         block = self.chain.blocks[block_number]
         mess = {'block': block.to_json()}
         return mess
-
     def get_block_candidate(self):
         block_candidate = self.chain.block_candidate
         mess = {'block_candidate': block_candidate.to_json() if block_candidate is not None else None}

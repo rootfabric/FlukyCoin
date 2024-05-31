@@ -227,9 +227,16 @@ class BlockchainNode:
                 if self.chain.try_address_candidate(address_miner, miner_address):
                     miner_address = address_miner
 
+
+            if last_block is not None:
+                if self.chain.try_address_candidate(last_block.signer, miner_address):
+                    # self.log.info("Кандидат сильнее")
+                    return None
+
+
             #Лучший блок
             if last_block is not None and miner_address == last_block.signer:
-                self.log.info("кандидат устоял")
+                # self.log.info("кандидат устоял")
                 return None
 
             if miner_address in self.miners_storage.keys and self.miners_storage.keys[miner_address].count_sign()<=0:
@@ -314,7 +321,7 @@ class BlockchainNode:
 
                 needClose = self.chain.need_close_block()
 
-                self.log.info([(p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
+                self.log.info([(p.address(), "" if p.info is None or p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
                        for p in self.network_manager.peers.values()])
 
                 if self.chain.block_candidate is not None:

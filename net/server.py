@@ -27,11 +27,11 @@ class Server:
             try:
                 client_socket, addr = self.server_socket.accept()
                 self.log.info("Connected by {}".format(addr))
-                threading.Thread(target=self.handle_client, args=(client_socket,)).start()
+                threading.Thread(target=self.handle_client, args=(client_socket,addr, )).start()
             except Exception as e:
                 self.log.error("Server listen error: {}".format(e))
 
-    def handle_client(self, client_socket):
+    def handle_client(self, client_socket, addr):
         try:
             while True:
                 raw_msglen = self.recvall_exactly(client_socket, 4)
@@ -42,7 +42,7 @@ class Server:
                 if not data:
                     return
                 request = json.loads(data.decode('utf-8'))
-                # self.log.info("Received request: {}".format(request))
+                # self.log.info(f"Received request {addr}: {str(request)[:100]}")
                 response = self.handle_request(request)
                 self.send_response(client_socket, response)
         except Exception as e:

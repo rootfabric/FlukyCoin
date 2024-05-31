@@ -14,7 +14,14 @@ class Protocol:
 
     BLOCK_TIME_INTERVAL = 30
     # BLOCK_TIME_INTERVAL = 10
-    BLOCK_TIME_INTERVAL_LOG = BLOCK_TIME_INTERVAL / 4
+    # BLOCK_TIME_INTERVAL_LOG = BLOCK_TIME_INTERVAL / 4
+    BLOCK_TIME_INTERVAL_LOG = 3
+
+    # количество секунд. после смены блока, перед проверками
+    BLOCK_START_CHECK_PAUSE = 5
+
+    # количество секунд перед закрытием, когда прекращаем синхронизации и проверки
+    BLOCK_END_CHECK_PAUSE = 10
 
     # 11 2-4 в день
     KEY_BLOCK_POROG = 11

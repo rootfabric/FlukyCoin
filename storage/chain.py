@@ -78,13 +78,11 @@ class Chain():
 
         # Сохранение данных
         with open(full_path, 'wb') as file:
-
             # pickle.dump([[b.to_json() for b in self.blocks], self.transaction_storage, None if self.block_candidate is None else self.block_candidate.to_json()], file)
-            pickle.dump([[b.to_json() for b in self.blocks], self.transaction_storage.to_json(), None if self.block_candidate is None else self.block_candidate.to_json()], file)
-
+            pickle.dump([[b.to_json() for b in self.blocks], self.transaction_storage.to_json(),
+                         None if self.block_candidate is None else self.block_candidate.to_json()], file)
 
             # pickle.dump([[b.to_json() for b in self.blocks],  None if self.block_candidate is None else self.block_candidate.to_json()], file)
-
 
         # print(f"Blockchain saved to disk at {full_path}.")
 
@@ -177,6 +175,18 @@ class Chain():
 
         return True
 
+    def validate_nonce_key(self, block: Block):
+
+        PK = block.XMSSPublicKey()
+        address = PK.generate_address()
+
+        if PK.max_height() <= self.next_address_nonce(address):
+            self.log.warning(
+                f"PK.max_height() {PK.max_height()} self.next_address_nonce(PK.generate_address()) {self.next_address_nonce(address)}")
+            self.log.warning("Количество подписей больше высоты")
+            return False
+        return True
+
     def validate_block(self, block):
         """ Проверка блока в цепи """
 
@@ -192,15 +202,18 @@ class Chain():
         if not self.validate_block_number(block):
             return False
 
+        if not self.validate_nonce_key(block):
+            return False
+
         count_coinbase = 0
         for transaction in block.transactions:
-            if transaction.tx_type=="coinbase":
-                count_coinbase+=1
+            if transaction.tx_type == "coinbase":
+                count_coinbase += 1
             if not self.validate_transaction(transaction):
                 self.log.warning(f"Транзакция {transaction.txhash} не валидна")
                 return False
 
-        if count_coinbase!=1:
+        if count_coinbase != 1:
             self.log.warning(f"Неверно количество coinbase транзакций: {count_coinbase} шт")
             return False
 
@@ -218,7 +231,7 @@ class Chain():
         self.add_block(block)
         return True
 
-    def add_block(self, block:Block):
+    def add_block(self, block: Block):
         """  """
         self.blocks.append(block)
 
@@ -229,9 +242,6 @@ class Chain():
             if transaction.tx_type == "coinbase":
                 address_reward = transaction.toAddress[0]
                 break
-
-
-
 
         for transaction in block.transactions:
             self.transaction_storage.add_transaction(transaction, address_reward)
@@ -263,33 +273,6 @@ class Chain():
 
         return self.blocks[-1] if len(self.blocks) > 0 else None
 
-    # def select_winer_block(self, block1: Block, block2: Block):
-    #     """ при разных блоках надо выбрать правильный"""
-    #
-    #     if block1.previousHash != block2.previousHash:
-    #         print(" Блоки разного уровня. сравнение не корректно")
-    #         raise
-    #
-    #     # signer = base64.b64decode(block1.signer)
-    #     # PK = XMSSPublicKey.from_bytes(signer)
-    #     # print(PK.generate_address())
-    #
-    #     merge_block = Block(block1.previousHash)
-    #
-    #     for new_node, parrent in block1.new_nodes.items():
-    #         merge_block.add_new_node(new_node, parrent)
-    #
-    #     for new_node, parrent in block2.new_nodes.items():
-    #         merge_block.add_new_node(new_node, parrent)
-    #
-    #     winner = merge_block.find_winner_in_new_nodes()
-    #
-    #     print(winner)
-    #
-    #     if XMSSPublicKey.from_bytes(base64.b64decode(block1.signer)).generate_address() == winner['address']:
-    #         return block1
-    #     if XMSSPublicKey.from_bytes(base64.b64decode(block2.signer)).generate_address() == winner['address']:
-    #         return block2
     def check_miners(self, addr):
         return addr in self.miners
 
@@ -419,6 +402,7 @@ class Chain():
         """ Берем блок кандидата как верный """
 
         if self.validate_and_add_block(Block.from_json(self.block_candidate.to_json())):
+            self.transaction_storage.add_nonses_to_address(self.block_candidate.signer)
             self.reset_block_candidat()
             return True
         else:

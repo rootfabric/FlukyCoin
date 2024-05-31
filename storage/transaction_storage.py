@@ -39,12 +39,16 @@ class TransactionStorage:
             self.balances[address] = self.balances.get(address, 0) + transaction.amounts[i]
 
         # Обновление nonce для адреса отправителя
-        if from_address in self.nonces:
-            self.nonces[from_address] += 1
-        else:
-            self.nonces[from_address] = 1
-
+        self.add_nonses_to_address(from_address)
         return True
+
+    def add_nonses_to_address(self, address):
+        # Обновление nonce для адреса отправителя
+        if address in self.nonces:
+            self.nonces[address] += 1
+        else:
+            self.nonces[address] = 1
+
     def get_balance(self, address):
         """
         Возвращает текущий баланс по указанному адресу.

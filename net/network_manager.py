@@ -510,6 +510,8 @@ class NetworkManager:
                             # print("Нода считает верным блок", candidate.hash_block() )
                             # self.chain.add_block_candidate(candidate)
                         # print(response)
+            else:
+                del self.blocks_to_broadcast[adress]
 
     def pull_candidat_block_from_peer(self, peer):
 
@@ -656,7 +658,8 @@ class NetworkManager:
 
             # if  (self.time_ntpt.get_corrected_time() - self.chain.last_block().time>3 and
             # если блок близок к закрытию, то ждем следующий
-            if self.time_ntpt.get_corrected_time() - self.chain.last_block().timestamp_seconds < self.chain.last_block().timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_END_CHECK_PAUSE:
+            # if self.time_ntpt.get_corrected_time() - self.chain.last_block().timestamp_seconds < self.chain.last_block().timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_END_CHECK_PAUSE:
+            if self.time_ntpt.get_corrected_time() +Protocol.BLOCK_END_CHECK_PAUSE < Protocol.BLOCK_TIME_INTERVAL + self.chain.last_block().timestamp_seconds:
                 self.synced = True
                 self.log.info("Блоки синхронизированные:", self.chain.blocks_count())
                 self.log.info("Нода синхронизированна! последний блок: ", self.log.info(self.chain.last_block_hash()))

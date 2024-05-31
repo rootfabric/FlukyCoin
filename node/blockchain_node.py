@@ -14,8 +14,9 @@ from tools.time_sync import NTPTimeSynchronizer
 from tools.logger import Log
 import json
 
+
 class BlockchainNode:
-    def __init__(self, config, log = Log()):
+    def __init__(self, config, log=Log()):
         self.log = log
         self.config = config
         # self.initial_peers = config.get("initial_peers", ["localhost:5555"])
@@ -33,9 +34,7 @@ class BlockchainNode:
 
         self.mempool = Mempool(dir=str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}'))
 
-        self.chain = Chain(config=self.config, mempool=self.mempool , log = self.log)
-
-
+        self.chain = Chain(config=self.config, mempool=self.mempool, log=self.log)
 
         self.network_manager = NetworkManager(self.handle_request, config=self.config, mempool=self.mempool,
                                               chain=self.chain, time_ntpt=self.time_ntpt)
@@ -174,6 +173,7 @@ class BlockchainNode:
         block = self.chain.blocks[block_number]
         mess = {'block': block.to_json()}
         return mess
+
     def get_block_candidate(self):
         block_candidate = self.chain.block_candidate
         mess = {'block_candidate': block_candidate.to_json() if block_candidate is not None else None}
@@ -213,13 +213,10 @@ class BlockchainNode:
 
         last_block = self.chain.block_candidate
 
-        """ определение, если ли адрес, который может претендовать на награду"""
-        # block = Block.create(previousHash)
-        # winner_address = last_block.signer if last_block is not None else next(iter(self.miners_storage.keys))
-        # Кандидат свой, не создаем
+        """ требуется откат индекса секретного колюча, если свой блок перебит"""
+
         if last_block is not None and last_block.signer in self.miners_storage.keys:
             return None
-
 
         for miner_address in list(self.miners_storage.keys.keys()):
 
@@ -227,19 +224,17 @@ class BlockchainNode:
                 if self.chain.try_address_candidate(address_miner, miner_address):
                     miner_address = address_miner
 
-
             if last_block is not None:
                 if self.chain.try_address_candidate(last_block.signer, miner_address):
                     # self.log.info("Кандидат сильнее")
                     return None
 
-
-            #Лучший блок
+            # Лучший блок
             if last_block is not None and miner_address == last_block.signer:
                 # self.log.info("кандидат устоял")
                 return None
 
-            if miner_address in self.miners_storage.keys and self.miners_storage.keys[miner_address].count_sign()<=0:
+            if miner_address in self.miners_storage.keys and self.miners_storage.keys[miner_address].count_sign() <= 0:
                 self.log.info("Кончились подписи", miner_address)
                 del self.miners_storage.keys[miner_address]
                 continue
@@ -253,6 +248,12 @@ class BlockchainNode:
             # берем ключ из хранилища
             xmss = self.miners_storage.keys[miner_address]
 
+            next_idx = self.chain.next_address_nonce(miner_address)
+            if xmss.keyPair.SK.idx != next_idx - 1:
+                self.log.info(f"xmss.keyPair.SK.idx {xmss.keyPair.SK.idx}")
+                xmss.keyPair.SK.idx = next_idx - 1
+                self.log.warning("Не верное количество подписей между ключом и цепью. Ставим количество цепи")
+
             """ Сбор блока под выбранный адрес """
             self.log.info("Свой адрес победил, создаем блок")
 
@@ -262,16 +263,22 @@ class BlockchainNode:
             # синхронизированное время цепи
             block_timestamp_seconds = time_candidat if time_candidat > self.chain.time_ntpt.get_corrected_time() else self.chain.time_ntpt.get_corrected_time()
 
-
             # создание блока со своим адресом
             transacrions = []
             # block.hash_block()
-            block_candidate = Block.create(self.chain.blocks_count(), self.chain.last_block_hash(), block_timestamp_seconds, transacrions, address_miner=xmss.address,
-                                    address_reward=self.wallet_address)
+            block_candidate = Block.create(self.chain.blocks_count(), self.chain.last_block_hash(),
+                                           block_timestamp_seconds, transacrions, address_miner=xmss.address,
+                                           address_reward=self.wallet_address)
 
             block_candidate.make_sign(xmss)
 
             self.log.info("Блок создан", block_candidate.hash_block())
+
+            if not self.chain.validate_block(block_candidate):
+                self.log.info("Блок не прошел валидацию")
+                block_candidate = None
+            else:
+                self.miners_storage.save_storage_to_disk(block_candidate)
 
             return block_candidate
 
@@ -295,89 +302,96 @@ class BlockchainNode:
         signal.signal(signal.SIGINT, self.signal_handler)
 
         self.log.info("Blockchain Node is running")
-
+        timer_log = time.time()
         while self.running:
             # try:
-                # не работаем без синхронизации
-                if not self.network_manager.synced:
-                    self.log.info("active peers", [(p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
+            # не работаем без синхронизации
+            flag_log = False
+            if timer_log + Protocol.BLOCK_TIME_INTERVAL_LOG<time.time():
+                flag_log = True
+                timer_log = time.time()
+
+            if not self.network_manager.synced:
+                if flag_log:
+                  self.log.info("active peers", [
+                    (p.address(), "" if p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
+                    for p in self.network_manager.peers.values()])
+                time.sleep(0.1)
+                # print("Node not sync!")
+                continue
+
+            # print("mempool", len(self.mempool.transactions))
+
+            # continue
+
+            # сгенегрировать блок, и попробовать добавить его в блокчейн
+
+            new_block = self.create_block()
+
+            if self.chain.add_block_candidate(new_block):
+                self.log.info(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
+                              new_block.signer)
+                self.network_manager.distribute_block(self.chain.block_candidate)
+
+            needClose = self.chain.need_close_block()
+            if flag_log:
+              self.log.info([(p.address(), "" if p.info is None or p.info.get(
+                'block_candidate') is None else f"{p.info['block_candidate'][:5]}")
                            for p in self.network_manager.peers.values()])
-                    time.sleep(5)
-                    # print("Node not sync!")
-                    continue
 
-                # print("mempool", len(self.mempool.transactions))
-
-                # continue
-
-                # сгенегрировать блок, и попробовать добавить его в блокчейн
-
-                new_block = self.create_block()
-
-                if self.chain.add_block_candidate(new_block):
-                    self.log.info(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
-                          new_block.signer)
-                    self.network_manager.distribute_block(self.chain.block_candidate)
-
-                needClose = self.chain.need_close_block()
-
-                self.log.info([(p.address(), "" if p.info is None or p.info.get('block_candidate') is None else f"{p.info['block_candidate'][:5]}")
-                       for p in self.network_manager.peers.values()])
-
-                if self.chain.block_candidate is not None:
-                  self.log.info(
+            if flag_log and self.chain.block_candidate is not None:
+                self.log.info(
                     # f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
                     f"Check: {self.chain.blocks_count()} peers[{len(self.network_manager.active_peers())}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.timestamp_seconds - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
 
-
-                # try:
-                if needClose and self.chain.block_candidate is not None:
-                    self.log.info("*******************", self.network_manager.active_peers())
-                    self.log.info(f"Время закрывать блок: {self.chain.blocks_count()}")
-                    if not self.chain.close_block():
-                        self.log.info("last_block", self.chain.last_block_hash())
-                        self.log.info("candidate", self.chain.block_candidate_hash)
-                        self.chain.reset_block_candidat
-                        time.sleep(0.45)
-                        continue
-                    last_block = self.chain.last_block()
-                    if last_block is not None:
-                        self.log.info(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
-                                      last_block.signer)
-
-                    self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
-
-                    self.log.info(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
-                    if self.protocol.is_key_block(self.chain.last_block().hash):
-                        self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
-                    self.log.info("*******************")
+            # try:
+            if needClose and self.chain.block_candidate is not None:
+                self.log.info("*******************", self.network_manager.active_peers())
+                self.log.info(f"Время закрывать блок: {self.chain.blocks_count()}")
+                if not self.chain.close_block():
+                    self.log.info("last_block", self.chain.last_block_hash())
+                    self.log.info("candidate", self.chain.block_candidate_hash)
+                    self.chain.reset_block_candidat
+                    time.sleep(0.45)
                     continue
-                # except Exception as e:
-                #     self.log.error("Ошибка основного цикла", e)
-                # if needClose and self.chain.block_candidate is not None:
-                #     self.chain.close_block()
-                #     print("Закрываем блок", self.chain.last_block().hash)
+                last_block = self.chain.last_block()
+                if last_block is not None:
+                    self.log.info(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
+                                  last_block.signer)
 
-                # current_datetime = self.time_ntpt.get_corrected_datetime()
+                self.chain.save_chain_to_disk(dir=str(self.network_manager.server.address))
 
-                time_to_close = Protocol.BLOCK_TIME_INTERVAL_LOG
-                if self.chain.last_block() is not None:
-                    time_block = self.chain.last_block().timestamp_seconds
-                    time_to_close_block = self.time_ntpt.get_corrected_time() - time_block
-                    if time_to_close_block < time_to_close and time_to_close_block > 0:
-                        time_to_close = time_to_close - time_to_close_block
-
-                time.sleep(time_to_close)
-
-                #
-                # # Вычисляем, сколько миллисекунд осталось до следующей секунды
-                # milliseconds_to_wait = 1000 - (current_datetime.microsecond // 1000)
-                # # Добавляем задержку в секундах (преобразуем миллисекунды в секунды)
-                # time.sleep(milliseconds_to_wait / 1000.0)
-                #
-                # # print(f"Chain {len(self.chain.blocks)} blocks")
+                self.log.info(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
+                if self.protocol.is_key_block(self.chain.last_block().hash):
+                    self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
+                self.log.info("*******************")
+                continue
             # except Exception as e:
-            #     self.log.error("error main loop ", e)
+            #     self.log.error("Ошибка основного цикла", e)
+            # if needClose and self.chain.block_candidate is not None:
+            #     self.chain.close_block()
+            #     print("Закрываем блок", self.chain.last_block().hash)
+
+            # current_datetime = self.time_ntpt.get_corrected_datetime()
+
+            # time_to_close = Protocol.BLOCK_TIME_INTERVAL_LOG
+            # if self.chain.last_block() is not None:
+            #     time_block = self.chain.last_block().timestamp_seconds
+            #     time_to_close_block = self.time_ntpt.get_corrected_time() - time_block
+            #     if time_to_close_block < time_to_close and time_to_close_block > 0:
+            #         time_to_close = time_to_close - time_to_close_block
+
+            time.sleep(0.1)
+
+            #
+            # # Вычисляем, сколько миллисекунд осталось до следующей секунды
+            # milliseconds_to_wait = 1000 - (current_datetime.microsecond // 1000)
+            # # Добавляем задержку в секундах (преобразуем миллисекунды в секунды)
+            # time.sleep(milliseconds_to_wait / 1000.0)
+            #
+            # # print(f"Chain {len(self.chain.blocks)} blocks")
+        # except Exception as e:
+        #     self.log.error("error main loop ", e)
 
 
 if __name__ == "__main__":

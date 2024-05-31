@@ -35,6 +35,7 @@ class Client:
         return self.info
 
     def send_request(self, request):
+        response = b''
         try:
             # Encode the request into JSON and then bytes
             request_data = json.dumps(request).encode('utf-8')
@@ -46,7 +47,7 @@ class Client:
                 return None
             return json.loads(response.decode('utf-8'))
         except Exception as e:
-            self.log.error(self.host, self.port)
+            self.log.error(f"{self.host}:{self.port}, response: {response}")
             self.log.error("Error sending request: {}".format(e))
             return {'error': str(e)}
 

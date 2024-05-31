@@ -192,6 +192,10 @@ class Block:
                 self.nonce == other.nonce
                 )
 
+    def XMSSPublicKey(self):
+        """ публичный ключ """
+        return XMSSPublicKey.from_hex(self.signer_pk)
+
     def validate(self):
         """ Проверка блока """
 
@@ -202,7 +206,7 @@ class Block:
             self.log.error("Ошибка валидации блока. не совпадает хеш")
             return False
 
-        PK2 = XMSSPublicKey.from_hex(self.signer_pk)
+        PK2 = self.XMSSPublicKey()
         if self.signer !=PK2.generate_address():
             self.log.error("Ошибка валидации блока. не совпадает майнер")
             return False

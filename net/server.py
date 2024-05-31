@@ -1,60 +1,23 @@
-# import threading
-# import zmq
-# import json
-#
-# class Server:
-#     def __init__(self, handle_request, port=5555, host='localhost'):
-#         self.context = zmq.Context()
-#         self.socket = self.context.socket(zmq.ROUTER)
-#         self.socket.bind(f"tcp://{host}:{port}")
-#         self.handle_request = handle_request
-#         self.address = f"{host}:{port}"
-#         self.is_work = True
-#         print(f"Server is listening on {self.address} ")
-#
-#         self.clients = {}
-#
-#         # Создание потока для асинхронного прослушивания
-#         self.server_thread = threading.Thread(target=self.listen)
-#         self.server_thread.daemon = True  # Установка потока как демона для автоматического завершения при закрытии основного потока
-#         self.server_thread.start()
-#
-#     def listen(self):
-#         while self.is_work:
-#             try:
-#                 client_id, message = self.socket.recv_multipart()
-#                 request = json.loads(message.decode('utf-8'))
-#                 response = self.handle_request(request, client_id)
-#                 self.socket.send_multipart([client_id, json.dumps(response).encode('utf-8')])
-#             except Exception as e:
-#                 print("Error Server listen", e)
-#     def close(self):
-#         self.is_work = False
-#         self.socket.close()
-#         self.context.term()
-#         self.server_thread.join()  # Дожидаемся завершения серверного потока
-#         print("Server has been stopped")
-#
-#
-
+from tools.logger import Log
 import socket
 import threading
 import json
-from tools.logger import Log
+import struct
+
 
 class Server:
-    def __init__(self, handle_request, port=5555, host='localhost', log = Log()):
+    def __init__(self, handle_request, port=5555, host='localhost', log=Log()):
         self.server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)  # Включаем опцию SO_REUSEADDR
+        self.server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.server_socket.bind((host, port))
         self.server_socket.listen(5)
         self.handle_request = handle_request
         self.address = f"{host}:{port}"
         self.is_work = True
         self.log = log
-        self.log.info(f"Server is listening on {self.address}")
+        self.is_work = True
+        self.log.info("Server is listening on {}:{}".format(host, port))
 
-        # Создание потока для асинхронного прослушивания
         self.server_thread = threading.Thread(target=self.listen)
         self.server_thread.daemon = True
         self.server_thread.start()
@@ -63,39 +26,49 @@ class Server:
         while self.is_work:
             try:
                 client_socket, addr = self.server_socket.accept()
-                # print(f"Connected by {addr}")
+                self.log.info("Connected by {}".format(addr))
                 threading.Thread(target=self.handle_client, args=(client_socket,)).start()
             except Exception as e:
-                self.log.error("Error Server listen", e)
+                self.log.error("Server listen error: {}".format(e))
 
     def handle_client(self, client_socket):
         try:
             while True:
-                data = client_socket.recv(1024)
+                raw_msglen = self.recvall_exactly(client_socket, 4)
+                if not raw_msglen:
+                    return
+                msglen = struct.unpack('>I', raw_msglen)[0]
+                data = self.recvall_exactly(client_socket, msglen)
                 if not data:
-                    break
+                    return
                 request = json.loads(data.decode('utf-8'))
+                # self.log.info("Received request: {}".format(request))
                 response = self.handle_request(request)
-                client_socket.sendall(json.dumps(response).encode('utf-8'))
+                self.send_response(client_socket, response)
         except Exception as e:
-            """ Клиент отключился """
+            self.log.error("Client handling error: {}".format(e))
         finally:
             client_socket.close()
 
+    def recvall_exactly(self, sock, n):
+        data = bytearray()
+        while len(data) < n:
+            packet = sock.recv(n - len(data))
+            if not packet:
+                return None
+            data.extend(packet)
+        return data
+
+    def send_response(self, client_socket, response):
+        response_data = json.dumps(response).encode('utf-8')
+        response_length = struct.pack('>I', len(response_data))
+        client_socket.sendall(response_length + response_data)
+
     def close(self):
-        self.is_work = False  # Останавливаем прослушивание новых подключений
-        # Создаём временное подключение, чтобы разблокировать accept()
-        try:
-            temp_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            temp_socket.connect((self.server_socket.getsockname()[0], self.server_socket.getsockname()[1]))
-            temp_socket.close()
-        except Exception as e:
-            self.log.info(f"Error while creating a temporary connection: {e}")
-        self.server_socket.close()  # Закрываем серверный сокет
-        self.server_thread.join()  # Дожидаемся завершения серверного потока
-        self.log.info("Server has been stopped")
+        self.is_work = False
+        self.server_socket.close()
+        self.server_thread.join()
 
 
 if __name__ == '__main__':
-    # server = Server(handle_request, 5555, 'localhost')
-    """"""
+    server = Server(handle_request)

@@ -120,7 +120,7 @@ class Block:
 
         self.sign = signature.to_base64()
         self.signer_pk = xmss.keyPair.PK.to_hex()
-        print(f"Подпись размер: {len(self.sign)} ")
+        # print(f"Подпись размер: {len(self.sign)} ")
 
     def to_dict(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON

@@ -14,7 +14,7 @@ class MinerStorage:
         self.load_from_disk(dir=dir)
 
         if len(self.keys) == 0:
-            self.generate_keys(2, height=2)
+            self.generate_keys(10, height=5)
             self.save_storage_to_disk(dir=dir)
 
     def generate_keys(self, size=10, height=5):

@@ -308,8 +308,8 @@ class BlockchainNode:
                 new_block = self.create_block()
 
                 if self.chain.add_block_candidate(new_block):
-                    print(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
-                          new_block.datetime())
+                    self.log.info(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
+                          new_block.signer)
                     self.network_manager.distribute_block(self.chain.block_candidate)
 
                 needClose = self.chain.need_close_block()

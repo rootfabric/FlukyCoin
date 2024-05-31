@@ -85,7 +85,7 @@ class Transaction:
 
         self.signature = signature.to_base64()
         self.public_key = xmss.keyPair.PK.to_hex()
-        print(f"Подпись размер: {len(self.signature)} ")
+        # print(f"Подпись размер: {len(self.signature)} ")
 
     def all_amounts(self):
         """ вся сумма транзакции """

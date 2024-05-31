@@ -1026,7 +1026,7 @@ class XMSS():
     def sign(self, message):
         """ Подпись """
         signature = XMSS_sign(message, self.keyPair.SK, self.n, self.w, ADRS(), self.height)
-        print(f"Подпись: {signature}, размер: {len(signature.to_bytes())} байт")
+        # print(f"Подпись: {signature}, размер: {len(signature.to_bytes())} байт")
         return signature
 
     def to_json(self):

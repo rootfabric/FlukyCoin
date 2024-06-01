@@ -1,6 +1,6 @@
 import time
 
-from core.transaction import TransferTransaction
+from core.Transactions import TransferTransaction
 from core.Block import Block
 from core.protocol import Protocol
 

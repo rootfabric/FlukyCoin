@@ -10,16 +10,19 @@ class Client:
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.client_socket.settimeout(timeout)
         self.log = log
-        try:
-            self.client_socket.connect((host, port))
-            self.is_connected = True
-        except socket.error as e:
-        #     # print(f"Cannot connect to server at {host}:{port}, error: {e}")
-            self.is_connected = False
 
         self.last_time_info = 0
         self.last_broadcast_block = None
         self.info = {}
+
+        self._connect()
+
+    def _connect(self):
+        try:
+            self.client_socket.connect((self.host, self.port))
+            self.is_connected = True
+        except socket.error as e:
+            self.is_connected = False
 
     def address(self):
         return f"{self.host}:{self.port}"
@@ -56,7 +59,9 @@ class Client:
         except Exception as e:
             self.log.error(f"{self.host}:{self.port}, response: {response}")
             self.log.error("Error sending request: {}".format(e))
-            self.is_connected = False
+
+            self._connect()
+
             return {'error': str(e)}
 
     def recvall(self):
@@ -78,7 +83,9 @@ class Client:
             return data
         except Exception as e:
             self.log.error("Failed during recvall: {}".format(str(e)))
-            self.is_connected = False
+
+            self._connect()
+
             return None
 
     def close(self):

@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import time
 
-from core.transaction import Transaction, CoinbaseTransaction, TransferTransaction, SlaveTransaction
+from core.Transactions import Transaction, CoinbaseTransaction, TransferTransaction, SlaveTransaction
 from core.protocol import Protocol
 from core.BlockHeader import BlockHeader
 import os, json

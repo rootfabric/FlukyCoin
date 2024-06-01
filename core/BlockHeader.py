@@ -2,7 +2,7 @@ import datetime
 import hashlib
 import time
 
-from core.transaction import Transaction
+from core.Transactions import Transaction
 from core.protocol import Protocol
 import os, json
 import random

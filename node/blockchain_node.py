@@ -1,7 +1,7 @@
 import time
 
 from core.Block import Block
-from core.transaction import Transaction
+from core.Transactions import Transaction
 from core.protocol import Protocol
 from storage.mempool import Mempool
 from storage.miners_storage import MinerStorage

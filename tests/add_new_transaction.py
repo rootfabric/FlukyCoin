@@ -1,4 +1,4 @@
-from core.transaction import Transaction
+from core.Transactions import Transaction
 from net.client import Client
 from core.protocol import Protocol
 

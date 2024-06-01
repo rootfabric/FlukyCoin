@@ -3,7 +3,7 @@ import copy
 from net.server import Server
 from net.client import Client
 from core.protocol import Protocol
-from core.transaction import Transaction
+from core.Transactions import Transaction
 from storage.chain import Chain
 from core.Block import Block
 import os

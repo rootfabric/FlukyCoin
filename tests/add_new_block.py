@@ -1,4 +1,4 @@
-from core.transaction import Transaction
+from core.Transactions import Transaction
 from core.Block import Block
 from core.protocol import Protocol
 

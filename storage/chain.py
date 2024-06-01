@@ -6,7 +6,7 @@ import base64
 # # Пример использования класса
 from storage.transaction_storage import TransactionStorage
 from core.protocol import Protocol
-from core.transaction import Transaction
+from core.Transactions import Transaction
 from storage.mempool import Mempool
 import copy
 import time

@@ -6,6 +6,9 @@ import yaml
 from node.blockchain_node import BlockchainNode
 from tools.config_loader import ConfigLoader
 
+import sys
+sys.path.append('/home/rdpuser/FlukyCoin/crypto')
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description='FluckyCoin node')

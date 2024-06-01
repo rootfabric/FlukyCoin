@@ -429,7 +429,7 @@ class NetworkManager:
                 # задан конеретный адрес куда не надо отослать
                 continue
 
-            if block.hash_block() == self.peers[peer].info.get('block_candidate'):
+            if block.hash_block() == self.peers[peer].node_candidate():
                 # если блок стоит в статусе, нет смысла отсылать
                 continue
 
@@ -554,8 +554,8 @@ class NetworkManager:
             count_peers += 1
 
             # client.info = client.send_request({'command': 'getinfo'})
-            # Запрос если нет совподадения блоков
-            if self.chain.block_candidate_hash != client.info.get('block_candidate') or not self.synced:
+            # Запрос если нет совпадения блоков
+            if self.chain.block_candidate_hash != client.node_candidate() or not self.synced:
                 client.get_info()
 
             peer_info = client.info
@@ -576,10 +576,13 @@ class NetworkManager:
                     # нода синхронна
                     if self.synced:
                         # проверку не делать на срезах
-                        if self.chain.last_block() is not None and (
-                                time.time() - self.chain.last_block().timestamp_seconds > Protocol.BLOCK_TIME_INTERVAL / 5
-                                and time.time() - self.chain.last_block().timestamp_seconds < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_TIME_INTERVAL / 5):
+                        if (self.chain.last_block() is not None
+                                and (time.time() - self.chain.last_block().timestamp_seconds > Protocol.BLOCK_START_CHECK_PAUSE
+                                and time.time() - self.chain.last_block().timestamp_seconds < Protocol.BLOCK_TIME_INTERVAL - Protocol.BLOCK_END_CHECK_PAUSE)
+                        ):
+                            # проверка блока кандидата
                             if peer_info['block_candidate'] != self.chain.block_candidate_hash:
+
                                 bl = self.chain.check_hash(peer_info['block_candidate'])
 
                                 self.chain.add_block_candidate(bl)
@@ -597,6 +600,7 @@ class NetworkManager:
                     # if not self.synced and peer_info['block_count'] < self.chain.blocks_count():
                     #     self.chain.blocks = self.chain.blocks[:-100]
 
+                    # текущая нода отстает, требуется загрузка блоков
                     if not self.synced and peer_info['block_count'] > self.chain.blocks_count():
 
                         # print(f"На узле {client.address()} блоков больше, подгружаем")

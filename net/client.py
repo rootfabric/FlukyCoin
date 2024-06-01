@@ -14,7 +14,7 @@ class Client:
             self.client_socket.connect((host, port))
             self.is_connected = True
         except socket.error as e:
-            # print(f"Cannot connect to server at {host}:{port}, error: {e}")
+        #     # print(f"Cannot connect to server at {host}:{port}, error: {e}")
             self.is_connected = False
 
         self.last_time_info = 0
@@ -23,6 +23,13 @@ class Client:
 
     def address(self):
         return f"{self.host}:{self.port}"
+
+    def node_candidate(self):
+        """ Блок кандидат в заголовке ноды """
+        if self.info is None:
+            return "None"
+        return str(self.info.get('block_candidate'))
+
 
     def get_info(self, ignore_timer=False):
         """Опрос сервера с учетом частоты запросов."""
@@ -49,6 +56,7 @@ class Client:
         except Exception as e:
             self.log.error(f"{self.host}:{self.port}, response: {response}")
             self.log.error("Error sending request: {}".format(e))
+            self.is_connected = False
             return {'error': str(e)}
 
     def recvall(self):
@@ -70,6 +78,7 @@ class Client:
             return data
         except Exception as e:
             self.log.error("Failed during recvall: {}".format(str(e)))
+            self.is_connected = False
             return None
 
     def close(self):

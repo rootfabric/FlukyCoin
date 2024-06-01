@@ -62,7 +62,7 @@ class Client:
             # Wait for response
             response = self.recvall()
             if response is None:
-                return None
+                return {'error':"response is None"}
             return json.loads(response.decode('utf-8'))
         except Exception as e:
             self.log.error(f"{self.host}:{self.port}, response: {response}")

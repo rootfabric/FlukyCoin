@@ -33,6 +33,9 @@ class Server:
 
     def handle_client(self, client_socket, addr):
         try:
+            sequence_buffer = {}  # Буфер для хранения запросов с идентификаторами
+            last_sequence_id = -1  # Последний обработанный идентификатор последовательности
+
             while True:
                 raw_msglen = self.recvall_exactly(client_socket, 4)
                 if not raw_msglen:
@@ -42,9 +45,21 @@ class Server:
                 if not data:
                     return
                 request = json.loads(data.decode('utf-8'))
-                # self.log.info(f"Received request {addr}: {str(request)[:100]}")
-                response = self.handle_request(request)
-                self.send_response(client_socket, response)
+
+                sequence_id = request.get('sequence_id')
+                if sequence_id is not None:
+                    if sequence_id == last_sequence_id + 1:
+                        response = self.handle_request(request)
+                        self.send_response(client_socket, response)
+                        last_sequence_id = sequence_id
+                        # Проверка и обработка запросов в буфере
+                        while sequence_buffer.get(last_sequence_id + 1) is not None:
+                            last_sequence_id += 1
+                            response = self.handle_request(sequence_buffer.pop(last_sequence_id))
+                            self.send_response(client_socket, response)
+                    else:
+                        # Сохранение запроса в буфер, если он пришёл не по порядку
+                        sequence_buffer[sequence_id] = request
         except Exception as e:
             self.log.error("Client handling error: {}".format(e))
         finally:

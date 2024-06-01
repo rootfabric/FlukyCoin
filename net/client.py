@@ -15,6 +15,8 @@ class Client:
         self.last_broadcast_block = None
         self.info = {}
 
+        self.sequence_id = 0  # Инициализация идентификатора последовательности
+
         self._connect()
 
     def _connect(self):
@@ -46,6 +48,12 @@ class Client:
 
     def send_request(self, request):
         response = b''
+
+
+        request['sequence_id'] = self.sequence_id  # Добавление идентификатора последовательности к запросу
+        self.sequence_id += 1  # Инкремент идентификатора
+        # Остальной код метода остаётся без изменений
+
         try:
             # Encode the request into JSON and then bytes
             request_data = json.dumps(request).encode('utf-8')

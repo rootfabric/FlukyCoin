@@ -3,9 +3,12 @@ syntax = "proto3";
 service NetworkService {
   rpc RegisterPeer(PeerRequest) returns (PeerResponse);
   rpc GetPeers(PeerRequest) returns (PeerResponse);
-  rpc GetNodeInfo(NodeInfoRequest) returns (NodeInfoResponse);
   rpc Ping(Empty) returns (Empty); // Добавляем метод Ping
   rpc GetPeerInfo(Empty) returns (PeerInfoResponse);
+  rpc BroadcastTransactionHash(TransactionHash) returns (Ack);
+  rpc GetFullTransaction(TransactionHash) returns (Transaction);
+  rpc AddTransaction(Transaction) returns (Ack);
+
 }
 
 message PeerRequest {
@@ -23,6 +26,19 @@ message PeerInfoResponse {
   string version = 1;
   bool synced = 2;
   string block_candidate = 3;
+}
+
+message TransactionHash {
+  string hash = 1;
+}
+
+message Transaction {
+  string hash = 1;
+  string data = 2;  // Это поле содержит полные данные транзакции.
+}
+
+message Ack {
+  bool success = 1;
 }
 
 message Empty {

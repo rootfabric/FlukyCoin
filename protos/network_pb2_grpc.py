@@ -49,11 +49,6 @@ class NetworkServiceStub(object):
                 request_serializer=network__pb2.PeerRequest.SerializeToString,
                 response_deserializer=network__pb2.PeerResponse.FromString,
                 _registered_method=True)
-        self.GetNodeInfo = channel.unary_unary(
-                '/NetworkService/GetNodeInfo',
-                request_serializer=network__pb2.NodeInfoRequest.SerializeToString,
-                response_deserializer=network__pb2.NodeInfoResponse.FromString,
-                _registered_method=True)
         self.Ping = channel.unary_unary(
                 '/NetworkService/Ping',
                 request_serializer=network__pb2.Empty.SerializeToString,
@@ -63,6 +58,21 @@ class NetworkServiceStub(object):
                 '/NetworkService/GetPeerInfo',
                 request_serializer=network__pb2.Empty.SerializeToString,
                 response_deserializer=network__pb2.PeerInfoResponse.FromString,
+                _registered_method=True)
+        self.BroadcastTransactionHash = channel.unary_unary(
+                '/NetworkService/BroadcastTransactionHash',
+                request_serializer=network__pb2.TransactionHash.SerializeToString,
+                response_deserializer=network__pb2.Ack.FromString,
+                _registered_method=True)
+        self.GetFullTransaction = channel.unary_unary(
+                '/NetworkService/GetFullTransaction',
+                request_serializer=network__pb2.TransactionHash.SerializeToString,
+                response_deserializer=network__pb2.Transaction.FromString,
+                _registered_method=True)
+        self.AddTransaction = channel.unary_unary(
+                '/NetworkService/AddTransaction',
+                request_serializer=network__pb2.Transaction.SerializeToString,
+                response_deserializer=network__pb2.Ack.FromString,
                 _registered_method=True)
 
 
@@ -81,12 +91,6 @@ class NetworkServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def GetNodeInfo(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
     def Ping(self, request, context):
         """Добавляем метод Ping
         """
@@ -95,6 +99,24 @@ class NetworkServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetPeerInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BroadcastTransactionHash(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetFullTransaction(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def AddTransaction(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -113,11 +135,6 @@ def add_NetworkServiceServicer_to_server(servicer, server):
                     request_deserializer=network__pb2.PeerRequest.FromString,
                     response_serializer=network__pb2.PeerResponse.SerializeToString,
             ),
-            'GetNodeInfo': grpc.unary_unary_rpc_method_handler(
-                    servicer.GetNodeInfo,
-                    request_deserializer=network__pb2.NodeInfoRequest.FromString,
-                    response_serializer=network__pb2.NodeInfoResponse.SerializeToString,
-            ),
             'Ping': grpc.unary_unary_rpc_method_handler(
                     servicer.Ping,
                     request_deserializer=network__pb2.Empty.FromString,
@@ -127,6 +144,21 @@ def add_NetworkServiceServicer_to_server(servicer, server):
                     servicer.GetPeerInfo,
                     request_deserializer=network__pb2.Empty.FromString,
                     response_serializer=network__pb2.PeerInfoResponse.SerializeToString,
+            ),
+            'BroadcastTransactionHash': grpc.unary_unary_rpc_method_handler(
+                    servicer.BroadcastTransactionHash,
+                    request_deserializer=network__pb2.TransactionHash.FromString,
+                    response_serializer=network__pb2.Ack.SerializeToString,
+            ),
+            'GetFullTransaction': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetFullTransaction,
+                    request_deserializer=network__pb2.TransactionHash.FromString,
+                    response_serializer=network__pb2.Transaction.SerializeToString,
+            ),
+            'AddTransaction': grpc.unary_unary_rpc_method_handler(
+                    servicer.AddTransaction,
+                    request_deserializer=network__pb2.Transaction.FromString,
+                    response_serializer=network__pb2.Ack.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -194,33 +226,6 @@ class NetworkService(object):
             _registered_method=True)
 
     @staticmethod
-    def GetNodeInfo(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(
-            request,
-            target,
-            '/NetworkService/GetNodeInfo',
-            network__pb2.NodeInfoRequest.SerializeToString,
-            network__pb2.NodeInfoResponse.FromString,
-            options,
-            channel_credentials,
-            insecure,
-            call_credentials,
-            compression,
-            wait_for_ready,
-            timeout,
-            metadata,
-            _registered_method=True)
-
-    @staticmethod
     def Ping(request,
             target,
             options=(),
@@ -264,6 +269,87 @@ class NetworkService(object):
             '/NetworkService/GetPeerInfo',
             network__pb2.Empty.SerializeToString,
             network__pb2.PeerInfoResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def BroadcastTransactionHash(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/BroadcastTransactionHash',
+            network__pb2.TransactionHash.SerializeToString,
+            network__pb2.Ack.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetFullTransaction(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/GetFullTransaction',
+            network__pb2.TransactionHash.SerializeToString,
+            network__pb2.Transaction.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def AddTransaction(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/AddTransaction',
+            network__pb2.Transaction.SerializeToString,
+            network__pb2.Ack.FromString,
             options,
             channel_credentials,
             insecure,

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rnetwork.proto\"\x1e\n\x0bPeerRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\x0cPeerResponse\x12\r\n\x05peers\x18\x01 \x03(\t\"\x11\n\x0fNodeInfoRequest\"H\n\x10NodeInfoResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\r\n\x05state\x18\x02 \x01(\t\x12\x14\n\x0c\x63urrent_time\x18\x03 \x01(\t\"L\n\x10PeerInfoResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x0e\n\x06synced\x18\x02 \x01(\x08\x12\x17\n\x0f\x62lock_candidate\x18\x03 \x01(\t\"\x07\n\x05\x45mpty2\xdc\x01\n\x0eNetworkService\x12+\n\x0cRegisterPeer\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\'\n\x08GetPeers\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\x32\n\x0bGetNodeInfo\x12\x10.NodeInfoRequest\x1a\x11.NodeInfoResponse\x12\x16\n\x04Ping\x12\x06.Empty\x1a\x06.Empty\x12(\n\x0bGetPeerInfo\x12\x06.Empty\x1a\x11.PeerInfoResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rnetwork.proto\"\x1e\n\x0bPeerRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\x0cPeerResponse\x12\r\n\x05peers\x18\x01 \x03(\t\"\x11\n\x0fNodeInfoRequest\"L\n\x10PeerInfoResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x0e\n\x06synced\x18\x02 \x01(\x08\x12\x17\n\x0f\x62lock_candidate\x18\x03 \x01(\t\"\x1f\n\x0fTransactionHash\x12\x0c\n\x04hash\x18\x01 \x01(\t\")\n\x0bTransaction\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x0c\n\x04\x64\x61ta\x18\x02 \x01(\t\"\x16\n\x03\x41\x63k\x12\x0f\n\x07success\x18\x01 \x01(\x08\"\x07\n\x05\x45mpty2\xb8\x02\n\x0eNetworkService\x12+\n\x0cRegisterPeer\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\'\n\x08GetPeers\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\x16\n\x04Ping\x12\x06.Empty\x1a\x06.Empty\x12(\n\x0bGetPeerInfo\x12\x06.Empty\x1a\x11.PeerInfoResponse\x12\x32\n\x18\x42roadcastTransactionHash\x12\x10.TransactionHash\x1a\x04.Ack\x12\x34\n\x12GetFullTransaction\x12\x10.TransactionHash\x1a\x0c.Transaction\x12$\n\x0e\x41\x64\x64Transaction\x12\x0c.Transaction\x1a\x04.Ackb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -27,12 +27,16 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_PEERRESPONSE']._serialized_end=78
   _globals['_NODEINFOREQUEST']._serialized_start=80
   _globals['_NODEINFOREQUEST']._serialized_end=97
-  _globals['_NODEINFORESPONSE']._serialized_start=99
-  _globals['_NODEINFORESPONSE']._serialized_end=171
-  _globals['_PEERINFORESPONSE']._serialized_start=173
-  _globals['_PEERINFORESPONSE']._serialized_end=249
-  _globals['_EMPTY']._serialized_start=251
-  _globals['_EMPTY']._serialized_end=258
-  _globals['_NETWORKSERVICE']._serialized_start=261
-  _globals['_NETWORKSERVICE']._serialized_end=481
+  _globals['_PEERINFORESPONSE']._serialized_start=99
+  _globals['_PEERINFORESPONSE']._serialized_end=175
+  _globals['_TRANSACTIONHASH']._serialized_start=177
+  _globals['_TRANSACTIONHASH']._serialized_end=208
+  _globals['_TRANSACTION']._serialized_start=210
+  _globals['_TRANSACTION']._serialized_end=251
+  _globals['_ACK']._serialized_start=253
+  _globals['_ACK']._serialized_end=275
+  _globals['_EMPTY']._serialized_start=277
+  _globals['_EMPTY']._serialized_end=284
+  _globals['_NETWORKSERVICE']._serialized_start=287
+  _globals['_NETWORKSERVICE']._serialized_end=599
 # @@protoc_insertion_point(module_scope)

@@ -105,3 +105,18 @@ class ClientHandler:
         stub = network_pb2_grpc.NetworkServiceStub(channel)
         response = stub.GetPeerInfo(network_pb2.Empty())
         return response
+
+    def handle_new_transaction(self, transaction_data):
+        # Предполагается, что transaction_data это объект с полем 'hash'
+        transaction_hash = transaction_data.hash
+        if transaction_hash not in self.servicer.known_transactions:
+            channel = grpc.insecure_channel('address_of_node')
+            stub = network_pb2_grpc.NetworkServiceStub(channel)
+            stub.BroadcastTransactionHash(network_pb2.TransactionHash(hash=transaction_hash))
+
+    def fetch_full_transaction(self, hash):
+        if hash not in self.servicer.known_transactions:
+            channel = grpc.insecure_channel('address_of_node')
+            stub = network_pb2_grpc.NetworkServiceStub(channel)
+            transaction = stub.GetFullTransaction(network_pb2.TransactionHash(hash=hash))
+            print(f"Received full transaction: {transaction.data}")

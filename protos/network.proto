@@ -5,6 +5,7 @@ service NetworkService {
   rpc GetPeers(PeerRequest) returns (PeerResponse);
   rpc GetNodeInfo(NodeInfoRequest) returns (NodeInfoResponse);
   rpc Ping(Empty) returns (Empty); // Добавляем метод Ping
+  rpc GetPeerInfo(Empty) returns (PeerInfoResponse);
 }
 
 message PeerRequest {
@@ -18,10 +19,11 @@ message PeerResponse {
 message NodeInfoRequest {
 }
 
-message NodeInfoResponse {
+message PeerInfoResponse {
   string version = 1;
-  string state = 2;
-  string current_time = 3; // Добавлено новое поле для времени
+  bool synced = 2;
+  string block_candidate = 3;
 }
+
 message Empty {
 }

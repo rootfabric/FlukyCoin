@@ -44,35 +44,32 @@ class NodeManager:
 
         self.time_ntpt = NTPTimeSynchronizer(log=log)
 
+        self.local_address = self.address
+        self.version = Protocol.VERSION
+
+
+        self.server = GrpcServer(self.local_address, self.version, self)
+        self.client_handler = ClientHandler(self.server.servicer)
+
+        self.server.start()
+
+        self.block_candidate = "123"
+
+        self.synced = False
         self.running = True
 
     def run_node(self):
         """ """
-        # local_address = 'localhost:50051'
-        local_address = self.address
-        version = Protocol.VERSION
-        # initial_peers = ['localhost:50051'] + [local_address]
-        node_manager = NodeManager(self.config)
-        server = GrpcServer(local_address, version, node_manager)
-        client_handler = ClientHandler(server.servicer)
-
-        server.start()
-
 
         while True:
 
+            self.client_handler.ping_peers()
+
+            self.client_handler.connect_to_peers(set(list(self.server.servicer.active_peers)))
+
+            self.client_handler.fetch_info_from_peers()
 
 
-            client_handler.connect_to_peers(set(list(server.servicer.active_peers)))
-
-            with ThreadPoolExecutor(max_workers=5) as executor:
-                futures = {executor.submit(server.servicer.check_active, peer): peer for peer in server.servicer.known_peers}
-                active_peers = {futures[future] for future in as_completed(futures) if future.result()}
-                server.servicer.active_peers = active_peers
-                print("Active peers updated.", active_peers)
-            # Обновляем список активных пиров
-            # server.servicer.active_peers = {peer for peer in server.servicer.known_peers if
-            #                                 server.servicer.check_active(peer)}
             print("-------------------")
             time.sleep(5)
 

@@ -59,6 +59,11 @@ class NetworkServiceStub(object):
                 request_serializer=network__pb2.Empty.SerializeToString,
                 response_deserializer=network__pb2.Empty.FromString,
                 _registered_method=True)
+        self.GetPeerInfo = channel.unary_unary(
+                '/NetworkService/GetPeerInfo',
+                request_serializer=network__pb2.Empty.SerializeToString,
+                response_deserializer=network__pb2.PeerInfoResponse.FromString,
+                _registered_method=True)
 
 
 class NetworkServiceServicer(object):
@@ -89,6 +94,12 @@ class NetworkServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetPeerInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_NetworkServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -111,6 +122,11 @@ def add_NetworkServiceServicer_to_server(servicer, server):
                     servicer.Ping,
                     request_deserializer=network__pb2.Empty.FromString,
                     response_serializer=network__pb2.Empty.SerializeToString,
+            ),
+            'GetPeerInfo': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetPeerInfo,
+                    request_deserializer=network__pb2.Empty.FromString,
+                    response_serializer=network__pb2.PeerInfoResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -221,6 +237,33 @@ class NetworkService(object):
             '/NetworkService/Ping',
             network__pb2.Empty.SerializeToString,
             network__pb2.Empty.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetPeerInfo(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/GetPeerInfo',
+            network__pb2.Empty.SerializeToString,
+            network__pb2.PeerInfoResponse.FromString,
             options,
             channel_credentials,
             insecure,

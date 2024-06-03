@@ -12,7 +12,7 @@ def get_peers(stub):
 
 def get_node_info(stub):
     response = stub.GetNodeInfo(network_pb2.NodeInfoRequest())
-    print("response", response)
+    # print("response", response)
 
     return response.version, response.state
 

@@ -1,0 +1,23 @@
+syntax = "proto3";
+
+service NetworkService {
+  rpc RegisterPeer(PeerRequest) returns (PeerResponse);
+  rpc GetPeers(PeerRequest) returns (PeerResponse);
+  rpc GetNodeInfo(NodeInfoRequest) returns (NodeInfoResponse);
+}
+
+message PeerRequest {
+  string address = 1;
+}
+
+message PeerResponse {
+  repeated string peers = 1;
+}
+
+message NodeInfoRequest {
+}
+
+message NodeInfoResponse {
+  string version = 1;
+  string state = 2;
+}

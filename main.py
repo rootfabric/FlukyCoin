@@ -3,7 +3,8 @@ import faulthandler
 import os
 import yaml
 
-from node.blockchain_node import BlockchainNode
+# from node.blockchain_node import BlockchainNode
+from node.node_manager import NodeManager
 from tools.config_loader import ConfigLoader
 
 import sys
@@ -13,9 +14,9 @@ sys.path.append('/home/rdpuser/FlukyCoin/crypto')
 def parse_arguments():
     parser = argparse.ArgumentParser(description='FluckyCoin node')
     parser.add_argument('--config', '-c', type=str, required=False,
-                        # default='node_config.yaml', help="Node host")
+                        default='node_config.yaml', help="Node host")
                         # default='node_config3.yaml', help="Node host")
-                        default='node_config_off.yaml', help="Node host")
+                        # default='node_config_off.yaml', help="Node host")
     # parser.add_argument('--host', '-h', type=str, required=False,
     #                     default='localhost', help="Node host")
     # parser.add_argument('--port', '-p', type=str ,required=False,
@@ -40,5 +41,5 @@ if __name__ == "__main__":
 
     # run_node(port, known_peers)
 
-    node = BlockchainNode(config)
+    node = NodeManager(config)
     node.run_node()

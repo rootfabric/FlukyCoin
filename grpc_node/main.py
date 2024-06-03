@@ -1,5 +1,5 @@
-from GrpcServer import GrpcServer
-from ClientHandler import ClientHandler
+from net.GrpcServer import GrpcServer
+from net.ClientHandler import ClientHandler
 import time
 
 def main():

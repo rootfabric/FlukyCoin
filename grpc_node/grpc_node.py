@@ -1,7 +1,6 @@
 import grpc
 from concurrent import futures
-import network_pb2
-import network_pb2_grpc
+from protos import network_pb2, network_pb2_grpc
 import time
 
 class NetworkService(network_pb2_grpc.NetworkServiceServicer):

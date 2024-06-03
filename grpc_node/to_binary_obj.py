@@ -1,6 +1,6 @@
 import datetime
-import network_pb2
-import network_pb2_grpc
+from protos import network_pb2
+
 
 # Функция для создания объекта NodeInfoResponse и его сериализации
 def create_serialized_node_info(version, state):

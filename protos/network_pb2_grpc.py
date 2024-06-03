@@ -3,7 +3,7 @@
 import grpc
 import warnings
 
-import network_pb2 as network__pb2
+import protos.network_pb2 as network__pb2
 
 GRPC_GENERATED_VERSION = '1.64.0'
 GRPC_VERSION = grpc.__version__
@@ -54,6 +54,11 @@ class NetworkServiceStub(object):
                 request_serializer=network__pb2.NodeInfoRequest.SerializeToString,
                 response_deserializer=network__pb2.NodeInfoResponse.FromString,
                 _registered_method=True)
+        self.Ping = channel.unary_unary(
+                '/NetworkService/Ping',
+                request_serializer=network__pb2.Empty.SerializeToString,
+                response_deserializer=network__pb2.Empty.FromString,
+                _registered_method=True)
 
 
 class NetworkServiceServicer(object):
@@ -77,6 +82,13 @@ class NetworkServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Ping(self, request, context):
+        """Добавляем метод Ping
+        """
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_NetworkServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -94,6 +106,11 @@ def add_NetworkServiceServicer_to_server(servicer, server):
                     servicer.GetNodeInfo,
                     request_deserializer=network__pb2.NodeInfoRequest.FromString,
                     response_serializer=network__pb2.NodeInfoResponse.SerializeToString,
+            ),
+            'Ping': grpc.unary_unary_rpc_method_handler(
+                    servicer.Ping,
+                    request_deserializer=network__pb2.Empty.FromString,
+                    response_serializer=network__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -177,6 +194,33 @@ class NetworkService(object):
             '/NetworkService/GetNodeInfo',
             network__pb2.NodeInfoRequest.SerializeToString,
             network__pb2.NodeInfoResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def Ping(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/Ping',
+            network__pb2.Empty.SerializeToString,
+            network__pb2.Empty.FromString,
             options,
             channel_credentials,
             insecure,

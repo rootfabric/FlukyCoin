@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rnetwork.proto\"\x1e\n\x0bPeerRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\x0cPeerResponse\x12\r\n\x05peers\x18\x01 \x03(\t\"\x11\n\x0fNodeInfoRequest\"2\n\x10NodeInfoResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\r\n\x05state\x18\x02 \x01(\t2\x9a\x01\n\x0eNetworkService\x12+\n\x0cRegisterPeer\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\'\n\x08GetPeers\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\x32\n\x0bGetNodeInfo\x12\x10.NodeInfoRequest\x1a\x11.NodeInfoResponseb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rnetwork.proto\"\x1e\n\x0bPeerRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\x0cPeerResponse\x12\r\n\x05peers\x18\x01 \x03(\t\"\x11\n\x0fNodeInfoRequest\"H\n\x10NodeInfoResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\r\n\x05state\x18\x02 \x01(\t\x12\x14\n\x0c\x63urrent_time\x18\x03 \x01(\t2\x9a\x01\n\x0eNetworkService\x12+\n\x0cRegisterPeer\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\'\n\x08GetPeers\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\x32\n\x0bGetNodeInfo\x12\x10.NodeInfoRequest\x1a\x11.NodeInfoResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -28,7 +28,7 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_NODEINFOREQUEST']._serialized_start=80
   _globals['_NODEINFOREQUEST']._serialized_end=97
   _globals['_NODEINFORESPONSE']._serialized_start=99
-  _globals['_NODEINFORESPONSE']._serialized_end=149
-  _globals['_NETWORKSERVICE']._serialized_start=152
-  _globals['_NETWORKSERVICE']._serialized_end=306
+  _globals['_NODEINFORESPONSE']._serialized_end=171
+  _globals['_NETWORKSERVICE']._serialized_start=174
+  _globals['_NETWORKSERVICE']._serialized_end=328
 # @@protoc_insertion_point(module_scope)

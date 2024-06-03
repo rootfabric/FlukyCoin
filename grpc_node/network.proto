@@ -20,4 +20,5 @@ message NodeInfoRequest {
 message NodeInfoResponse {
   string version = 1;
   string state = 2;
+  string current_time = 3; // Добавлено новое поле для времени
 }

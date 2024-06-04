@@ -73,7 +73,7 @@ class NodeManager:
 
     def run_node(self):
         """ Основной цикл  """
-        timer_get_nodes = time.time()
+        timer_get_nodes = 0
         while True:
 
             self.client_handler.ping_peers()
@@ -84,7 +84,13 @@ class NodeManager:
 
             if timer_get_nodes+Protocol.TIME_PAUSE_GET_PEERS<time.time():
                 timer_get_nodes = time.time()
+
                 self.client_handler.get_peers_list()
+
+                self.client_handler.fetch_transactions_from_all_peers()
+
+
+
 
             print("-------------------")
             print(self.mempool.transactions.keys())

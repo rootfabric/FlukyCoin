@@ -1,13 +1,14 @@
 import grpc
 from protos import network_pb2, network_pb2_grpc
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from core.Transactions import Transaction
 
 
 
 class ClientHandler:
     def __init__(self, servicer, node_manager):
         self.servicer = servicer
-        self.node_manager1 = node_manager
+        self.node_manager = node_manager
 
         self.executor = ThreadPoolExecutor(max_workers=10)
         self.sent_addresses = set()  # Уже отправленные адреса
@@ -134,3 +135,32 @@ class ClientHandler:
         stub = network_pb2_grpc.NetworkServiceStub(channel)
         response = stub.GetPeers(network_pb2.PeerRequest())
         return response.peers
+
+    def fetch_transactions_from_peer(self, peer):
+        """Запрос всех транзакций с указанной ноды."""
+        try:
+            channel = grpc.insecure_channel(peer)
+            stub = network_pb2_grpc.NetworkServiceStub(channel)
+            response = stub.GetAllTransactions(network_pb2.Empty())  # Предполагается, что такой метод существует
+            if response.transactions:
+                print(f"Received {len(response.transactions)} transactions from {peer}.")
+            return response.transactions  # Список транзакций
+        except Exception as e:
+            print(f"Error fetching transactions from {peer}: {str(e)}")
+            return []
+
+    def fetch_transactions_from_all_peers(self):
+        """Запрашивает транзакции со всех пингованных нод."""
+        transactions = []
+        with ThreadPoolExecutor(max_workers=len(self.servicer.active_peers)) as executor:
+            futures = {executor.submit(self.fetch_transactions_from_peer, peer): peer for peer in
+                       self.servicer.active_peers}
+            for future in as_completed(futures):
+                peer_transactions = future.result()
+                transactions.extend(peer_transactions)
+                print(f"Received {len(peer_transactions)} transactions from {futures[future]}.")
+
+        for tr_proto in transactions:
+            self.node_manager.add_transaction_to_mempool(Transaction.from_json(tr_proto.json_data))
+
+

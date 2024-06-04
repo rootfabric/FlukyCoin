@@ -74,6 +74,11 @@ class NetworkServiceStub(object):
                 request_serializer=network__pb2.Transaction.SerializeToString,
                 response_deserializer=network__pb2.Ack.FromString,
                 _registered_method=True)
+        self.GetAllTransactions = channel.unary_unary(
+                '/NetworkService/GetAllTransactions',
+                request_serializer=network__pb2.Empty.SerializeToString,
+                response_deserializer=network__pb2.TransactionList.FromString,
+                _registered_method=True)
 
 
 class NetworkServiceServicer(object):
@@ -122,6 +127,12 @@ class NetworkServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetAllTransactions(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_NetworkServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -159,6 +170,11 @@ def add_NetworkServiceServicer_to_server(servicer, server):
                     servicer.AddTransaction,
                     request_deserializer=network__pb2.Transaction.FromString,
                     response_serializer=network__pb2.Ack.SerializeToString,
+            ),
+            'GetAllTransactions': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAllTransactions,
+                    request_deserializer=network__pb2.Empty.FromString,
+                    response_serializer=network__pb2.TransactionList.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -350,6 +366,33 @@ class NetworkService(object):
             '/NetworkService/AddTransaction',
             network__pb2.Transaction.SerializeToString,
             network__pb2.Ack.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetAllTransactions(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/GetAllTransactions',
+            network__pb2.Empty.SerializeToString,
+            network__pb2.TransactionList.FromString,
             options,
             channel_credentials,
             insecure,

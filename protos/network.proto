@@ -8,7 +8,12 @@ service NetworkService {
   rpc BroadcastTransactionHash(TransactionHash) returns (Ack);
   rpc GetFullTransaction(TransactionHash) returns (Transaction);
   rpc AddTransaction(Transaction) returns (Ack);
+  rpc GetAllTransactions(Empty) returns (TransactionList) {}
 
+}
+
+message TransactionList {
+    repeated Transaction transactions = 1;
 }
 
 message PeerRequest {

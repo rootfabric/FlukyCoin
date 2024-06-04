@@ -180,6 +180,13 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         transaction = Transaction.from_json(request.json_data)
         self.add_new_transaction(transaction)
         return network_pb2.Ack(success=True)
+
+    def GetAllTransactions(self, request, context):
+
+        transactions = [tr.to_json() for tr in self.node_manager.mempool.get_transactions().values()]
+
+        return network_pb2.TransactionList(transactions=[network_pb2.Transaction(json_data=tr) for tr in transactions])
+
     # def add_new_transaction(self, transaction: Transaction):
     #     if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
     #         """ добавить валидацию транзакции в цепи """

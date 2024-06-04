@@ -33,8 +33,7 @@ message TransactionHash {
 }
 
 message Transaction {
-  string hash = 1;
-  string data = 2;  // Это поле содержит полные данные транзакции.
+  string json_data = 1;
 }
 
 message Ack {

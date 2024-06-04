@@ -21,10 +21,10 @@ class Mempool:
 
     def add_transaction(self, transaction):
         """Добавить транзакцию в mempool и сохранить изменения."""
-        if transaction.hash in self.transactions:
+        if transaction.txhash in self.transactions:
             return False
 
-        self.transactions[transaction.hash] = transaction
+        self.transactions[transaction.txhash] = transaction
         # self.save_transactions()
         return True
 

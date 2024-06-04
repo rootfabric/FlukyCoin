@@ -4,6 +4,8 @@ import grpc
 # from core.protocol import Protocol
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.protocol import Protocol
+from core.Transactions import Transaction
+# from node.node_manager import NodeManager
 
 class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def __init__(self, local_address, node_manager):
@@ -116,16 +118,19 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             context.set_details('Transaction not found')
             return network_pb2.Transaction()
 
-    def add_new_transaction(self, transaction_hash, transaction_data):
-        if transaction_hash not in self.known_transactions:
-
+    def add_new_transaction(self, transaction:Transaction):
+        if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
+            # новая транзакция
             # self.save_transaction(transaction_hash, transaction_data)
-            self.distribute_transaction_hash(transaction_hash)
 
-            self.known_transactions.add(transaction_hash)
+            self.node_manager.mempool.add_transaction(transaction)
+
+            self.distribute_transaction_hash(transaction.txhash)
+
             print("New transaction added and hash distributed.")
 
     def AddTransaction(self, request, context):
         # Логика обработки транзакции
-        self.add_new_transaction(request.hash, request.data)
+        transaction = Transaction.from_json(request.json_data)
+        self.add_new_transaction(transaction)
         return network_pb2.Ack(success=True)

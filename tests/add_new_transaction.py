@@ -21,18 +21,29 @@
 #     response = client.send_request(
 #         {'command': 'tx', 'tx_data': {'tx_json':t.to_json(), 'tx_sign':t.signature}})
 #     print(response)
+
 import time
+
+import json
+import hashlib
+from core.protocol import Protocol
+from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
+from tools.logger import Log
+
 
 import grpc
 from protos import network_pb2, network_pb2_grpc
 
-def add_transaction(server_address, transaction_hash, transaction_data):
+from core.Transactions import Transaction, TransferTransaction
+
+def add_transaction(server_address, transaction:Transaction):
     # Создание gRPC канала
     channel = grpc.insecure_channel(server_address)
     stub = network_pb2_grpc.NetworkServiceStub(channel)
 
+    json_data = transaction.to_json()
     # Создание объекта транзакции
-    transaction = network_pb2.Transaction(hash=transaction_hash, data=transaction_data)
+    transaction = network_pb2.Transaction(json_data=json_data)
 
     # Отправка транзакции на сервер
     try:
@@ -47,7 +58,14 @@ def add_transaction(server_address, transaction_hash, transaction_data):
 if __name__ == "__main__":
     # Пример использования
     server_address = '192.168.0.26:9334'  # Адрес сервера
-    transaction_hash = str(time.time())         # Пример хеша транзакции
-    transaction_data = 'Data of the transaction'  # Пример данных транзакции
 
-    add_transaction(server_address, transaction_hash, transaction_data)
+    xmss = XMSS.create()
+    print(xmss.address)
+
+    tt = TransferTransaction(xmss.address, ["2"], [100], message_data=["test message"])
+    tt.nonce = 1
+    tt.make_hash()
+    tt.make_sign(xmss)
+    json_transaction = tt.to_json()
+
+    add_transaction(server_address, tt)

@@ -3,16 +3,6 @@ from protos import network_pb2, network_pb2_grpc
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-def register_with_peers(stub, local_address):
-    response = stub.RegisterPeer(network_pb2.PeerRequest(address=local_address))
-    return response.peers
-
-
-# def get_node_info(stub):
-#     response = stub.GetNodeInfo(network_pb2.NodeInfoRequest())
-#     # print("response", response)
-#
-#     return response.version, response.state
 
 class ClientHandler:
     def __init__(self, servicer, node_manager):
@@ -44,13 +34,18 @@ class ClientHandler:
             self.servicer.active_peers = active_peers
             print("Active peers updated.", active_peers)
 
+    def register_with_peers(self, stub, local_address):
+        response = stub.RegisterPeer(network_pb2.PeerRequest(address=local_address))
+        return response.peers
+
+
     def connect_to_peer(self, address):
         channel = grpc.insecure_channel(address)
         stub = network_pb2_grpc.NetworkServiceStub(channel)
         try:
             if address not in self.sent_addresses or not self.peer_status.get(address, False):
                 self.reset_cache_for_peer(address)  # Сброс кеша при повторном подключении
-                peers = register_with_peers(stub, self.servicer.local_address)
+                peers = self.register_with_peers(stub, self.servicer.local_address)
                 self.sent_addresses.add(address)
                 self.peer_status[address] = True  # Устанавливаем статус подключения в True
                 print(f"Registered on {address}, current peers: {peers}")

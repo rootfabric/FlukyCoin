@@ -21,6 +21,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
         self.local_address = local_address
         self.peer_addresses = {}  # Клиентский адрес -> серверный адрес
+        self.executor = ThreadPoolExecutor(max_workers=5)  # Пул потоков для асинхронной работы
 
     # Реализация метода Ping
     def Ping(self, request, context):
@@ -113,7 +114,8 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             # server_address = self.peer_addresses.get(peer, peer)  # Получаем серверный адрес, если он есть
             channel = grpc.insecure_channel(peer)
             stub = network_pb2_grpc.NetworkServiceStub(channel)
-            response = stub.GetFullTransaction(network_pb2.TransactionHash(hash=transaction_hash), timeout=3)
+            response = stub.GetFullTransaction(
+                network_pb2.TransactionHash(hash=transaction_hash, from_host=self.local_address), timeout=3)
             if response.json_data:
                 transaction = Transaction.from_json(response.json_data)
                 """ Добавление транзакции """
@@ -161,15 +163,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
                 except Exception as e:
                     print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
 
-    # def GetFullTransaction(self, request, context):
-    #     transaction_data = self.retrieve_transaction(request.hash)
-    #     if transaction_data:
-    #         return network_pb2.Transaction(hash=request.hash, data=transaction_data)
-    #     else:
-    #         context.set_code(grpc.StatusCode.NOT_FOUND)
-    #         context.set_details('Transaction not found')
-    #         return network_pb2.Transaction()
-
     def add_new_transaction(self, transaction: Transaction):
         if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
             # новая транзакция
@@ -187,3 +180,41 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         transaction = Transaction.from_json(request.json_data)
         self.add_new_transaction(transaction)
         return network_pb2.Ack(success=True)
+    # def add_new_transaction(self, transaction: Transaction):
+    #     if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
+    #         """ добавить валидацию транзакции в цепи """
+    #         self.node_manager.add_transaction_to_mempool(transaction)
+    #
+    #         # Запускаем дистрибуцию хэша в отдельном потоке
+    #         self.executor.submit(self.distribute_transaction_hash, transaction.txhash)
+    #
+    #         print("New transaction added and hash distributed.")
+    #
+    # def distribute_transaction_hash(self, transaction_hash):
+    #     # Логика распределения хэша
+    #     with ThreadPoolExecutor(max_workers=10) as executor:
+    #         futures = {}
+    #         for peer in self.active_peers:
+    #             if peer != self.local_address:  # Исключаем себя из рассылки
+    #                 channel = grpc.insecure_channel(peer)
+    #                 stub = network_pb2_grpc.NetworkServiceStub(channel)
+    #                 future = executor.submit(stub.BroadcastTransactionHash,
+    #                                          network_pb2.TransactionHash(hash=transaction_hash))
+    #                 futures[future] = peer
+    #
+    #         # Обработка результатов асинхронных вызовов
+    #         for future in as_completed(futures):
+    #             peer = futures[future]
+    #             try:
+    #                 response = future.result()
+    #                 if response.success:
+    #                     print(f"Hash {transaction_hash} successfully broadcasted to peer {peer}.")
+    #                 else:
+    #                     print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
+    #             except Exception as e:
+    #                 print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
+    #
+    # def AddTransaction(self, request, context):
+    #     transaction = Transaction.from_json(request.json_data)
+    #     self.add_new_transaction(transaction)
+    #     return network_pb2.Ack(success=True)

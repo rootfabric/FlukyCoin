@@ -57,8 +57,8 @@ def add_transaction(server_address, transaction:Transaction):
 
 if __name__ == "__main__":
     # Пример использования
-    # server_address = '192.168.0.26:9334'  # Адрес сервера
-    server_address = '127.0.0.1:9335'  # Адрес сервера
+    server_address = '192.168.0.26:9334'  # Адрес сервера
+    # server_address = '127.0.0.1:9335'  # Адрес сервера
 
     xmss = XMSS.create()
     print(xmss.address)

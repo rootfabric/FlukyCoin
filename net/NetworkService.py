@@ -175,12 +175,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     #
     #         print("New transaction added and hash distributed.")
 
-    def AddTransaction(self, request, context):
-        # Логика обработки транзакции
-        transaction = Transaction.from_json(request.json_data)
-        self.add_new_transaction(transaction)
-        return network_pb2.Ack(success=True)
-
     def GetAllTransactions(self, request, context):
 
         transactions = [tr.to_json() for tr in self.node_manager.mempool.get_transactions().values()]

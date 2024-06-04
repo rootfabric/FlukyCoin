@@ -35,6 +35,9 @@ class Protocol:
     prev_hash_genesis_block = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
                               b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
+    # принудительно берем ноды у всех пирово
+    TIME_PAUSE_GET_PEERS = 10
+
     hash_functions = {
         0: hashlib.sha256(),
         1: lambda: hashlib.shake_128(),  # Функция возвращает объект хеша

@@ -8,11 +8,6 @@ def register_with_peers(stub, local_address):
     return response.peers
 
 
-def get_peers(stub):
-    response = stub.GetPeers(network_pb2.PeerRequest())
-    return response.peers
-
-
 # def get_node_info(stub):
 #     response = stub.GetNodeInfo(network_pb2.NodeInfoRequest())
 #     # print("response", response)
@@ -26,9 +21,10 @@ class ClientHandler:
         self.sent_addresses = set()  # Уже отправленные адреса
         self.peer_status = {}  # Словарь статуса подключения пиров: address -> bool
 
-    def connect_to_peers(self, initial_peers):
+    def connect_to_peers(self):
         # Асинхронно подключаемся к пирам
-        futures = {self.executor.submit(self.connect_to_peer, address): address for address in initial_peers}
+        futures = {self.executor.submit(self.connect_to_peer, address): address for address in
+                   self.servicer.known_peers}
         for future in as_completed(futures):
             address = futures[future]
             try:
@@ -120,3 +116,24 @@ class ClientHandler:
             stub = network_pb2_grpc.NetworkServiceStub(channel)
             transaction = stub.GetFullTransaction(network_pb2.TransactionHash(hash=hash))
             print(f"Received full transaction: {transaction.data}")
+
+    def get_peers_list(self):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(self.get_peer, peer): peer for peer in self.servicer.active_peers}
+            peer_adress = []
+            for future in as_completed(futures):
+                peer = futures[future]
+                try:
+                    peers = future.result()
+                    peer_adress += peers
+                except Exception as e:
+                    print(f"Failed to get_peers info from {peer}: {e}")
+
+            self.servicer.known_peers.update(peer_adress)
+            print("get_peers_list:", self.servicer.known_peers)
+
+    def get_peer(self, address):
+        channel = grpc.insecure_channel(address)
+        stub = network_pb2_grpc.NetworkServiceStub(channel)
+        response = stub.GetPeers(network_pb2.PeerRequest())
+        return response.peers

@@ -60,15 +60,18 @@ class NodeManager:
 
     def run_node(self):
         """ """
-
+        timer_get_nodes = time.time()
         while True:
 
             self.client_handler.ping_peers()
 
-            self.client_handler.connect_to_peers(set(list(self.server.servicer.active_peers)))
+            self.client_handler.connect_to_peers()
 
             self.client_handler.fetch_info_from_peers()
 
+            if timer_get_nodes+Protocol.TIME_PAUSE_GET_PEERS<time.time():
+                timer_get_nodes = time.time()
+                self.client_handler.get_peers_list()
 
             print("-------------------")
             time.sleep(5)

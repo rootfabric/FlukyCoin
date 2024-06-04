@@ -142,8 +142,8 @@ class ClientHandler:
             channel = grpc.insecure_channel(peer)
             stub = network_pb2_grpc.NetworkServiceStub(channel)
             response = stub.GetAllTransactions(network_pb2.Empty())  # Предполагается, что такой метод существует
-            if response.transactions:
-                print(f"Received {len(response.transactions)} transactions from {peer}.")
+            # if response.transactions:
+            #     print(f"Received {len(response.transactions)} transactions from {peer}.")
             return response.transactions  # Список транзакций
         except Exception as e:
             print(f"Error fetching transactions from {peer}: {str(e)}")

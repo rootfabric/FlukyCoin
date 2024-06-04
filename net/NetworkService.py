@@ -127,53 +127,53 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             print(f"Error fetching transaction from {peer}: {str(e)}")
             return False
 
-    def GetFullTransaction(self, request, context):
-        # Здесь код для извлечения полных данных транзакции по хешу из хранилища
-        transaction = self.node_manager.mempool.get_transaction(request.hash)
-        transaction_json_data = transaction.to_json()
-        return network_pb2.Transaction(json_data=transaction_json_data)
-
-    # def retrieve_transaction(self, hash):
-    #     # Здесь код для получения данных транзакции из вашего хранилища
-    #     return "Some transaction data based on the hash"
-
-    def distribute_transaction_hash(self, transaction_hash):
-        # Используем ThreadPoolExecutor для параллельной рассылки хеша
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {}
-            for peer in self.active_peers:
-                if peer != self.local_address:  # Исключаем себя из рассылки
-                    channel = grpc.insecure_channel(peer)
-                    stub = network_pb2_grpc.NetworkServiceStub(channel)
-                    # Асинхронный вызов метода BroadcastTransactionHash
-                    future = executor.submit(stub.BroadcastTransactionHash,
-                                             network_pb2.TransactionHash(hash=transaction_hash,
-                                                                         from_host=self.local_address))
-                    futures[future] = peer
-
-            # Обработка результатов асинхронных вызовов
-            for future in as_completed(futures):
-                peer = futures[future]
-                try:
-                    response = future.result()
-                    if response.success:
-                        print(f"Broadcast tx: {transaction_hash} successfully broadcasted to peer {peer}.")
-                    else:
-                        print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
-                except Exception as e:
-                    print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
-
-    def add_new_transaction(self, transaction: Transaction):
-        if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
-            # новая транзакция
-            # self.save_transaction(transaction_hash, transaction_data)
-
-            """ добавить валидацию транзакции в цепи """
-            self.node_manager.add_transaction_to_mempool(transaction)
-
-            self.distribute_transaction_hash(transaction.txhash)
-
-            print("New transaction added and hash distributed.")
+    # def GetFullTransaction(self, request, context):
+    #     # Здесь код для извлечения полных данных транзакции по хешу из хранилища
+    #     transaction = self.node_manager.mempool.get_transaction(request.hash)
+    #     transaction_json_data = transaction.to_json()
+    #     return network_pb2.Transaction(json_data=transaction_json_data)
+    #
+    # # def retrieve_transaction(self, hash):
+    # #     # Здесь код для получения данных транзакции из вашего хранилища
+    # #     return "Some transaction data based on the hash"
+    #
+    # def distribute_transaction_hash(self, transaction_hash):
+    #     # Используем ThreadPoolExecutor для параллельной рассылки хеша
+    #     with ThreadPoolExecutor(max_workers=10) as executor:
+    #         futures = {}
+    #         for peer in self.active_peers:
+    #             if peer != self.local_address:  # Исключаем себя из рассылки
+    #                 channel = grpc.insecure_channel(peer)
+    #                 stub = network_pb2_grpc.NetworkServiceStub(channel)
+    #                 # Асинхронный вызов метода BroadcastTransactionHash
+    #                 future = executor.submit(stub.BroadcastTransactionHash,
+    #                                          network_pb2.TransactionHash(hash=transaction_hash,
+    #                                                                      from_host=self.local_address))
+    #                 futures[future] = peer
+    #
+    #         # Обработка результатов асинхронных вызовов
+    #         for future in as_completed(futures):
+    #             peer = futures[future]
+    #             try:
+    #                 response = future.result()
+    #                 if response.success:
+    #                     print(f"Broadcast tx: {transaction_hash} successfully broadcasted to peer {peer}.")
+    #                 else:
+    #                     print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
+    #             except Exception as e:
+    #                 print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
+    #
+    # def add_new_transaction(self, transaction: Transaction):
+    #     if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
+    #         # новая транзакция
+    #         # self.save_transaction(transaction_hash, transaction_data)
+    #
+    #         """ добавить валидацию транзакции в цепи """
+    #         self.node_manager.add_transaction_to_mempool(transaction)
+    #
+    #         self.distribute_transaction_hash(transaction.txhash)
+    #
+    #         print("New transaction added and hash distributed.")
 
     def AddTransaction(self, request, context):
         # Логика обработки транзакции
@@ -187,41 +187,41 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
         return network_pb2.TransactionList(transactions=[network_pb2.Transaction(json_data=tr) for tr in transactions])
 
-    # def add_new_transaction(self, transaction: Transaction):
-    #     if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
-    #         """ добавить валидацию транзакции в цепи """
-    #         self.node_manager.add_transaction_to_mempool(transaction)
-    #
-    #         # Запускаем дистрибуцию хэша в отдельном потоке
-    #         self.executor.submit(self.distribute_transaction_hash, transaction.txhash)
-    #
-    #         print("New transaction added and hash distributed.")
-    #
-    # def distribute_transaction_hash(self, transaction_hash):
-    #     # Логика распределения хэша
-    #     with ThreadPoolExecutor(max_workers=10) as executor:
-    #         futures = {}
-    #         for peer in self.active_peers:
-    #             if peer != self.local_address:  # Исключаем себя из рассылки
-    #                 channel = grpc.insecure_channel(peer)
-    #                 stub = network_pb2_grpc.NetworkServiceStub(channel)
-    #                 future = executor.submit(stub.BroadcastTransactionHash,
-    #                                          network_pb2.TransactionHash(hash=transaction_hash))
-    #                 futures[future] = peer
-    #
-    #         # Обработка результатов асинхронных вызовов
-    #         for future in as_completed(futures):
-    #             peer = futures[future]
-    #             try:
-    #                 response = future.result()
-    #                 if response.success:
-    #                     print(f"Hash {transaction_hash} successfully broadcasted to peer {peer}.")
-    #                 else:
-    #                     print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
-    #             except Exception as e:
-    #                 print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
-    #
-    # def AddTransaction(self, request, context):
-    #     transaction = Transaction.from_json(request.json_data)
-    #     self.add_new_transaction(transaction)
-    #     return network_pb2.Ack(success=True)
+    def add_new_transaction(self, transaction: Transaction):
+        if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
+            """ добавить валидацию транзакции в цепи """
+            self.node_manager.add_transaction_to_mempool(transaction)
+
+            # Запускаем дистрибуцию хэша в отдельном потоке
+            self.executor.submit(self.distribute_transaction_hash, transaction.txhash)
+
+            print("New transaction added and hash distributed.")
+
+    def distribute_transaction_hash(self, transaction_hash):
+        # Логика распределения хэша
+        with ThreadPoolExecutor(max_workers=10) as executor:
+            futures = {}
+            for peer in self.active_peers:
+                if peer != self.local_address:  # Исключаем себя из рассылки
+                    channel = grpc.insecure_channel(peer)
+                    stub = network_pb2_grpc.NetworkServiceStub(channel)
+                    future = executor.submit(stub.BroadcastTransactionHash,
+                                             network_pb2.TransactionHash(hash=transaction_hash))
+                    futures[future] = peer
+
+            # Обработка результатов асинхронных вызовов
+            for future in as_completed(futures):
+                peer = futures[future]
+                try:
+                    response = future.result()
+                    if response.success:
+                        print(f"Hash {transaction_hash} successfully broadcasted to peer {peer}.")
+                    else:
+                        print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
+                except Exception as e:
+                    print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
+
+    def AddTransaction(self, request, context):
+        transaction = Transaction.from_json(request.json_data)
+        self.add_new_transaction(transaction)
+        return network_pb2.Ack(success=True)

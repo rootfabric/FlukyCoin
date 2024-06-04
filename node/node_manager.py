@@ -60,6 +60,17 @@ class NodeManager:
         self.synced = False
         self.running = True
 
+    def add_transaction_to_mempool(self, transaction):
+        """ ДОбавление новой транзакции """
+
+        if not self.mempool.chech_hash_transaction(transaction.txhash):
+
+            """ Требуется провести валидацию, и возможно перетащить метод из основного класса """
+
+            print("Добавлена новая транзакция", transaction.txhash)
+            self.mempool.add_transaction(transaction)
+
+
     def run_node(self):
         """ Основной цикл  """
         timer_get_nodes = time.time()
@@ -76,5 +87,6 @@ class NodeManager:
                 self.client_handler.get_peers_list()
 
             print("-------------------")
+            print(self.mempool.transactions.keys())
             time.sleep(5)
 

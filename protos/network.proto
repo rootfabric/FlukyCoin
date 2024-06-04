@@ -30,6 +30,7 @@ message PeerInfoResponse {
 
 message TransactionHash {
   string hash = 1;
+  string from_host = 2;
 }
 
 message Transaction {

@@ -5,11 +5,13 @@ import grpc
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.protocol import Protocol
 from core.Transactions import Transaction
+
+
 # from node.node_manager import NodeManager
 
 class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def __init__(self, local_address, node_manager):
-        self.local_address = local_address
+
         self.version = Protocol.VERSION
         self.node_manager = node_manager
         self.known_peers = set(node_manager.initial_peers)  # Все известные адреса
@@ -17,16 +19,20 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
         self.known_transactions = set()  # Хранение известных хешей транзакций
 
+        self.local_address = local_address
+        self.peer_addresses = {}  # Клиентский адрес -> серверный адрес
+
     # Реализация метода Ping
     def Ping(self, request, context):
         return network_pb2.Empty()  # Просто возвращает пустой ответ
 
     def RegisterPeer(self, request, context):
-        address = request.address
-        self.known_peers.add(address)
-        # Проверяем, является ли адрес активным
-        if self.check_active(address):
-            self.active_peers.add(address)
+        client_address = context.peer()
+        server_address = request.address
+        self.known_peers.add(server_address)
+        self.peer_addresses[client_address] = server_address
+        if self.check_active(server_address):
+            self.active_peers.add(server_address)
         return network_pb2.PeerResponse(peers=list(self.active_peers))
 
     def GetPeers(self, request, context):
@@ -46,7 +52,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         except grpc.RpcError as e:
             # print(f"Failed to ping {address}: {str(e)}")
             return False
-
 
     def check_active(self, address):
         try:
@@ -69,20 +74,66 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         return response
 
     def BroadcastTransactionHash(self, request, context):
-        if request.hash not in self.known_transactions:
-            self.known_transactions.add(request.hash)
-            self.distribute_transaction_hash(request.hash)
+        # if request.hash not in self.known_transactions:
+        if not self.node_manager.mempool.chech_hash_transaction(request.hash):
+            # если транзакции нет, делаем сразу запрос в ответ, с запросом полной транзакции
+            self.request_full_transaction(request.hash, request.from_host)
         return network_pb2.Ack(success=True)
+
+    def request_full_transaction(self, transaction_hash, source_peer):
+        """Запрашиваем полную транзакцию от источника, если не удастся - от других пиров."""
+        # Сначала пытаемся получить транзакцию от источника
+        if self.try_fetch_transaction_from_peer(transaction_hash, source_peer):
+            print(f"Successfully retrieved full transaction from source {source_peer}.")
+        else:
+            print(f"Failed to retrieve transaction from {source_peer}, trying other peers.")
+            # Если не удастся, запрашиваем от всех активных пиров
+            with ThreadPoolExecutor(max_workers=10) as executor:
+                futures = {}
+                for peer in self.active_peers:
+                    if peer != self.local_address and peer != source_peer:  # Исключаем себя и источник
+                        future = executor.submit(self.try_fetch_transaction_from_peer,
+                                                 transaction_hash, peer)
+                        futures[future] = peer
+
+                # Обработка результатов асинхронных вызовов
+                for future in as_completed(futures):
+                    peer = futures[future]
+                    try:
+                        if future.result():
+                            print(f"Received full transaction from {peer}.")
+                            break  # Прерываем цикл, так как получили данные
+                    except Exception as e:
+                        print(f"Exception while fetching full transaction from {peer}: {str(e)}")
+
+    def try_fetch_transaction_from_peer(self, transaction_hash, peer):
+        """Пытаемся получить транзакцию от указанного пира."""
+        try:
+
+            # server_address = self.peer_addresses.get(peer, peer)  # Получаем серверный адрес, если он есть
+            channel = grpc.insecure_channel(peer)
+            stub = network_pb2_grpc.NetworkServiceStub(channel)
+            response = stub.GetFullTransaction(network_pb2.TransactionHash(hash=transaction_hash), timeout=3)
+            if response.json_data:
+                transaction = Transaction.from_json(response.json_data)
+                """ Добавление транзакции """
+                self.node_manager.add_transaction_to_mempool(transaction)
+                return True
+            else:
+                return False
+        except Exception as e:
+            print(f"Error fetching transaction from {peer}: {str(e)}")
+            return False
 
     def GetFullTransaction(self, request, context):
         # Здесь код для извлечения полных данных транзакции по хешу из хранилища
-        transaction_data = self.retrieve_transaction(request.hash)
-        return network_pb2.Transaction(hash=request.hash, data=transaction_data)
+        transaction = self.node_manager.mempool.get_transaction(request.hash)
+        transaction_json_data = transaction.to_json()
+        return network_pb2.Transaction(json_data=transaction_json_data)
 
-
-    def retrieve_transaction(self, hash):
-        # Здесь код для получения данных транзакции из вашего хранилища
-        return "Some transaction data based on the hash"
+    # def retrieve_transaction(self, hash):
+    #     # Здесь код для получения данных транзакции из вашего хранилища
+    #     return "Some transaction data based on the hash"
 
     def distribute_transaction_hash(self, transaction_hash):
         # Используем ThreadPoolExecutor для параллельной рассылки хеша
@@ -94,7 +145,8 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
                     stub = network_pb2_grpc.NetworkServiceStub(channel)
                     # Асинхронный вызов метода BroadcastTransactionHash
                     future = executor.submit(stub.BroadcastTransactionHash,
-                                             network_pb2.TransactionHash(hash=transaction_hash))
+                                             network_pb2.TransactionHash(hash=transaction_hash,
+                                                                         from_host=self.local_address))
                     futures[future] = peer
 
             # Обработка результатов асинхронных вызовов
@@ -103,27 +155,28 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
                 try:
                     response = future.result()
                     if response.success:
-                        print(f"Hash {transaction_hash} successfully broadcasted to peer {peer}.")
+                        print(f"Broadcast tx: {transaction_hash} successfully broadcasted to peer {peer}.")
                     else:
                         print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
                 except Exception as e:
                     print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
 
-    def GetFullTransaction(self, request, context):
-        transaction_data = self.retrieve_transaction(request.hash)
-        if transaction_data:
-            return network_pb2.Transaction(hash=request.hash, data=transaction_data)
-        else:
-            context.set_code(grpc.StatusCode.NOT_FOUND)
-            context.set_details('Transaction not found')
-            return network_pb2.Transaction()
+    # def GetFullTransaction(self, request, context):
+    #     transaction_data = self.retrieve_transaction(request.hash)
+    #     if transaction_data:
+    #         return network_pb2.Transaction(hash=request.hash, data=transaction_data)
+    #     else:
+    #         context.set_code(grpc.StatusCode.NOT_FOUND)
+    #         context.set_details('Transaction not found')
+    #         return network_pb2.Transaction()
 
-    def add_new_transaction(self, transaction:Transaction):
+    def add_new_transaction(self, transaction: Transaction):
         if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
             # новая транзакция
             # self.save_transaction(transaction_hash, transaction_data)
 
-            self.node_manager.mempool.add_transaction(transaction)
+            """ добавить валидацию транзакции в цепи """
+            self.node_manager.add_transaction_to_mempool(transaction)
 
             self.distribute_transaction_hash(transaction.txhash)
 

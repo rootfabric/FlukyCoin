@@ -67,6 +67,10 @@ class Mempool:
         """Вернуть список всех транзакций в mempool."""
         return self.transactions
 
+    def get_transaction(self, hash):
+        """Вернуть список всех транзакций в mempool."""
+        return self.transactions.get(hash)
+
     def size(self):
         return len(self.transactions)
 if __name__ == '__main__':

@@ -3,11 +3,12 @@ import datetime
 import grpc
 # from core.protocol import Protocol
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from core.protocol import Protocol
 
 class NetworkService(network_pb2_grpc.NetworkServiceServicer):
-    def __init__(self, local_address, version, node_manager):
+    def __init__(self, local_address, node_manager):
         self.local_address = local_address
-        self.version = version
+        self.version = Protocol.VERSION
         self.node_manager = node_manager
         self.known_peers = set(node_manager.initial_peers)  # Все известные адреса
         self.active_peers = set()  # Активные адреса

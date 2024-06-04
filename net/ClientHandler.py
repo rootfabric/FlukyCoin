@@ -15,8 +15,10 @@ def register_with_peers(stub, local_address):
 #     return response.version, response.state
 
 class ClientHandler:
-    def __init__(self, servicer):
+    def __init__(self, servicer, node_manager):
         self.servicer = servicer
+        self.node_manager1 = node_manager
+
         self.executor = ThreadPoolExecutor(max_workers=10)
         self.sent_addresses = set()  # Уже отправленные адреса
         self.peer_status = {}  # Словарь статуса подключения пиров: address -> bool

@@ -32,24 +32,26 @@ class NodeManager:
         self.log = log
         self.config = config
 
-        self.wallet_address = config.get("address")
-        self.log.info(f"Blockchain Node address {self.wallet_address}")
+        # self.wallet_address = config.get("address")
+        # self.log.info(f"Blockchain Node address {self.wallet_address}")
 
 
-        self.address = f"{self.config.get('host')}:{self.config.get('port')}"
+
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
-        self.initial_peers.append(self.address)
-        self.host = config.get("host", "localhost")
-        self.port = config.get("port", "5555")
+        # self.initial_peers.append(self.address)
+        self.version = Protocol.VERSION
 
         self.time_ntpt = NTPTimeSynchronizer(log=log)
 
-        self.local_address = self.address
-        self.version = Protocol.VERSION
 
+        self.mempool = Mempool(config)
 
-        self.server = GrpcServer(self.local_address, self.version, self)
-        self.client_handler = ClientHandler(self.server.servicer)
+        self.chain = Chain(config=self.config, mempool=self.mempool, log=self.log)
+
+        # self.miners_storage = MinerStorage(dir=str(self.address))
+
+        self.server = GrpcServer(self.config, self)
+        self.client_handler = ClientHandler(self.server.servicer, self)
 
         self.server.start()
 
@@ -59,7 +61,7 @@ class NodeManager:
         self.running = True
 
     def run_node(self):
-        """ """
+        """ Основной цикл  """
         timer_get_nodes = time.time()
         while True:
 

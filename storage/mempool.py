@@ -4,8 +4,10 @@ import pickle
 from core.Transactions import Transaction
 
 class Mempool:
-    def __init__(self, dir="", filepath='mempool.json'):
-        self.dir = dir
+    def __init__(self, config,  filepath='mempool.json'):
+
+        self.config = config
+        self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
         self.transactions = {}
         self.filepath = filepath
         # self.load_transactions()

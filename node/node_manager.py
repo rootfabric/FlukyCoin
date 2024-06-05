@@ -72,7 +72,7 @@ class NodeManager:
             print("Добавлена новая транзакция", transaction.txhash)
             self.mempool.add_transaction(transaction)
 
-    def create_block(self):
+    def create_block(self, address_reward = None):
         """ """
 
         last_block = self.chain.block_candidate
@@ -132,7 +132,7 @@ class NodeManager:
             # block.hash_block()
             block_candidate = Block.create(self.chain.blocks_count(), self.chain.last_block_hash(),
                                            block_timestamp_seconds, transacrions, address_miner=xmss.address,
-                                           address_reward=self.config.get("address_reward"))
+                                           address_reward=address_reward)
 
             block_candidate.make_sign(xmss)
 
@@ -172,18 +172,13 @@ class NodeManager:
                 self.synced = True
                 continue
 
-            # if self.config.get('is_miner', "False"):
-            #     print(f"---is_miner {self.config.get('is_miner', 'False')}----------------")
-            #     print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
-            #     time.sleep(5)
-            #     continue
-
             new_block = None
             if self.config.get('is_miner', "False"):
-                new_block = self.create_block()
-            else:
-                print(f"---is_miner {self.config.get('is_miner', 'False')}----------------")
-                print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
+                # создать свой блок
+                new_block = self.create_block(self.config.get("address_reward"))
+
+            print(f"---is_miner {self.config.get('is_miner', 'False')}----------------")
+            print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
 
             # new_block = self.create_block()
 
@@ -191,7 +186,7 @@ class NodeManager:
                 self.log.info(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
                               new_block.signer)
                 # self.network_manager.distribute_block(self.chain.block_candidate)
-                print("self.server.servicer.active_peers", self.server.servicer.active_peers)
+                # print("self.server.servicer.active_peers", self.server.servicer.active_peers)
                 self.client_handler.distribute_block(self.chain.block_candidate)
 
             needClose = self.chain.need_close_block()
@@ -217,13 +212,15 @@ class NodeManager:
                 self.log.info("*******************")
                 continue
 
+            # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
+
             if self.chain.block_candidate is not None:
                 self.log.info(
                     # f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
                     f"Check: {self.chain.blocks_count()} peers[{len(self.server.servicer.active_peers)}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.timestamp_seconds - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
 
-
             print("-------------------")
-            print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
+
+
             time.sleep(5)
 

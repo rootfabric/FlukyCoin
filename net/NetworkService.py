@@ -78,7 +78,8 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         # if request.hash not in self.known_transactions:
         if not self.node_manager.mempool.chech_hash_transaction(request.hash):
             # если транзакции нет, делаем сразу запрос в ответ, с запросом полной транзакции
-            self.request_full_transaction(request.hash, request.from_host)
+            if request.from_host!="":
+                self.request_full_transaction(request.hash, request.from_host)
         return network_pb2.Ack(success=True)
 
     def request_full_transaction(self, transaction_hash, source_peer):

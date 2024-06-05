@@ -158,8 +158,9 @@ class ClientHandler:
             for future in as_completed(futures):
                 peer_transactions = future.result()
                 transactions.extend(peer_transactions)
-                print(f"Received {len(peer_transactions)} transactions from {futures[future]}.")
+                # print(f"Received {len(peer_transactions)} transactions from {futures[future]}.")
 
+        # все полученные транзакции добавляем
         for tr_proto in transactions:
             self.node_manager.add_transaction_to_mempool(Transaction.from_json(tr_proto.json_data))
 

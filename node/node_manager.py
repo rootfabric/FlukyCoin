@@ -93,6 +93,6 @@ class NodeManager:
 
 
             print("-------------------")
-            print(self.mempool.transactions.keys())
+            print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
             time.sleep(5)
 

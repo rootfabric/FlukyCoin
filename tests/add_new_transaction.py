@@ -22,6 +22,14 @@
 #         {'command': 'tx', 'tx_data': {'tx_json':t.to_json(), 'tx_sign':t.signature}})
 #     print(response)
 
+import os, sys
+# Получаем путь на директорию выше
+parent_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# Добавляем этот путь в sys.path
+sys.path.append(parent_directory)
+
+
+
 import time
 
 import json

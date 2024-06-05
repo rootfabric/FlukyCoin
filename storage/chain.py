@@ -30,11 +30,14 @@ class Chain():
 
         self.miners = set()
 
+        self.config = config
+        self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
+
         if config is not None:
             host = config.get("host", "localhost")
             port = config.get("port", "5555")
             dir = f"{host}_{port}"
-            self.load_from_disk(dir=dir)
+            self.load_from_disk()
 
         self.history_hash = {}
 
@@ -63,9 +66,9 @@ class Chain():
         #     return True
         return None
 
-    def save_chain_to_disk(self, dir="", filename='blockchain.db'):
+    def save_chain_to_disk(self,filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
-        dir = dir.replace(":", "_")
+        dir = self.dir.replace(":", "_")
         base_dir = "node_data"
         dir_path = os.path.join(base_dir, dir)
 
@@ -86,9 +89,9 @@ class Chain():
 
         # print(f"Blockchain saved to disk at {full_path}.")
 
-    def load_from_disk(self, dir="", filename='blockchain.db'):
+    def load_from_disk(self, filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
-        dir = dir.replace(":", "_")
+        dir = self.dir.replace(":", "_")
         base_dir = "node_data"
         dir_path = os.path.join(base_dir, dir)
 

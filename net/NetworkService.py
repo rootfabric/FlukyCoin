@@ -5,6 +5,7 @@ import grpc
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.protocol import Protocol
 from core.Transactions import Transaction
+from core.Block import Block
 
 
 # from node.node_manager import NodeManager
@@ -20,6 +21,10 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         self.known_transactions = set()  # Хранение известных хешей транзакций
 
         self.local_address = local_address
+
+        # доабавлен свой адрес
+        self.known_peers.add(self.local_address)
+
         self.peer_addresses = {}  # Клиентский адрес -> серверный адрес
         self.executor = ThreadPoolExecutor(max_workers=5)  # Пул потоков для асинхронной работы
 
@@ -43,16 +48,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def GetNodeInfo(self, request, context):
         data = self.node_manager.fetch_data()
         return network_pb2.PeerInfoResponse(version=self.version, state="active", current_time=data)
-
-    def check_active(self, address):
-        try:
-            with grpc.insecure_channel(address) as channel:
-                stub = network_pb2_grpc.NetworkServiceStub(channel)
-                stub.Ping(network_pb2.Empty(), timeout=1)  # Установка таймаута для пинга
-                return True
-        except grpc.RpcError as e:
-            # print(f"Failed to ping {address}: {str(e)}")
-            return False
 
     def check_active(self, address):
         try:
@@ -220,3 +215,17 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         transaction = Transaction.from_json(request.json_data)
         self.add_new_transaction(transaction)
         return network_pb2.Ack(success=True)
+
+
+    def BroadcastBlock(self, request, context):
+        # Логика обработки принятого блока
+        block = Block.from_json(request.data)  # Десериализация блока
+        print("BroadcastBlock", block.hash_block())
+        if self.node_manager.chain.add_block_candidate(block):
+            print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
+                          block.signer)
+            self.node_manager.client_handler.distribute_block(self.node_manager.chain.block_candidate)
+
+            return network_pb2.Ack(success=True)
+        else:
+            return network_pb2.Ack(success=False)

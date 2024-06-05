@@ -5,17 +5,18 @@ from tools.logger import Log
 
 
 class MinerStorage:
-    def __init__(self, dir=""):
+    def __init__(self, config):
         """ """
-        self.dir = dir
+        self.config = config
+        self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
         self.log = Log()
         self.keys: {str: XMSS} = {}
 
-        self.load_from_disk(dir=dir)
+        self.load_from_disk(dir=self.dir)
 
         if len(self.keys) == 0:
             self.generate_keys(10, height=2)
-            self.save_storage_to_disk(dir=dir)
+            self.save_storage_to_disk(dir=self.dir)
 
     def generate_keys(self, size=10, height=5):
         """ Генерация заданного количества ключей для майнинга"""

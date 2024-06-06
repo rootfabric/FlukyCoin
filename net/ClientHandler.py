@@ -99,9 +99,7 @@ class ClientHandler:
             for future in as_completed(futures, timeout=10):
                 peer = futures[future]
                 try:
-                    info = future.result()
-                    peer_info[
-                        peer] = f"version: {info.version}, synced: {info.synced}, candidate: {info.block_candidate}"
+                    peer_info[peer] = future.result()
                 except Exception as e:
                     print(f"Failed to fetch info from {peer}: {e}")
 

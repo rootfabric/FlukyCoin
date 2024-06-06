@@ -31,7 +31,13 @@ message NodeInfoRequest {
 message PeerInfoResponse {
   string version = 1;
   bool synced = 2;
-  string block_candidate = 3;
+  int32 blocks = 3;
+  string latest_block = 4;
+  string block_candidate = 5;
+  float  uptime = 6;
+  int32 peer_count = 7;
+  string network_info = 8;
+  int32 pending_transactions = 9;
 }
 
 message TransactionHash {

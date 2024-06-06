@@ -37,7 +37,7 @@ class NodeManager:
         # self.wallet_address = config.get("address")
         # self.log.info(f"Blockchain Node address {self.wallet_address}")
 
-
+        self.start_time = time.time()
 
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         # self.initial_peers.append(self.address)
@@ -61,6 +61,8 @@ class NodeManager:
 
         self.synced = False
         self.running = True
+
+
 
     def add_transaction_to_mempool(self, transaction):
         """ ДОбавление новой транзакции """
@@ -149,6 +151,26 @@ class NodeManager:
         self.log.error("Нет подписей")
         self.miners_storage.generate_keys()
         self.create_block()
+    def uptime(self):
+        return time.time() - self.start_time
+
+    def check_sync(self, peer_info):
+        """ проверка синхронности ноды """
+
+
+        for address, info in peer_info.items():
+            """ """
+
+            if info.synced:
+
+                if info.bloks>self.chain.blocks_count():
+                    """ На синхронной ноде больше блоков. """
+
+
+            print(info)
+
+
+
 
     def run_node(self):
         """ Основной цикл  """
@@ -159,7 +181,9 @@ class NodeManager:
 
             self.client_handler.connect_to_peers()
 
-            self.client_handler.fetch_info_from_peers()
+            peer_info = self.client_handler.fetch_info_from_peers()
+
+            print("main", self.chain.block_candidate_hash)
 
             if timer_get_nodes+Protocol.TIME_PAUSE_GET_PEERS<time.time():
                 timer_get_nodes = time.time()
@@ -168,9 +192,22 @@ class NodeManager:
 
                 self.client_handler.fetch_transactions_from_all_peers()
 
+
+
+            self.check_sync(peer_info)
+
             if len(self.server.servicer.active_peers)==1:
                 self.synced = True
+
+            print(f"---synced {self.synced}----------------")
+            if not self.synced:
+                # нода не синхронна, не работаем
                 continue
+
+
+            ###############################################
+            ######   создание блока и обмен блоками
+            ###############################################
 
             new_block = None
             if self.config.get('is_miner', "False"):

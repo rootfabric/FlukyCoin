@@ -8,6 +8,6 @@ initial_peers:
     - "5.35.98.126:9334"
 #    - "yglamazdin.fvds.ru:9333"
 #    - "api.robotsimulator.ru:9333"
-    - "api.robotsimulator.ru:9334"
+#    - "api.robotsimulator.ru:9334"
 #    - "95.154.71.53:9334"                                 
 address_reward: OuteMMnVwafGWenuk9rehohCv5EB611VS4oJP2mLKrbEEPuRHOME

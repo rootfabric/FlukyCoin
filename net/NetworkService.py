@@ -45,9 +45,9 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         # Возвращаем только активные адреса
         return network_pb2.PeerResponse(peers=list(self.active_peers))
 
-    def GetNodeInfo(self, request, context):
-        data = self.node_manager.fetch_data()
-        return network_pb2.PeerInfoResponse(version=self.version, state="active", current_time=data)
+    # def GetNodeInfo(self, request, context):
+    #     data = self.node_manager.fetch_data()
+    #     return network_pb2.PeerInfoResponse(version=self.version, state="active", current_time=data)
 
     def check_active(self, address):
         try:
@@ -60,20 +60,47 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             return False
 
     def GetPeerInfo(self, request, context):
-        # print(
-        #     f"Sending version: {self.node_manager.version}, synced: {self.node_manager.synced}, candidate: {self.node_manager.block_candidate}")
-        response = network_pb2.PeerInfoResponse(
-            version=self.node_manager.version,
-            synced=self.node_manager.synced,
-            block_candidate=self.node_manager.block_candidate
-        )
-        return response
+        try:
+            version = str(self.node_manager.version)
+            synced = bool(self.node_manager.synced)
+            blocks = self.node_manager.chain.blocks_count()
+            latest_block = str(self.node_manager.chain.last_block_hash())
+            block_candidate = str(self.node_manager.chain.block_candidate_hash)
+            uptime = self.node_manager.uptime()
+            peer_count = int(len(self.active_peers))
+            network_info = str(self.local_address)
+            pending_transactions = int(self.node_manager.mempool.size())
+
+            # Detailed debug output
+            # print(f"version: {type(version)}, synced: {type(synced)}, latest_block: {type(latest_block)}, "
+            #       f"block_candidate: {type(block_candidate)}, uptime: {type(uptime)}, "
+            #       f"peer_count: {type(peer_count)}, network_info: {type(network_info)}, "
+            #       f"pending_transactions: {type(pending_transactions)}")
+
+            response = network_pb2.PeerInfoResponse(
+                version=version,
+                synced=synced,
+                blocks=blocks,
+                latest_block=latest_block,
+                block_candidate=block_candidate,
+                uptime=uptime,
+                peer_count=peer_count,
+                network_info=network_info,
+                pending_transactions=pending_transactions
+            )
+
+            return response
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            context.set_details(f"Exception calling application: {e}")
+            context.set_code(grpc.StatusCode.UNKNOWN)
+            return None
 
     def BroadcastTransactionHash(self, request, context):
         # if request.hash not in self.known_transactions:
         if not self.node_manager.mempool.chech_hash_transaction(request.hash):
             # если транзакции нет, делаем сразу запрос в ответ, с запросом полной транзакции
-            if request.from_host!="":
+            if request.from_host != "":
                 self.request_full_transaction(request.hash, request.from_host)
         return network_pb2.Ack(success=True)
 
@@ -216,14 +243,13 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         self.add_new_transaction(transaction)
         return network_pb2.Ack(success=True)
 
-
     def BroadcastBlock(self, request, context):
         # Логика обработки принятого блока
         block = Block.from_json(request.data)  # Десериализация блока
         print("BroadcastBlock", block.hash_block())
         if self.node_manager.chain.add_block_candidate(block):
             print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
-                          block.signer)
+                  block.signer)
             self.node_manager.client_handler.distribute_block(self.node_manager.chain.block_candidate)
 
             return network_pb2.Ack(success=True)

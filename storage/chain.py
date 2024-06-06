@@ -43,6 +43,9 @@ class Chain():
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
 
+    def get_block_by_number(self, num):
+        if num<len(self.blocks):
+            return self.blocks[num]
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -231,10 +234,10 @@ class Chain():
         if not self.validate_block(block):
             return False
 
-        self.add_block(block)
+        self._add_block(block)
         return True
 
-    def add_block(self, block: Block):
+    def _add_block(self, block: Block):
         """  """
         self.blocks.append(block)
 

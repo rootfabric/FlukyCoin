@@ -157,17 +157,35 @@ class NodeManager:
     def check_sync(self, peer_info):
         """ проверка синхронности ноды """
 
-
+        self.synced = True
         for address, info in peer_info.items():
             """ """
 
             if info.synced:
 
-                if info.bloks>self.chain.blocks_count():
+                if info.blocks>self.chain.blocks_count():
                     """ На синхронной ноде больше блоков. """
 
+                    self.synced = False
 
-            print(info)
+                    block_number_to_load = self.chain.blocks_count()
+                    block = self.client_handler.get_block_by_number(block_number_to_load, info.network_info)
+
+                    if self.chain.validate_and_add_block(block):
+                        print(f"Block [{block_number_to_load}/{info.blocks}] added {block.hash_block()}")
+
+        if self.synced:
+            """ если засинхрино, проверяем кандидаты """
+            for address, info in peer_info.items():
+                """ """
+                if info.synced:
+                    if info.block_candidate!=self.chain.block_candidate_hash:
+                        print(""" На синхронной ноде кандидат отличается """)
+                        candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
+                        if self.chain.add_block_candidate(candidate_from_peer):
+                            print(""" Новый кандидат добавлен """)
+                            print(""" Делаем рассылку  """)
+        #                     # self.client_handler.distribute_block(candidate_from_peer)
 
 
 
@@ -175,15 +193,19 @@ class NodeManager:
     def run_node(self):
         """ Основной цикл  """
         timer_get_nodes = 0
+        timer_ping_peers = 0
         while True:
 
-            self.client_handler.ping_peers()
+            if timer_ping_peers + Protocol.TIME_PAUSE_PING_PEERS < time.time():
+                timer_ping_peers = time.time()
 
-            self.client_handler.connect_to_peers()
+                self.client_handler.ping_peers()
 
-            peer_info = self.client_handler.fetch_info_from_peers()
+                self.client_handler.connect_to_peers()
 
-            print("main", self.chain.block_candidate_hash)
+                peer_info = self.client_handler.fetch_info_from_peers()
+
+
 
             if timer_get_nodes+Protocol.TIME_PAUSE_GET_PEERS<time.time():
                 timer_get_nodes = time.time()
@@ -199,7 +221,7 @@ class NodeManager:
             if len(self.server.servicer.active_peers)==1:
                 self.synced = True
 
-            print(f"---synced {self.synced}----------------")
+            self.log.info(f"---synced {self.synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
             if not self.synced:
                 # нода не синхронна, не работаем
                 continue
@@ -214,8 +236,8 @@ class NodeManager:
                 # создать свой блок
                 new_block = self.create_block(self.config.get("address_reward"))
 
-            print(f"---is_miner {self.config.get('is_miner', 'False')}----------------")
-            print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
+
+            # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
 
             # new_block = self.create_block()
 
@@ -255,8 +277,6 @@ class NodeManager:
                 self.log.info(
                     # f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
                     f"Check: {self.chain.blocks_count()} peers[{len(self.server.servicer.active_peers)}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.timestamp_seconds - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
-
-            print("-------------------")
 
 
             time.sleep(5)

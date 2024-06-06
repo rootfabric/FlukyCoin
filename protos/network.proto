@@ -10,6 +10,8 @@ service NetworkService {
   rpc AddTransaction(Transaction) returns (Ack);
   rpc GetAllTransactions(Empty) returns (TransactionList) {}
   rpc BroadcastBlock(Block) returns (Ack);
+  rpc GetBlockByNumber(BlockRequest) returns (BlockResponse);
+  rpc GetBlockCandidate(Empty) returns (BlockResponse);
 
 }
 
@@ -38,6 +40,14 @@ message PeerInfoResponse {
   int32 peer_count = 7;
   string network_info = 8;
   int32 pending_transactions = 9;
+}
+
+message BlockRequest {
+    int64 block_number = 1;
+}
+
+message BlockResponse {
+    string block_data = 1;  // JSON-представление блока
 }
 
 message TransactionHash {

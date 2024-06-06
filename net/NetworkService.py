@@ -255,3 +255,33 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             return network_pb2.Ack(success=True)
         else:
             return network_pb2.Ack(success=False)
+
+    def GetBlockByNumber(self, request, context):
+        try:
+            block_number = request.block_number
+            block = self.node_manager.chain.get_block_by_number(block_number)
+            if block:
+                block_json = block.to_json()
+                return network_pb2.BlockResponse(block_data=block_json)
+            else:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details(f"Block number {block_number} not found")
+                return network_pb2.BlockResponse()
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Error fetching block: {str(e)}")
+            return network_pb2.BlockResponse()
+    def GetBlockCandidate(self, request, context):
+        try:
+            block = self.node_manager.chain.block_candidate
+            if block is not None:
+                block_json = block.to_json()
+                return network_pb2.BlockResponse(block_data=block_json)
+            else:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details(f"Block candidate  not found")
+                return network_pb2.BlockResponse()
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Error fetching block: {str(e)}")
+            return network_pb2.BlockResponse()

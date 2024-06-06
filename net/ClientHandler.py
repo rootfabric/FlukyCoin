@@ -2,13 +2,14 @@ import grpc
 from protos import network_pb2, network_pb2_grpc
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.Transactions import Transaction
-
+from core.Block import Block
+import time
 
 class ClientHandler:
     def __init__(self, servicer, node_manager):
         self.servicer = servicer
         self.node_manager = node_manager
-
+        self.log = node_manager.log
         self.executor = ThreadPoolExecutor(max_workers=10)
         self.sent_addresses = set()  # Уже отправленные адреса
         self.peer_status = {}  # Словарь статуса подключения пиров: address -> bool
@@ -68,7 +69,7 @@ class ClientHandler:
                 peers = self.register_with_peers(stub, self.servicer.local_address)
                 self.sent_addresses.add(address)
                 self.peer_status[address] = True  # Устанавливаем статус подключения в True
-                print(f"Registered on {address}, current peers: {peers}")
+                self.log.info(f"Registered on {address}, current peers: {peers}")
 
                 new_peers = set(peers) - self.servicer.active_peers
                 if new_peers:
@@ -140,7 +141,7 @@ class ClientHandler:
                     print(f"Failed to get_peers info from {peer}: {e}")
 
             self.servicer.known_peers.update(peer_adress)
-            print("get_peers_list:", self.servicer.known_peers)
+            # print("get_peers_list:", self.servicer.known_peers)
 
     def get_peer(self, address):
         channel = grpc.insecure_channel(address)
@@ -206,3 +207,48 @@ class ClientHandler:
             stub.BroadcastBlock(network_pb2.Block(data=block_data))
         except grpc.RpcError as e:
             raise Exception(f"RPC failed for {peer}: {str(e)}")
+
+    def get_block_by_number(self, block_number, address):
+        attempt = 0
+        max_attempts = 3
+        while attempt < max_attempts:
+            try:
+                with grpc.insecure_channel(address) as channel:
+                    stub = network_pb2_grpc.NetworkServiceStub(channel)
+                    request = network_pb2.BlockRequest(block_number=block_number)
+                    response = stub.GetBlockByNumber(request, timeout=5)  # Добавление таймаута
+                    if response.block_data:
+                        block = Block.from_json(response.block_data)
+                        return block
+                    else:
+                        raise Exception("Block not found or error occurred")
+            except grpc.RpcError as e:
+                attempt += 1
+                self.log.error(f"Attempt {attempt} failed: {str(e)}")
+                if attempt == max_attempts:
+                    self.log.error(f"Max attempts reached. Unable to connect to {address}")
+                    # raise Exception("Max attempts reached. Unable to connect to node.")
+                time.sleep(0.1)  # Добавление задержки перед повторной попыткой
+
+    def get_block_candidate(self, address):
+        print("get_block_candidate from", address)
+        attempt = 0
+        max_attempts = 3
+        while attempt < max_attempts:
+            try:
+                with grpc.insecure_channel(address) as channel:
+                    stub = network_pb2_grpc.NetworkServiceStub(channel)
+                    request = network_pb2.Empty()
+                    response = stub.GetBlockCandidate(request, timeout=5)  # Добавление таймаута
+                    if response.block_data:
+                        block = Block.from_json(response.block_data)
+                        return block
+                    else:
+                        raise Exception("Block not found or error occurred")
+            except grpc.RpcError as e:
+                attempt += 1
+                self.log.error(f"Attempt {attempt} failed: {str(e)}")
+                if attempt == max_attempts:
+                    self.log.error(f"Max attempts reached. Unable to connect to {address}")
+                    # raise Exception("Max attempts reached. Unable to connect to node.")
+                time.sleep(0.1)  # Добавление задержки перед повторной попыткой

@@ -14,7 +14,7 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rnetwork.proto\"5\n\x0fTransactionList\x12\"\n\x0ctransactions\x18\x01 \x03(\x0b\x32\x0c.Transaction\"\x1e\n\x0bPeerRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\x0cPeerResponse\x12\r\n\x05peers\x18\x01 \x03(\t\"\x11\n\x0fNodeInfoRequest\"\xca\x01\n\x10PeerInfoResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x0e\n\x06synced\x18\x02 \x01(\x08\x12\x0e\n\x06\x62locks\x18\x03 \x01(\x05\x12\x14\n\x0clatest_block\x18\x04 \x01(\t\x12\x17\n\x0f\x62lock_candidate\x18\x05 \x01(\t\x12\x0e\n\x06uptime\x18\x06 \x01(\x02\x12\x12\n\npeer_count\x18\x07 \x01(\x05\x12\x14\n\x0cnetwork_info\x18\x08 \x01(\t\x12\x1c\n\x14pending_transactions\x18\t \x01(\x05\"2\n\x0fTransactionHash\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x11\n\tfrom_host\x18\x02 \x01(\t\" \n\x0bTransaction\x12\x11\n\tjson_data\x18\x01 \x01(\t\"\x15\n\x05\x42lock\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"\x16\n\x03\x41\x63k\x12\x0f\n\x07success\x18\x01 \x01(\x08\"\x07\n\x05\x45mpty2\x8a\x03\n\x0eNetworkService\x12+\n\x0cRegisterPeer\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\'\n\x08GetPeers\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\x16\n\x04Ping\x12\x06.Empty\x1a\x06.Empty\x12(\n\x0bGetPeerInfo\x12\x06.Empty\x1a\x11.PeerInfoResponse\x12\x32\n\x18\x42roadcastTransactionHash\x12\x10.TransactionHash\x1a\x04.Ack\x12\x34\n\x12GetFullTransaction\x12\x10.TransactionHash\x1a\x0c.Transaction\x12$\n\x0e\x41\x64\x64Transaction\x12\x0c.Transaction\x1a\x04.Ack\x12\x30\n\x12GetAllTransactions\x12\x06.Empty\x1a\x10.TransactionList\"\x00\x12\x1e\n\x0e\x42roadcastBlock\x12\x06.Block\x1a\x04.Ackb\x06proto3')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rnetwork.proto\"5\n\x0fTransactionList\x12\"\n\x0ctransactions\x18\x01 \x03(\x0b\x32\x0c.Transaction\"\x1e\n\x0bPeerRequest\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"\x1d\n\x0cPeerResponse\x12\r\n\x05peers\x18\x01 \x03(\t\"\x11\n\x0fNodeInfoRequest\"\xca\x01\n\x10PeerInfoResponse\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x0e\n\x06synced\x18\x02 \x01(\x08\x12\x0e\n\x06\x62locks\x18\x03 \x01(\x05\x12\x14\n\x0clatest_block\x18\x04 \x01(\t\x12\x17\n\x0f\x62lock_candidate\x18\x05 \x01(\t\x12\x0e\n\x06uptime\x18\x06 \x01(\x02\x12\x12\n\npeer_count\x18\x07 \x01(\x05\x12\x14\n\x0cnetwork_info\x18\x08 \x01(\t\x12\x1c\n\x14pending_transactions\x18\t \x01(\x05\"$\n\x0c\x42lockRequest\x12\x14\n\x0c\x62lock_number\x18\x01 \x01(\x03\"#\n\rBlockResponse\x12\x12\n\nblock_data\x18\x01 \x01(\t\"2\n\x0fTransactionHash\x12\x0c\n\x04hash\x18\x01 \x01(\t\x12\x11\n\tfrom_host\x18\x02 \x01(\t\" \n\x0bTransaction\x12\x11\n\tjson_data\x18\x01 \x01(\t\"\x15\n\x05\x42lock\x12\x0c\n\x04\x64\x61ta\x18\x01 \x01(\t\"\x16\n\x03\x41\x63k\x12\x0f\n\x07success\x18\x01 \x01(\x08\"\x07\n\x05\x45mpty2\xea\x03\n\x0eNetworkService\x12+\n\x0cRegisterPeer\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\'\n\x08GetPeers\x12\x0c.PeerRequest\x1a\r.PeerResponse\x12\x16\n\x04Ping\x12\x06.Empty\x1a\x06.Empty\x12(\n\x0bGetPeerInfo\x12\x06.Empty\x1a\x11.PeerInfoResponse\x12\x32\n\x18\x42roadcastTransactionHash\x12\x10.TransactionHash\x1a\x04.Ack\x12\x34\n\x12GetFullTransaction\x12\x10.TransactionHash\x1a\x0c.Transaction\x12$\n\x0e\x41\x64\x64Transaction\x12\x0c.Transaction\x1a\x04.Ack\x12\x30\n\x12GetAllTransactions\x12\x06.Empty\x1a\x10.TransactionList\"\x00\x12\x1e\n\x0e\x42roadcastBlock\x12\x06.Block\x1a\x04.Ack\x12\x31\n\x10GetBlockByNumber\x12\r.BlockRequest\x1a\x0e.BlockResponse\x12+\n\x11GetBlockCandidate\x12\x06.Empty\x1a\x0e.BlockResponseb\x06proto3')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
@@ -31,16 +31,20 @@ if not _descriptor._USE_C_DESCRIPTORS:
   _globals['_NODEINFOREQUEST']._serialized_end=152
   _globals['_PEERINFORESPONSE']._serialized_start=155
   _globals['_PEERINFORESPONSE']._serialized_end=357
-  _globals['_TRANSACTIONHASH']._serialized_start=359
-  _globals['_TRANSACTIONHASH']._serialized_end=409
-  _globals['_TRANSACTION']._serialized_start=411
-  _globals['_TRANSACTION']._serialized_end=443
-  _globals['_BLOCK']._serialized_start=445
-  _globals['_BLOCK']._serialized_end=466
-  _globals['_ACK']._serialized_start=468
-  _globals['_ACK']._serialized_end=490
-  _globals['_EMPTY']._serialized_start=492
-  _globals['_EMPTY']._serialized_end=499
-  _globals['_NETWORKSERVICE']._serialized_start=502
-  _globals['_NETWORKSERVICE']._serialized_end=896
+  _globals['_BLOCKREQUEST']._serialized_start=359
+  _globals['_BLOCKREQUEST']._serialized_end=395
+  _globals['_BLOCKRESPONSE']._serialized_start=397
+  _globals['_BLOCKRESPONSE']._serialized_end=432
+  _globals['_TRANSACTIONHASH']._serialized_start=434
+  _globals['_TRANSACTIONHASH']._serialized_end=484
+  _globals['_TRANSACTION']._serialized_start=486
+  _globals['_TRANSACTION']._serialized_end=518
+  _globals['_BLOCK']._serialized_start=520
+  _globals['_BLOCK']._serialized_end=541
+  _globals['_ACK']._serialized_start=543
+  _globals['_ACK']._serialized_end=565
+  _globals['_EMPTY']._serialized_start=567
+  _globals['_EMPTY']._serialized_end=574
+  _globals['_NETWORKSERVICE']._serialized_start=577
+  _globals['_NETWORKSERVICE']._serialized_end=1067
 # @@protoc_insertion_point(module_scope)

@@ -59,12 +59,51 @@ def check_port_open(address):
         sock.close()  # Закрываем сокет
 
 
+from ipwhois import IPWhois
+import ipaddress
+
+def is_private_ip(ip):
+    private_ip_ranges = [
+        ipaddress.ip_network('10.0.0.0/8'),
+        ipaddress.ip_network('172.16.0.0/12'),
+        ipaddress.ip_network('192.168.0.0/16')
+    ]
+    ip_obj = ipaddress.ip_address(ip)
+    return any(ip_obj in net for net in private_ip_ranges)
+
+def get_ip_info(ip):
+    obj = IPWhois(ip)
+    res = obj.lookup_rdap()
+    return res
+
+
+def check_ip(ip_or_domain):
+    try:
+        ip = socket.gethostbyname(ip_or_domain)
+    except socket.gaierror:
+        return f'Не удалось разрешить домен: {ip_or_domain}'
+
+    if is_private_ip(ip):
+        return f'IP-адрес {ip} ({ip_or_domain}) является частным и не виден в интернете.'
+    else:
+        ip_info = get_ip_info(ip)
+        if ip_info['asn'] is None:
+            return f'IP-адрес {ip} ({ip_or_domain}) не является публичным и не виден в интернете.'
+        else:
+            return f'IP-адрес {ip} ({ip_or_domain}) является публичным и виден в интернете.'
+
 
 if __name__ == '__main__':
     # Примеры использования функции
-    print(validate_and_resolve_address_with_port("5.35.98.126:9333"))  # Выведет: 192.168.1.1
+    # print(validate_and_resolve_address_with_port("5.35.98.126:9333"))  # Выведет: 192.168.1.1
+    #
+    # print(check_port_open("google.com:80"))
+    # print(check_port_open("5.35.98.126:9333"))
+    # print(check_port_open("192.168.0.26:9334"))
 
-    print(check_port_open("google.com:80"))
-    print(check_port_open("5.35.98.126:9333"))
-    print(check_port_open("192.168.0.26:9334"))
-
+    # ip = '8.8.8.8'
+    # ip = '5.35.98.126'
+    ip = 'glamazdin.fvds.ru'
+    ip = 'ya.ru'
+    ip = '192.168.0.26'
+    print(check_ip(ip))

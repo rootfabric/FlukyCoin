@@ -31,12 +31,14 @@ class Chain():
         self.miners = set()
 
         self.config = config
-        self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
+
 
         if config is not None:
+            self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
+
             host = config.get("host", "localhost")
             port = config.get("port", "5555")
-            dir = f"{host}_{port}"
+
             self.load_from_disk()
 
         self.history_hash = {}

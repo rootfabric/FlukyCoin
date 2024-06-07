@@ -279,7 +279,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
                 return network_pb2.BlockResponse(block_data=block_json)
             else:
                 context.set_code(grpc.StatusCode.NOT_FOUND)
-                context.set_details(f"Block candidate  not found")
+                context.set_details(f"Block is None")
                 return network_pb2.BlockResponse()
         except Exception as e:
             context.set_code(grpc.StatusCode.INTERNAL)

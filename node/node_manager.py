@@ -23,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from net.GrpcServer import GrpcServer
 from net.ClientHandler import ClientHandler
 
+
 class NodeManager:
     """
 
@@ -45,7 +46,6 @@ class NodeManager:
 
         self.time_ntpt = NTPTimeSynchronizer(log=log)
 
-
         self.mempool = Mempool(config)
 
         self.chain = Chain(config=self.config, mempool=self.mempool, log=self.log)
@@ -62,19 +62,16 @@ class NodeManager:
         self.synced = False
         self.running = True
 
-
-
     def add_transaction_to_mempool(self, transaction):
         """ ДОбавление новой транзакции """
 
         if not self.mempool.chech_hash_transaction(transaction.txhash):
-
             """ Требуется провести валидацию, и возможно перетащить метод из основного класса """
 
             print("Добавлена новая транзакция", transaction.txhash)
             self.mempool.add_transaction(transaction)
 
-    def create_block(self, address_reward = None):
+    def create_block(self, address_reward=None):
         """ """
 
         last_block = self.chain.block_candidate
@@ -151,6 +148,7 @@ class NodeManager:
         self.log.error("Нет подписей")
         self.miners_storage.generate_keys()
         self.create_block()
+
     def uptime(self):
         return time.time() - self.start_time
 
@@ -163,7 +161,7 @@ class NodeManager:
 
             if info.synced:
 
-                if info.blocks>self.chain.blocks_count():
+                if info.blocks > self.chain.blocks_count():
                     """ На синхронной ноде больше блоков. """
 
                     self.synced = False
@@ -179,16 +177,14 @@ class NodeManager:
             for address, info in peer_info.items():
                 """ """
                 if info.synced:
-                    if info.block_candidate!=self.chain.block_candidate_hash:
-                        print(""" На синхронной ноде кандидат отличается """)
-                        candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
-                        if self.chain.add_block_candidate(candidate_from_peer):
-                            print(""" Новый кандидат добавлен """)
-                            print(""" Делаем рассылку  """)
-        #                     # self.client_handler.distribute_block(candidate_from_peer)
-
-
-
+                    if info.block_candidate != 'None':
+                        if info.block_candidate != self.chain.block_candidate_hash:
+                            print(""" На синхронной ноде кандидат отличается """)
+                            candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
+                            if self.chain.add_block_candidate(candidate_from_peer):
+                                print(""" Новый кандидат добавлен """)
+                                print(""" Делаем рассылку  """)
+                                # self.client_handler.distribute_block(candidate_from_peer)
 
     def run_node(self):
         """ Основной цикл  """
@@ -205,27 +201,22 @@ class NodeManager:
 
                 peer_info = self.client_handler.fetch_info_from_peers()
 
-
-
-            if timer_get_nodes+Protocol.TIME_PAUSE_GET_PEERS<time.time():
+            if timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
                 timer_get_nodes = time.time()
 
                 self.client_handler.get_peers_list()
 
                 self.client_handler.fetch_transactions_from_all_peers()
 
-
-
             self.check_sync(peer_info)
 
-            if len(self.server.servicer.active_peers)==1:
+            if len(self.server.servicer.active_peers) == 1:
                 self.synced = True
 
             self.log.info(f"---synced {self.synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
             if not self.synced:
                 # нода не синхронна, не работаем
                 continue
-
 
             ###############################################
             ######   создание блока и обмен блоками
@@ -235,7 +226,6 @@ class NodeManager:
             if self.config.get('is_miner', "False"):
                 # создать свой блок
                 new_block = self.create_block(self.config.get("address_reward"))
-
 
             # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
 
@@ -278,6 +268,4 @@ class NodeManager:
                     # f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
                     f"Check: {self.chain.blocks_count()} peers[{len(self.server.servicer.active_peers)}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.timestamp_seconds - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
 
-
             time.sleep(5)
-

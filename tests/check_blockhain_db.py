@@ -1,14 +1,18 @@
 from storage.chain import Chain
 from core.protocol import Protocol
 from core.Block import Block
+from tools.config_loader import ConfigLoader
+
 
 if __name__ == '__main__':
     """ """
+    config_loader = ConfigLoader('../config/','node_config.yaml ')
+    config = config_loader.load_config()
 
-    chain = Chain()
+    chain = Chain(config)
     chain2 = Chain()
 
-    chain.load_from_disk(dir = "test_db")
+    chain.load_from_disk()
 
     print(chain.last_block().to_json())
 

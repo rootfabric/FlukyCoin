@@ -244,8 +244,15 @@ class ClientHandler:
                         block = Block.from_json(response.block_data)
                         return block
                     else:
-                        raise Exception("Block not found or error occurred")
+                        self.log.error("Block not found or error occurred")
+                        return None
+
+
             except grpc.RpcError as e:
+
+                if e.args[0].code ==grpc.StatusCode.NOT_FOUND:
+                    return None
+
                 attempt += 1
                 self.log.error(f"Attempt {attempt} failed: {str(e)}")
                 if attempt == max_attempts:

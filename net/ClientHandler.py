@@ -206,7 +206,8 @@ class ClientHandler:
             block_data = block.to_json()  # Сериализация блока в JSON
             stub.BroadcastBlock(network_pb2.Block(data=block_data))
         except grpc.RpcError as e:
-            raise Exception(f"RPC failed for {peer}: {str(e)}")
+            # raise Exception(f"RPC failed for {peer}: {str(e)}")
+            self.log.info(f"RPC failed for {peer}: {str(e)}")
 
     def get_block_by_number(self, block_number, address):
         attempt = 0

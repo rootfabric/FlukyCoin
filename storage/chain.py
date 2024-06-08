@@ -32,7 +32,6 @@ class Chain():
 
         self.config = config
 
-
         if config is not None:
             self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
 
@@ -46,8 +45,9 @@ class Chain():
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
 
     def get_block_by_number(self, num):
-        if num<len(self.blocks):
+        if num < len(self.blocks):
             return self.blocks[num]
+
     def time(self):
         return self.time_ntpt.get_corrected_time()
 
@@ -71,7 +71,7 @@ class Chain():
         #     return True
         return None
 
-    def save_chain_to_disk(self,filename='blockchain.db'):
+    def save_chain_to_disk(self, filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
         dir = self.dir.replace(":", "_")
         base_dir = "node_data"
@@ -135,6 +135,14 @@ class Chain():
         if block.timestamp_seconds <= self.last_block().timestamp_seconds:
             self.log.warning("Блок не проходит валидацию по времени")
             return False
+
+        # если время последнего блока еще не вышло
+        last_block = self.last_block()
+        if last_block is not None:
+            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time_ntpt.get_corrected_time():
+                self.log.warning("Блок не проходит валидацию по времени. Сильно мало с последнего блока")
+                return False
+
         return True
 
     def validate_block_number(self, block: Block):
@@ -435,6 +443,12 @@ class Chain():
         if self.block_candidate is None:
             return False
         # print(f"Check: {self.blocks_count()} txs[{self.mempool.size()}] delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.2f}  {self.block_candidate.hash_block()[:5]}...{self.block_candidate.hash_block()[-5:]}  singer: ...{self.block_candidate.signer [-5:]}")
+
+        # если время последнего блока еще не вышло
+        last_block = self.last_block()
+        if last_block is not None:
+            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time_ntpt.get_corrected_time():
+                return False
 
         if self.block_candidate.timestamp_seconds > self.time_ntpt.get_corrected_time():
             return False

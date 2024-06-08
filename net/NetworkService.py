@@ -245,6 +245,10 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def BroadcastBlock(self, request, context):
         # Логика обработки принятого блока
+        if not self.node_manager.synced:
+            # нода не синхронна, блоки не нужны
+            return network_pb2.Ack(success=False)
+
         block = Block.from_json(request.data)  # Десериализация блока
         print("BroadcastBlock", block.hash_block())
         if self.node_manager.chain.add_block_candidate(block):

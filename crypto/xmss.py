@@ -1008,7 +1008,7 @@ def seed_phrase_to_key(seed_phrase):
 
 
 class XMSS():
-    def __init__(self, height, n, w, seed_phrase, private_key, address, key_pair, log=Log()):
+    def __init__(self, height, n, w, seed_phrase, private_key, address, key_pair, idx = 0, log=Log()):
         self.height = height
         self.n = n
         self.w = w
@@ -1016,6 +1016,8 @@ class XMSS():
         self.private_key = private_key
         self.address = address
         self.keyPair: XMSSKeypair = key_pair
+
+        self.keyPair.SK.idx = idx
 
         self.log = log
 
@@ -1067,6 +1069,7 @@ class XMSS():
             'height': self.height,
             'n': self.n,
             'w': self.w,
+            'idx': self.idx(),
             'seed_phrase': self.seed_phrase,
             'private_key': self.private_key.hex(),
             'address': self.address,
@@ -1078,12 +1081,14 @@ class XMSS():
         height = json_data['height']
         n = json_data['n']
         w = json_data['w']
+        idx =  json_data['idx']
         seed_phrase = json_data['seed_phrase']
         private_key = bytes.fromhex(json_data['private_key'])  # Преобразуем обратно из строки hex
         address = json_data['address']
         key_pair = keypair_from_json(json_data['keyPair'])
 
-        return cls(height, n, w, seed_phrase, private_key, address, key_pair)
+
+        return cls(height, n, w, seed_phrase, private_key, address, key_pair, idx=idx)
 
     def set_idx(self, new_idx):
         """ Низкоуровневое выставление счетчика подписей """
@@ -1091,7 +1096,11 @@ class XMSS():
         new_idx_fixed = max(0, min(new_idx, self.keyPair.PK.max_height()))
         self.log.info(f"Change .keyPair.SK.idx: old{self.keyPair.SK.idx} new {new_idx_fixed}")
         self.keyPair.SK.idx = new_idx_fixed
+        return self.keyPair.SK.idx
 
+    def idx(self):
+        """ Текущее количество счетчика подписей """
+        return self.keyPair.SK.idx
 
 if __name__ == '__main__':
     # WOTS_demo(bytearray(b'0e4575aa2c51'))

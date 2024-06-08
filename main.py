@@ -42,4 +42,9 @@ if __name__ == "__main__":
     # run_node(port, known_peers)
 
     node = NodeManager(config)
-    node.run_node()
+
+    try:
+        node.run_node()
+    except KeyboardInterrupt:
+        pass
+

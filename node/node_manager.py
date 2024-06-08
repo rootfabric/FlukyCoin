@@ -116,7 +116,7 @@ class NodeManager:
 
             next_idx = self.chain.next_address_nonce(miner_address)
             if xmss.keyPair.SK.idx != next_idx - 1:
-                self.log.info(f"xmss.keyPair.SK.idx {xmss.keyPair.SK.idx}")
+                # self.log.info(f"xmss.keyPair.SK.idx {xmss.keyPair.SK.idx}")
                 edited_idx = xmss.set_idx(next_idx - 1)
                 self.log.warning(
                     f"Не верное количество подписей между ключом и цепью. Ставим количество цепи {edited_idx}")
@@ -143,6 +143,10 @@ class NodeManager:
 
             if not self.chain.validate_block(block_candidate):
                 self.log.info("Блок не прошел валидацию")
+
+                # не тратим подпись, то что было подписано выше откатываем:
+                xmss.set_idx(xmss.idx()-1)
+
                 block_candidate = None
             else:
                 self.miners_storage.save_storage_to_disk(block_candidate)
@@ -180,7 +184,6 @@ class NodeManager:
                     if self.chain.validate_and_add_block(block):
                         print(f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
 
-
         if self.synced and drop_sync_signal and self.timer_drop_synced is not None:
             self.timer_drop_synced = time.time()
             print("Включен таймер потери синхронизации")
@@ -195,21 +198,27 @@ class NodeManager:
                 self.synced = False
 
         if self.synced:
-            """ если засинхрино, проверяем кандидаты """
-            for address, info in peer_info.items():
-                """ """
-                if info.synced:
-                    if info.block_candidate != 'None':
-                        if info.block_candidate != self.chain.block_candidate_hash:
-                            print(""" На синхронной ноде кандидат отличается """)
-                            candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
 
-                            if self.chain.validate_block(candidate_from_peer):
-                                if self.chain.validate_candidate(candidate_from_peer):
-                                    if self.chain.add_block_candidate(candidate_from_peer):
-                                        print(""" Новый кандидат добавлен """)
-                                        print(""" Делаем рассылку  """)
-                                        # self.client_handler.distribute_block(candidate_from_peer)
+            last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
+
+            # чтобы не создавать спам пакетов на срезах блоков, деламем паузу
+            if self.chain.time()> last_block_time+Protocol.BLOCK_START_CHECK_PAUSE:
+
+                """ если засинхрино, проверяем кандидаты """
+                for address, info in peer_info.items():
+                    """ """
+                    if info.synced:
+                        if info.block_candidate != 'None':
+                            if info.block_candidate != self.chain.block_candidate_hash:
+                                # print(""" На синхронной ноде кандидат отличается """)
+                                candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
+
+                                if self.chain.validate_block(candidate_from_peer):
+                                    if self.chain.validate_candidate(candidate_from_peer):
+                                        if self.chain.add_block_candidate(candidate_from_peer):
+                                            print(""" Новый кандидат добавлен """)
+                                            print(""" Делаем рассылку  """)
+                                            self.client_handler.distribute_block(candidate_from_peer)
 
     def technical_block(self):
 
@@ -226,7 +235,7 @@ class NodeManager:
 
             self.check_sync(peer_info)
 
-            if  self.synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
+            if self.synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
                 timer_get_nodes = time.time()
 
                 self.client_handler.get_peers_list()
@@ -247,7 +256,9 @@ class NodeManager:
             if len(self.server.servicer.active_peers) == 1:
                 self.synced = True
 
-            self.log.info(f"---synced {self.synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
+            if not self.synced:
+                self.log.info(f"---synced {self.synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
+
             if not self.synced:
                 # нода не синхронна, не работаем
                 time.sleep(Protocol.BLOCK_TIME_INTERVAL_LOG)
@@ -275,8 +286,12 @@ class NodeManager:
 
             needClose = self.chain.need_close_block()
             if needClose and self.chain.block_candidate is not None:
-                num_block_to_close = self.chain.blocks_count()
+
+                # блок еще закрытый, его нет в цепи
+                num_block_to_close = self.chain.blocks_count() + 1
+
                 self.log.info(f"*** START CLOSE {num_block_to_close} ****************", )
+
                 if not self.chain.close_block():
                     self.log.info("last_block", self.chain.last_block_hash())
                     self.log.info("candidate", self.chain.block_candidate_hash)

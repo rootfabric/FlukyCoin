@@ -136,12 +136,12 @@ class Chain():
             self.log.warning("Блок не проходит валидацию по времени")
             return False
 
-        # если время последнего блока еще не вышло
-        last_block = self.last_block()
-        if last_block is not None:
-            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time_ntpt.get_corrected_time():
-                self.log.warning("Блок не проходит валидацию по времени. Сильно мало с последнего блока")
-                return False
+        # # если время последнего блока еще не вышло
+        # last_block = self.last_block()
+        # if last_block is not None:
+        #     if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time_ntpt.get_corrected_time():
+        #         # self.log.warning("Блок не проходит валидацию по времени. Сильно мало с последнего блока")
+        #         return False
 
         return True
 

@@ -3,6 +3,7 @@ from core.protocol import Protocol
 from core.Block import Block
 from tools.config_loader import ConfigLoader
 
+import pprint
 
 if __name__ == '__main__':
     """ """
@@ -44,10 +45,12 @@ if __name__ == '__main__':
             t = b1.timestamp_seconds - b0.timestamp_seconds
             list_time.append(t)
 
-            print(i, block.datetime(), b0.hash, block.signer, block.mining_reward()/10000000, block.signer)
+            print(i, block.datetime(), block.signer, block.mining_reward()/10000000, block.signer, chain2.next_address_nonce(block.signer))
             # print(b0.hash, b1.previousHash, t)
 
     print(list_time)
 
     print(len(chain.blocks))
     print(len(chain2.blocks))
+
+    print(chain2.transaction_storage.nonces)

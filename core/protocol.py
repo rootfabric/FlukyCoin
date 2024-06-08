@@ -15,7 +15,7 @@ class Protocol:
     # BLOCK_TIME_INTERVAL =  30
     BLOCK_TIME_INTERVAL = 10
 
-    BLOCK_TIME_INTERVAL_LOG = 5
+    BLOCK_TIME_INTERVAL_LOG = 1
 
     # количество секунд. после смены блока, перед проверками
     BLOCK_START_CHECK_PAUSE = 5

@@ -1094,7 +1094,7 @@ class XMSS():
         """ Низкоуровневое выставление счетчика подписей """
 
         new_idx_fixed = max(0, min(new_idx, self.keyPair.PK.max_height()))
-        self.log.info(f"Change .keyPair.SK.idx: old{self.keyPair.SK.idx} new {new_idx_fixed}")
+        # self.log.info(f"Change .keyPair.SK.idx: old{self.keyPair.SK.idx} new {new_idx_fixed}")
         self.keyPair.SK.idx = new_idx_fixed
         return self.keyPair.SK.idx
 

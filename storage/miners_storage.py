@@ -18,7 +18,7 @@ class MinerStorage:
             self.generate_keys(10, height=2)
             self.save_storage_to_disk(dir=self.dir)
 
-    def generate_keys(self, size=10, height=5):
+    def generate_keys(self, size=10, height=2):
         """ Генерация заданного количества ключей для майнинга"""
         self.log.info("Генерация ключей")
         count_sign = 0

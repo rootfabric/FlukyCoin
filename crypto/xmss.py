@@ -27,6 +27,7 @@ from hashlib import sha256
 from math import floor, log2, log, ceil
 from crypto.world_list import word_list
 from core.protocol import Protocol
+from tools.logger import Log
 
 
 class XMSSPrivateKey:
@@ -977,7 +978,7 @@ def seed_phrase_to_key(seed_phrase):
 
 
 class XMSS():
-    def __init__(self, height, n, w, seed_phrase, private_key, address, key_pair):
+    def __init__(self, height, n, w, seed_phrase, private_key, address, key_pair, log=Log()):
         self.height = height
         self.n = n
         self.w = w
@@ -986,9 +987,11 @@ class XMSS():
         self.address = address
         self.keyPair: XMSSKeypair = key_pair
 
+        self.log = log
+
     def count_sign(self):
         """ Количество оставшихся подписей """
-        return self.keyPair.PK.max_height() - self.keyPair.SK.idx -1
+        return self.keyPair.PK.max_height() - self.keyPair.SK.idx
 
     @classmethod
     def create(cls, height=5, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE, key=None, seed_phrase=None):
@@ -1051,6 +1054,11 @@ class XMSS():
         key_pair = keypair_from_json(json_data['keyPair'])
 
         return cls(height, n, w, seed_phrase, private_key, address, key_pair)
+
+    def set_idx(self, new_idx):
+        """ Низкоуровневое выставление счетчика подписей """
+        self.log.info(f"Change .keyPair.SK.idx: old{self.keyPair.SK.idx} new {new_idx}")
+        self.keyPair.SK.idx = new_idx
 
 
 if __name__ == '__main__':

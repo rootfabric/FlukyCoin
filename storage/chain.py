@@ -188,7 +188,7 @@ class Chain():
         PK = block.XMSSPublicKey()
         address = PK.generate_address()
 
-        if PK.max_height() <= self.next_address_nonce(address):
+        if PK.max_height() < self.next_address_nonce(address):
             self.log.warning(
                 f"PK.max_height() {PK.max_height()} self.next_address_nonce(PK.generate_address()) {self.next_address_nonce(address)}")
             self.log.warning("Количество подписей больше высоты")

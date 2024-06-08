@@ -107,6 +107,36 @@ class XMSSPublicKey:
 
         return f"{self.address_start}{address}"
 
+    def address_info(self, address):
+
+        # Декодирование адреса из Base58 и удаление префикса
+        decoded_address = base58.b58decode(address[len(self.address_start):])
+
+        # Извлечение параметров и контрольной суммы
+        key_hash = decoded_address[:-6]
+        params = decoded_address[-6:-4]
+        checksum = decoded_address[-4:]
+
+        # Извлечение значений из параметров
+        hash_function_code = params[0] >> 4
+        tree_height = params[0] & 0x0F
+
+        extracted_info = {
+            "hash_function_code": hash_function_code,
+            "tree_height": tree_height,
+            "key_hash": key_hash,
+            "params": params,
+            "checksum": checksum
+        }
+
+        return extracted_info
+
+    def address_height(self, address):
+        return self.address_info(address)['tree_height']
+
+    def address_max_sign(self, address):
+        return 2 ** self.address_height(address)
+
     def is_valid_address(self, address):
         try:
             # Декодирование адреса из Base58 и удаление префикса 'Out'
@@ -1057,8 +1087,10 @@ class XMSS():
 
     def set_idx(self, new_idx):
         """ Низкоуровневое выставление счетчика подписей """
-        self.log.info(f"Change .keyPair.SK.idx: old{self.keyPair.SK.idx} new {new_idx}")
-        self.keyPair.SK.idx = new_idx
+
+        new_idx_fixed = max(0, min(new_idx, self.keyPair.PK.max_height()))
+        self.log.info(f"Change .keyPair.SK.idx: old{self.keyPair.SK.idx} new {new_idx_fixed}")
+        self.keyPair.SK.idx = new_idx_fixed
 
 
 if __name__ == '__main__':

@@ -198,6 +198,9 @@ class Chain():
     def validate_block(self, block):
         """ Проверка блока в цепи """
 
+        if block is None:
+            return False
+
         if not block.validate():
             return False
 

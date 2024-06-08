@@ -4,7 +4,7 @@ from crypto.xmss import *
 
 if __name__ == '__main__':
     # Пример использования
-    keys = XMSS.create(2)
+    keys = XMSS.create(1)
 
     PK = keys.keyPair.PK
 

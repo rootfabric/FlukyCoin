@@ -181,10 +181,13 @@ class NodeManager:
                         if info.block_candidate != self.chain.block_candidate_hash:
                             print(""" На синхронной ноде кандидат отличается """)
                             candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
-                            if self.chain.add_block_candidate(candidate_from_peer):
-                                print(""" Новый кандидат добавлен """)
-                                print(""" Делаем рассылку  """)
-                                # self.client_handler.distribute_block(candidate_from_peer)
+
+                            if self.chain.validate_block(candidate_from_peer):
+                                if self.chain.validate_candidate(candidate_from_peer):
+                                    if self.chain.add_block_candidate(candidate_from_peer):
+                                        print(""" Новый кандидат добавлен """)
+                                        print(""" Делаем рассылку  """)
+                                        # self.client_handler.distribute_block(candidate_from_peer)
 
     def run_node(self):
         """ Основной цикл  """

@@ -26,12 +26,13 @@ if __name__ == '__main__':
     list_time =[]
     for i, block in enumerate(chain.blocks):
 
+        chain2.validate_block(block)
         chain2.add_block_candidate(block)
         chain2.close_block()
 
         is_key = Protocol.is_key_block(block.hash_block())
-        if is_key:
-            print(i)
+        # if is_key:
+        #     print(i)
 
         if i>0:
             b0 : Block = chain.blocks[i-1]
@@ -40,7 +41,7 @@ if __name__ == '__main__':
             t = b1.timestamp_seconds - b0.timestamp_seconds
             list_time.append(t)
 
-            print(block.datetime(), b0.hash, block.signer, block.mining_reward()/10000000)
+            print(block.datetime(), b0.hash, block.signer, block.mining_reward()/10000000, block.signer)
             # print(b0.hash, b1.previousHash, t)
 
     print(list_time)

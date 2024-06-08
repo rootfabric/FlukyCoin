@@ -147,7 +147,8 @@ class NodeManager:
 
         self.log.error("Нет подписей")
         self.miners_storage.generate_keys()
-        self.create_block()
+        return None
+        # self.create_block()
 
     def uptime(self):
         return time.time() - self.start_time
@@ -195,6 +196,7 @@ class NodeManager:
         timer_ping_peers = 0
         while True:
 
+            #  Технический блок пинга и сбора информации
             if timer_ping_peers + Protocol.TIME_PAUSE_PING_PEERS < time.time():
                 timer_ping_peers = time.time()
 
@@ -210,6 +212,7 @@ class NodeManager:
                 self.client_handler.get_peers_list()
 
                 self.client_handler.fetch_transactions_from_all_peers()
+            #  конец технического блока
 
             self.check_sync(peer_info)
 
@@ -233,6 +236,7 @@ class NodeManager:
             # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
 
             # new_block = self.create_block()
+
 
             if self.chain.add_block_candidate(new_block):
                 self.log.info(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
@@ -271,4 +275,4 @@ class NodeManager:
                     # f"Check: {self.chain.blocks_count()} peers[{self.network_manager.active_peers()}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.time - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
                     f"Check: {self.chain.blocks_count()} peers[{len(self.server.servicer.active_peers)}] txs[{self.mempool.size()}] delta: {self.chain.block_candidate.timestamp_seconds - self.time_ntpt.get_corrected_time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}")
 
-            time.sleep(5)
+            time.sleep(1)

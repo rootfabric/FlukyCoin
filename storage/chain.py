@@ -309,6 +309,12 @@ class Chain():
         if block is None:
             return False
 
+        if not self.validate_candidate(block):
+            return False
+
+        if not self.validate_block(block):
+            return False
+
         # первый блок
         if self.last_block() is None and self.block_candidate is None:
             # self.block_candidate = copy.deepcopy(block)
@@ -411,7 +417,9 @@ class Chain():
 
     def close_block(self):
         """ Берем блок кандидата как верный """
-
+        if self.block_candidate is None:
+            self.log.info("Кандидат None. Блок нельзя закрыть")
+            return False
         if self.validate_and_add_block(Block.from_json(self.block_candidate.to_json())):
             self.transaction_storage.add_nonses_to_address(self.block_candidate.signer)
             self.reset_block_candidat()

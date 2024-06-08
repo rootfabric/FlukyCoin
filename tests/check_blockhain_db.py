@@ -26,7 +26,10 @@ if __name__ == '__main__':
     list_time =[]
     for i, block in enumerate(chain.blocks):
 
-        chain2.validate_block(block)
+        if block is None:
+            print("!!!!!!!")
+        if not chain2.validate_block(block):
+            print("Блок не валидный")
         chain2.add_block_candidate(block)
         chain2.close_block()
 
@@ -41,7 +44,7 @@ if __name__ == '__main__':
             t = b1.timestamp_seconds - b0.timestamp_seconds
             list_time.append(t)
 
-            print(block.datetime(), b0.hash, block.signer, block.mining_reward()/10000000, block.signer)
+            print(i, block.datetime(), b0.hash, block.signer, block.mining_reward()/10000000, block.signer)
             # print(b0.hash, b1.previousHash, t)
 
     print(list_time)

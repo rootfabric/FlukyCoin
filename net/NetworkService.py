@@ -33,6 +33,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         return network_pb2.Empty()  # Просто возвращает пустой ответ
 
     def RegisterPeer(self, request, context):
+        print("RegisterPeer", request)
         client_address = context.peer()
         server_address = request.address
         self.known_peers.add(server_address)

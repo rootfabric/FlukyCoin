@@ -447,10 +447,10 @@ class Chain():
         # если время последнего блока еще не вышло
         last_block = self.last_block()
         if last_block is not None:
-            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time_ntpt.get_corrected_time():
+            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time():
                 return False
 
-        if self.block_candidate.timestamp_seconds > self.time_ntpt.get_corrected_time():
+        if self.block_candidate.timestamp_seconds > self.time():
             return False
 
         return True
@@ -467,6 +467,36 @@ class Chain():
         #     return True
         #
         # return False
+
+    def drop_last_block(self):
+        """ При рассинхронах, откатываемся назад """
+
+        print("drop_last_block")
+        last_block = self.last_block()
+
+        if last_block is None:
+            return False
+
+        "Возникает ситуация, когда своя цепочка не сопадает с присылаемой"
+        "Тут надо делать более сложный форк"
+        "Пока просто откатываемся на несколько блоков назад"
+        "Нужна правильная отработка отката транзакций"
+
+        # self.transaction_storage.rollback_block(last_block)
+
+        # быстрый костыль, без робека
+        self.blocks = self.blocks[:-1]
+
+        self.transaction_storage.clear()
+
+
+
+        for block in self.blocks:
+            self.transaction_storage.add_nonses_to_address(block.signer)
+            for transaction in block.transactions:
+                if transaction.tx_type!="coinbase":
+                    self.transaction_storage.add_transaction(transaction)
+        self.reset_block_candidat()
 
 
 if __name__ == '__main__':

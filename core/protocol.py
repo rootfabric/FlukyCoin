@@ -18,7 +18,11 @@ class Protocol:
     BLOCK_TIME_INTERVAL_LOG = 1
 
     # количество секунд. после смены блока, перед проверками
-    BLOCK_START_CHECK_PAUSE = 5
+    BLOCK_START_CHECK_PAUSE = 3
+
+    # после закрытия блока, пауза перед созданием нового.
+    # все ноды должны закрыть блок чтобы принять новый кандидат
+    BLOCK_TIME_PAUSE_AFTER_CLOSE = 1
 
     # количество секунд перед закрытием, когда прекращаем синхронизации и проверки
     BLOCK_END_CHECK_PAUSE = 10

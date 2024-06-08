@@ -72,9 +72,11 @@ class ClientHandler:
                 self.log.info(f"Registered on {address}, current peers: {peers}")
 
                 new_peers = set(peers) - self.servicer.active_peers
+
                 if new_peers:
                     self.servicer.active_peers.update(new_peers)
                     self.resend_addresses(new_peers)
+
                 return True
 
         except grpc.RpcError as e:
@@ -86,7 +88,7 @@ class ClientHandler:
         # Рассылка новых адресов существующим активным пирам
         for peer in new_peers:
             if peer not in self.sent_addresses:
-                futures = {self.executor.submit(self.connect_to_peer, p): p for p in self.servicer.peers if p != peer}
+                futures = {self.executor.submit(self.connect_to_peer, p): p for p in self.servicer.active_peers if p != peer}
                 for future in as_completed(futures, timeout=10):
                     try:
                         future.result()

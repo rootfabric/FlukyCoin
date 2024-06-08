@@ -128,7 +128,7 @@ class NodeManager:
 
             time_candidat = last_block_time + Protocol.BLOCK_TIME_INTERVAL
             # синхронизированное время цепи
-            block_timestamp_seconds = time_candidat if time_candidat > self.chain.time_ntpt.get_corrected_time() else self.chain.time_ntpt.get_corrected_time()
+            block_timestamp_seconds = time_candidat if time_candidat > self.chain.time() else self.chain.time()
 
             # создание блока со своим адресом
             transacrions = []
@@ -145,7 +145,7 @@ class NodeManager:
                 self.log.info("Блок не прошел валидацию")
 
                 # не тратим подпись, то что было подписано выше откатываем:
-                xmss.set_idx(xmss.idx()-1)
+                xmss.set_idx(xmss.idx() - 1)
 
                 block_candidate = None
             else:
@@ -164,8 +164,6 @@ class NodeManager:
     def check_sync(self, peer_info):
         """ проверка синхронности ноды """
 
-        # self.synced = True
-
         drop_sync_signal = False
         for address, info in peer_info.items():
             """ """
@@ -183,14 +181,24 @@ class NodeManager:
 
                     if self.chain.validate_and_add_block(block):
                         print(f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
+                    else:
+                        print(f"{block_number_to_load+1} reset" )
+                        self.chain.drop_last_block()
 
         if self.synced and drop_sync_signal and self.timer_drop_synced is not None:
             self.timer_drop_synced = time.time()
             print("Включен таймер потери синхронизации")
 
         if drop_sync_signal is False:
-            self.timer_drop_synced = None
-            self.synced = True
+
+            last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
+
+            # дожидаемся начала блока и не начина
+            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL+1:
+                    self.timer_drop_synced = None
+                    self.synced = True
+            else:
+                print("Ждем начала блока")
 
         if self.timer_drop_synced is not None:
             if time.time() > self.timer_drop_synced + Protocol.TIME_CONFIRM_LOST_SYNC:
@@ -202,7 +210,7 @@ class NodeManager:
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
             # чтобы не создавать спам пакетов на срезах блоков, деламем паузу
-            if self.chain.time()> last_block_time+Protocol.BLOCK_START_CHECK_PAUSE:
+            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE:
 
                 """ если засинхрино, проверяем кандидаты """
                 for address, info in peer_info.items():
@@ -257,7 +265,10 @@ class NodeManager:
                 self.synced = True
 
             if not self.synced:
-                self.log.info(f"---synced {self.synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
+                self.log.info(
+                    f"---synced {self.synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
+                self.log.info(
+                    f"{self.server.servicer.active_peers}")
 
             if not self.synced:
                 # нода не синхронна, не работаем
@@ -270,8 +281,13 @@ class NodeManager:
 
             new_block = None
             if self.config.get('is_miner', "False"):
-                # создать свой блок
-                new_block = self.create_block(self.config.get("address_reward"))
+
+                last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
+
+                # чтобы не создавать спам пакетов на срезах блоков, делаем паузу
+                if self.chain.time() > last_block_time + Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE:
+                    # создать свой блок
+                    new_block = self.create_block(self.config.get("address_reward"))
 
             # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
 

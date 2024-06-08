@@ -7,7 +7,7 @@ from core.protocol import Protocol
 from core.BlockHeader import BlockHeader
 import os, json
 import random
-from storage.transaction_storage import TransactionStorage, TransactionGenerator
+from storage.transaction_storage import TransactionStorage
 import base64
 from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
 from crypto.mercle import merkle_tx_hash, MerkleTools

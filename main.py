@@ -6,6 +6,7 @@ import yaml
 # from node.blockchain_node import BlockchainNode
 from node.node_manager import NodeManager
 from tools.config_loader import ConfigLoader
+from tools.logger import Log
 
 import sys
 sys.path.append('/home/rdpuser/FlukyCoin/crypto')
@@ -40,8 +41,8 @@ if __name__ == "__main__":
     config = config_loader.load_config()
 
     # run_node(port, known_peers)
-
-    node = NodeManager(config)
+    log = Log(config["address_reward"])
+    node = NodeManager(config, log = log)
 
     try:
         node.run_node()

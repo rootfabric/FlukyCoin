@@ -28,7 +28,7 @@ class Chain():
 
         self.time_ntpt = NTPTimeSynchronizer(log=self.log) if time_ntpt is None else time_ntpt
 
-        self.miners = set()
+        # self.miners = set()
 
         self.config = config
 
@@ -113,10 +113,10 @@ class Chain():
 
                 self.blocks = [Block.from_json(j) for j in blocks_json]
 
-            for block in self.blocks:
-                self.miners.add(block.signer)
+            # for block in self.blocks:
+            #     self.miners.add(block.signer)
 
-            self.log.info(f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.miners)}")
+            self.log.info(f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.transaction_storage.miners)}")
         except FileNotFoundError:
             self.log.error("No blockchain file found.")
         except Exception as e:
@@ -254,22 +254,9 @@ class Chain():
         """  """
         self.blocks.append(block)
 
-        # for new_node in block.new_nodes:
-        #     self.nodes_rating[new_node] = 0
-        address_reward = None
-        for transaction in block.transactions:
-            if transaction.tx_type == "coinbase":
-                address_reward = transaction.toAddress[0]
-                break
+        self.transaction_storage.add_block(block)
 
-        for transaction in block.transactions:
-            self.transaction_storage.add_transaction(transaction, address_reward)
-
-            # # при любом вознаграждении повышаем рейтинг
-            # if transaction.fromAddress == '0000000000000000000000000000000000':
-            #     self.nodes_rating[transaction.toAddress] = self.nodes_rating.get(transaction.toAddress, 0)+1
-
-        self.miners.add(block.signer)
+        # self.miners.add(block.signer)
 
         self.history_hash[block.hash_block()] = block
         # self.save_to_disk()
@@ -293,7 +280,7 @@ class Chain():
         return self.blocks[-1] if len(self.blocks) > 0 else None
 
     def check_miners(self, addr):
-        return addr in self.miners
+        return addr in self.transaction_storage.miners
 
     def validate_candidate(self, block: Block):
         """ Является ли блок кандидатом """
@@ -371,7 +358,7 @@ class Chain():
         # print("---------------------------------------------", self.protocol.sequence(self.previousHash))
         # print(self.block_candidate.signer)
         # print(block.signer)
-        # print("win_address", win_address)
+        print("win_address", win_address)
         if win_address == self.block_candidate.signer:
             return False
         # новый победитель
@@ -429,7 +416,6 @@ class Chain():
             self.log.info("Кандидат None. Блок нельзя закрыть")
             return False
         if self.validate_and_add_block(Block.from_json(self.block_candidate.to_json())):
-            self.transaction_storage.add_nonses_to_address(self.block_candidate.signer)
             self.reset_block_candidat()
             return True
         else:

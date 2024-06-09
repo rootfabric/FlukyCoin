@@ -14,24 +14,24 @@ class ClientHandler:
         self.sent_addresses = set()  # Уже отправленные адреса
         self.peer_status = {}  # Словарь статуса подключения пиров: address -> bool
 
-    def connect_to_peers(self):
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(self.connect_to_peer, address): address for address in self.servicer.active_peers}
-
-            active_peers = {futures[future] for future in as_completed(futures) if future.result()}
-            self.servicer.active_peers = active_peers  # Обновление списка активных пиров
+    # def connect_to_peers(self):
+    #     with ThreadPoolExecutor(max_workers=5) as executor:
+    #         futures = {executor.submit(self.connect_to_peer, address): address for address in self.servicer.active_peers}
+    #
+    #         active_peers = {futures[future] for future in as_completed(futures, timeout=1) if future.result()}
+    #         self.servicer.active_peers = active_peers  # Обновление списка активных пиров
 
     def ping_peers(self):
         """ """
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {executor.submit(self.servicer.check_active, peer): peer for peer in
                        self.servicer.known_peers}
-            active_peers = {futures[future] for future in as_completed(futures, timeout=10) if future.result()}
+            active_peers = {futures[future] for future in as_completed(futures, timeout=5) if future.result(timeout=5)}
             self.servicer.active_peers = active_peers
-            print("Active peers updated.", active_peers)
+            # print("Active peers updated.", active_peers)
 
     def register_with_peers(self, stub, local_address):
-        response = stub.RegisterPeer(network_pb2.PeerRequest(address=local_address))
+        response = stub.RegisterPeer(network_pb2.PeerRequest(address=local_address), timeout=5)
         return response.peers
 
     def connect_to_peers(self):
@@ -91,7 +91,7 @@ class ClientHandler:
                 futures = {self.executor.submit(self.connect_to_peer, p): p for p in self.servicer.active_peers if p != peer}
                 for future in as_completed(futures, timeout=10):
                     try:
-                        future.result()
+                        future.result(timeout=5)
                     except Exception as e:
                         pass
 
@@ -102,7 +102,7 @@ class ClientHandler:
             for future in as_completed(futures, timeout=10):
                 peer = futures[future]
                 try:
-                    peer_info[peer] = future.result()
+                    peer_info[peer] = future.result(timeout=5)
                 except Exception as e:
                     print(f"Failed to fetch info from {peer}: {e}")
 
@@ -137,7 +137,7 @@ class ClientHandler:
             for future in as_completed(futures, timeout=10):
                 peer = futures[future]
                 try:
-                    peers = future.result()
+                    peers = future.result(timeout=5)
                     peer_adress += peers
                 except Exception as e:
                     print(f"Failed to get_peers info from {peer}: {e}")
@@ -175,7 +175,7 @@ class ClientHandler:
             futures = {executor.submit(self.fetch_transactions_from_peer, peer): peer for peer in
                        self.servicer.active_peers}
             for future in as_completed(futures, timeout=10):
-                peer_transactions = future.result()
+                peer_transactions = future.result(timeout=5)
                 transactions.extend(peer_transactions)
                 # print(f"Received {len(peer_transactions)} transactions from {futures[future]}.")
 
@@ -194,8 +194,8 @@ class ClientHandler:
             for future in as_completed(futures, timeout=10):
                 peer = futures[future]
                 try:
-                    future.result()
-                    print(f"Block successfully sent to {peer}.")
+                    future.result(timeout=5)
+                    # print(f"Block successfully sent to {peer}.")
                 except Exception as e:
                     print(f"Failed to send block to {peer}: {str(e)}")
 
@@ -234,7 +234,8 @@ class ClientHandler:
                 time.sleep(0.1)  # Добавление задержки перед повторной попыткой
 
     def get_block_candidate(self, address):
-        print("get_block_candidate from", address)
+        # print("get_block_candidate from", address)
+        #
         attempt = 0
         max_attempts = 3
         while attempt < max_attempts:

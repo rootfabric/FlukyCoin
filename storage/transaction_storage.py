@@ -14,10 +14,41 @@ class TransactionStorage:
         # Список для хранения всех транзакций
         self.transactions = []
 
+        # список манйнеров
+        self.miners = set()
+
     def clear(self):
         self.balances.clear()
         self.nonces.clear()
         self.transactions.clear()
+        self.miners.clear()
+
+    def add_block(self, block):
+        """  добавляем все данные по блоку в хранилище"""
+        # for new_node in block.new_nodes:
+        #     self.nodes_rating[new_node] = 0
+
+
+        # для зачисления коммисии нужен адрес
+        address_reward = None
+        for transaction in block.transactions:
+            if transaction.tx_type == "coinbase":
+                address_reward = transaction.toAddress[0]
+                break
+
+
+        for transaction in block.transactions:
+            self.add_transaction(transaction, address_reward)
+
+        # Добавляем майнера
+        self.miners.add(block.signer)
+
+        # Учитываем подпись ключа блока
+        self.add_nonses_to_address(block.signer)
+
+
+
+
 
     def add_transaction(self, transaction: Transaction, address_reward: str):
         """
@@ -47,6 +78,7 @@ class TransactionStorage:
 
         # Обновление nonce для адреса отправителя
         self.add_nonses_to_address(from_address)
+
         return True
 
     def add_nonses_to_address(self, address):
@@ -97,7 +129,8 @@ class TransactionStorage:
         return json.dumps({
             'balances': self.balances,
             'nonces': self.nonces,
-            'transactions': [t.to_json() for t in self.transactions]
+            'transactions': [t.to_json() for t in self.transactions],
+            'miners': list(self.miners)
         })
 
     @classmethod
@@ -110,6 +143,7 @@ class TransactionStorage:
         storage.balances = data['balances']
         storage.nonces = data['nonces']
         storage.transactions = [Transaction.from_json(t) for t in data['transactions']]
+        storage.miners = set(data['miners'])
         return storage
 
     def rollback_block(self, block):

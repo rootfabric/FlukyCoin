@@ -59,11 +59,15 @@ class NodeManager:
 
         self.block_candidate = "123"
 
-        self.synced = False
+        self._synced = False
         self.timer_drop_synced = None
         self.running = True
 
         self.executor = ThreadPoolExecutor(max_workers=2)
+
+    def set_node_synced(self, state):
+        self._synced = state
+        self.log.info(f"Node sync is {self._synced}")
 
     def add_transaction_to_mempool(self, transaction):
         """ ДОбавление новой транзакции """
@@ -101,15 +105,15 @@ class NodeManager:
                 return None
 
             if miner_address in self.miners_storage.keys and self.miners_storage.keys[miner_address].count_sign() <= 0:
-                self.log.info("Кончились подписи", miner_address)
+                # self.log.info("Кончились подписи", miner_address)
                 self.miners_storage.close_key(miner_address)
                 continue
 
             if miner_address not in self.miners_storage.keys:
                 continue
 
-            self.log.info(
-                f"miner_address: {miner_address} count signs: {self.miners_storage.keys[miner_address].count_sign()}")
+            # self.log.info(
+            #     f"miner_address: {miner_address} count signs: {self.miners_storage.keys[miner_address].count_sign()}")
 
             # берем ключ из хранилища
             xmss = self.miners_storage.keys[miner_address]
@@ -118,11 +122,11 @@ class NodeManager:
             if xmss.keyPair.SK.idx != next_idx - 1:
                 # self.log.info(f"xmss.keyPair.SK.idx {xmss.keyPair.SK.idx}")
                 edited_idx = xmss.set_idx(next_idx - 1)
-                self.log.warning(
-                    f"Не верное количество подписей между ключом и цепью. Ставим количество цепи {edited_idx}")
+                # self.log.warning(
+                #     f"Не верное количество подписей между ключом и цепью. Ставим количество цепи {edited_idx}")
 
             """ Сбор блока под выбранный адрес """
-            self.log.info("Свой адрес победил, создаем блок")
+            # self.log.info("Свой адрес победил, создаем блок")
 
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
@@ -139,10 +143,10 @@ class NodeManager:
 
             block_candidate.make_sign(xmss)
 
-            self.log.info("Блок создан", block_candidate.hash_block())
+            # self.log.info("Блок создан", block_candidate.hash_block())
 
             if not self.chain.validate_block(block_candidate):
-                self.log.info("Блок не прошел валидацию")
+                # self.log.info("Блок не прошел валидацию")
 
                 # не тратим подпись, то что было подписано выше откатываем:
                 xmss.set_idx(xmss.idx() - 1)
@@ -153,7 +157,7 @@ class NodeManager:
 
             return block_candidate
 
-        self.log.error("Нет подписей")
+        # self.log.error("Нет подписей")
         self.miners_storage.generate_keys()
         return None
         # self.create_block()
@@ -165,47 +169,57 @@ class NodeManager:
         """ проверка синхронности ноды """
 
         drop_sync_signal = False
-        for address, info in peer_info.items():
-            """ """
 
-            if info.synced:
+        if not self._synced:
+            for address, info in peer_info.items():
+                """ """
+                # print(address, "info.blocks", info.blocks)
+                if info.synced:
 
-                if info.blocks > self.chain.blocks_count():
-                    """ На синхронной ноде больше блоков. """
+                    if info.blocks > self.chain.blocks_count():
+                        """ На синхронной ноде больше блоков. """
 
-                    # возможен расинхрон
-                    drop_sync_signal = True
+                        # возможен расинхрон
+                        drop_sync_signal = True
 
-                    block_number_to_load = self.chain.blocks_count()
-                    block = self.client_handler.get_block_by_number(block_number_to_load, info.network_info)
+                        block_number_to_load = self.chain.blocks_count()
+                        block = self.client_handler.get_block_by_number(block_number_to_load, info.network_info)
 
-                    if self.chain.validate_and_add_block(block):
-                        print(f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
-                    else:
-                        print(f"{block_number_to_load+1} reset" )
-                        self.chain.drop_last_block()
+                        if self.chain.validate_and_add_block(block):
+                            print(f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
+                        else:
+                            print(f"{block_number_to_load + 1} reset")
+                            self.chain.drop_last_block()
 
-        if self.synced and drop_sync_signal and self.timer_drop_synced is not None:
+        if self._synced and drop_sync_signal and self.timer_drop_synced is not None:
             self.timer_drop_synced = time.time()
             print("Включен таймер потери синхронизации")
 
-        if drop_sync_signal is False:
+        if self._synced is False and len(
+                peer_info) == 1 and time.time() > self.start_time + Protocol.TIME_WAIN_CONNECT_TO_NODES_START:
+            self.log.info("Ноды не найдены, включаем синхронизацию")
+            self.set_node_synced(True)
+
+        if len(peer_info) > 1 and drop_sync_signal is False and self._synced is False:
+
+            self.timer_drop_synced = None
 
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
             # дожидаемся начала блока и не начина
-            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL+1:
-                    self.timer_drop_synced = None
-                    self.synced = True
+            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL + 1:
+                print("Нода синхронизирована")
+                self.set_node_synced(True)
             else:
                 print("Ждем начала блока")
 
-        if self.timer_drop_synced is not None:
-            if time.time() > self.timer_drop_synced + Protocol.TIME_CONFIRM_LOST_SYNC:
-                print("Нода потеряла синхронизацию по таймеру")
-                self.synced = False
+        # отключен механизм потери синхронизации
+        # if self.timer_drop_synced is not None:
+        #     if time.time() > self.timer_drop_synced + Protocol.TIME_CONFIRM_LOST_SYNC:
+        #         print("Нода потеряла синхронизацию по таймеру")
+        #         self.set_node_synced(False)
 
-        if self.synced:
+        if self._synced:
 
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
@@ -234,25 +248,30 @@ class NodeManager:
         timer_ping_peers = 0
 
         while self.running:
+            # try:
             if timer_ping_peers + Protocol.TIME_PAUSE_PING_PEERS < time.time():
                 timer_ping_peers = time.time()
-
                 self.client_handler.ping_peers()
                 self.client_handler.connect_to_peers()
                 peer_info = self.client_handler.fetch_info_from_peers()
 
             self.check_sync(peer_info)
 
-            if self.synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
+            if self._synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
                 timer_get_nodes = time.time()
 
                 self.client_handler.get_peers_list()
                 self.client_handler.fetch_transactions_from_all_peers()
 
-            if not self.synced:
+            if not self._synced:
                 continue
 
             time.sleep(1)
+        # except KeyboardInterrupt:
+        #     self.running = False
+        #     exit()
+        # except Exception as e:
+        #     print("Ошибка технического блока ", e)
 
     def run_node(self):
         """ Основной цикл  """
@@ -261,16 +280,13 @@ class NodeManager:
 
         while True:
 
-            if len(self.server.servicer.active_peers) == 1:
-                self.synced = True
-
-            if not self.synced:
+            if not self._synced:
                 self.log.info(
-                    f"---synced {self.synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
+                    f"---synced {self._synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
                 self.log.info(
                     f"{self.server.servicer.active_peers}")
 
-            if not self.synced:
+            if not self._synced:
                 # нода не синхронна, не работаем
                 time.sleep(Protocol.BLOCK_TIME_INTERVAL_LOG)
                 continue
@@ -280,21 +296,20 @@ class NodeManager:
             ###############################################
 
             new_block = None
+
             if self.config.get('is_miner', "False"):
 
                 last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
                 # чтобы не создавать спам пакетов на срезах блоков, делаем паузу
-                if self.chain.time() > last_block_time + Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE:
+                if self.chain.blocks_count() == 0 or self.chain.time() > last_block_time + Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE:
                     # создать свой блок
                     new_block = self.create_block(self.config.get("address_reward"))
-
             # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
-
             # new_block = self.create_block()
 
             if self.chain.add_block_candidate(new_block):
-                self.log.info(f"{datetime.datetime.now()} Собственный Блок кандидат добавлен", new_block.hash,
+                self.log.info(f"Свой Блок кандидат добавлен", new_block.hash,
                               new_block.signer)
                 # self.network_manager.distribute_block(self.chain.block_candidate)
                 # print("self.server.servicer.active_peers", self.server.servicer.active_peers)
@@ -317,7 +332,7 @@ class NodeManager:
                 last_block = self.chain.last_block()
                 if last_block is not None:
                     self.log.info(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
-                                  last_block.signer)
+                                  last_block.signer, self.chain.next_address_nonce(last_block.signer))
 
                 self.chain.save_chain_to_disk()
                 self.miners_storage.save_storage_to_disk()
@@ -325,7 +340,9 @@ class NodeManager:
                 self.log.info(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
                 if Protocol.is_key_block(self.chain.last_block().hash):
                     self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
-                self.log.info(f"*** END CLOSE {num_block_to_close} ****************", )
+                self.log.info(
+                    f"*** END CLOSE {num_block_to_close} **************** Active peers: {self.server.servicer.active_peers}", )
+                print(self.chain.transaction_storage.nonces)
                 continue
 
             # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())

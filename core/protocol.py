@@ -15,7 +15,7 @@ class Protocol:
     # BLOCK_TIME_INTERVAL =  30
     BLOCK_TIME_INTERVAL = 10
 
-    BLOCK_TIME_INTERVAL_LOG = 1
+    BLOCK_TIME_INTERVAL_LOG = 5
 
     # количество секунд. после смены блока, перед проверками
     BLOCK_START_CHECK_PAUSE = 3
@@ -32,6 +32,9 @@ class Protocol:
 
     # если появилось подозрение на рассинхрон, сколько проаерять, прежде чем терять рассинхрон
     TIME_CONFIRM_LOST_SYNC = 60
+
+    # сколько вермени ищем новые ноды перед тем как начать свою цепь если первые
+    TIME_WAIN_CONNECT_TO_NODES_START = 5
 
     coinbase_address = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
                        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'

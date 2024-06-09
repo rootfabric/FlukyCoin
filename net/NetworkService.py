@@ -33,7 +33,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         return network_pb2.Empty()  # Просто возвращает пустой ответ
 
     def RegisterPeer(self, request, context):
-        print("RegisterPeer", request)
+        # print("RegisterPeer", request)
         client_address = context.peer()
         server_address = request.address
         self.known_peers.add(server_address)
@@ -63,7 +63,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def GetPeerInfo(self, request, context):
         try:
             version = str(self.node_manager.version)
-            synced = bool(self.node_manager.synced)
+            synced = bool(self.node_manager._synced)
             blocks = self.node_manager.chain.blocks_count()
             latest_block = str(self.node_manager.chain.last_block_hash())
             block_candidate = str(self.node_manager.chain.block_candidate_hash)
@@ -246,15 +246,15 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def BroadcastBlock(self, request, context):
         # Логика обработки принятого блока
-        if not self.node_manager.synced:
+        if not self.node_manager._synced:
             # нода не синхронна, блоки не нужны
             return network_pb2.Ack(success=False)
 
         block = Block.from_json(request.data)  # Десериализация блока
-        print("BroadcastBlock", block.hash_block())
+        # print("BroadcastBlock", block.hash_block())
         if self.node_manager.chain.add_block_candidate(block):
-            print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
-                  block.signer)
+            # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
+            #       block.signer)
             self.node_manager.client_handler.distribute_block(self.node_manager.chain.block_candidate)
 
             return network_pb2.Ack(success=True)

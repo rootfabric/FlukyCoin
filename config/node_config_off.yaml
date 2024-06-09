@@ -8,4 +8,4 @@ initial_peers:
     - "api.robotsimulator.ru:9333"
     - "api.robotsimulator.ru:9334"
 
-address: OutGkzTP3mv8x7t3zwUM3Ly8YfhEY79oNdpBRgtobK2fDSFH_OFF
+address_reward: OutGkzTP3mv8x7t3zwUM3Ly8YfhEY79oNdpBRgtobK2fDSFH_OFF

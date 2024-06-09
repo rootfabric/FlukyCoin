@@ -196,8 +196,10 @@ class ClientHandler:
                 try:
                     future.result(timeout=5)
                     # print(f"Block successfully sent to {peer}.")
+                except TimeoutError:
+                    self.log.error(f"Timeout error: Block sending to {peer} took too long.")
                 except Exception as e:
-                    print(f"Failed to send block to {peer}: {str(e)}")
+                    self.log.error(f"Failed to send block to {peer}: {str(e)}")
 
     def send_block_to_peer(self, peer, block):
         """Отправка блока одному пиру."""
@@ -208,8 +210,8 @@ class ClientHandler:
             block_data = block.to_json()  # Сериализация блока в JSON
             stub.BroadcastBlock(network_pb2.Block(data=block_data))
         except grpc.RpcError as e:
-            # raise Exception(f"RPC failed for {peer}: {str(e)}")
-            self.log.info(f"RPC failed for {peer}: {str(e)}")
+            pass
+            # self.log.info(f"RPC failed for {peer}: {str(e)}")
 
     def get_block_by_number(self, block_number, address):
         attempt = 0

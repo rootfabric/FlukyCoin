@@ -342,7 +342,7 @@ class NodeManager:
                     self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
                 self.log.info(
                     f"*** END CLOSE {num_block_to_close} **************** Active peers: {self.server.servicer.active_peers}", )
-                print(self.chain.transaction_storage.nonces)
+                # print(self.chain.transaction_storage.nonces)
                 continue
 
             # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())

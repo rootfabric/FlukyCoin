@@ -124,7 +124,7 @@ class Chain():
 
     def validate_block_hash(self, block: Block):
         if block.previousHash != self.last_block_hash():
-            self.log.warning("validateblock.previousHash != self.last_block_hash()")
+            # self.log.warning("validateblock.previousHash != self.last_block_hash()")
             return False
         return True
 
@@ -358,7 +358,7 @@ class Chain():
         # print("---------------------------------------------", self.protocol.sequence(self.previousHash))
         # print(self.block_candidate.signer)
         # print(block.signer)
-        print("win_address", win_address)
+        # print("win_address", win_address)
         if win_address == self.block_candidate.signer:
             return False
         # новый победитель

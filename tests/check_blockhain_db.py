@@ -7,13 +7,12 @@ import pprint
 
 if __name__ == '__main__':
     """ """
-    config_loader = ConfigLoader('../config/','node_config.yaml ')
+    # config_loader = ConfigLoader('../config/','node_config.yaml')
+    config_loader = ConfigLoader('../config/','node_config_off.yaml')
     config = config_loader.load_config()
 
     chain = Chain(config)
     chain2 = Chain()
-
-    chain.load_from_disk()
 
     print(chain.last_block().to_json())
 
@@ -23,7 +22,7 @@ if __name__ == '__main__':
     for b in chain.transaction_storage.get_addresses_sorted_by_balance():
         print(b[0], b[1]/100000000)
 
-
+    all_ratio = 0
     list_time =[]
     for i, block in enumerate(chain.blocks):
 
@@ -37,6 +36,13 @@ if __name__ == '__main__':
         is_key = Protocol.is_key_block(block.hash_block())
         # if is_key:
         #     print(i)
+
+        t = Protocol.find_longest_common_substring(block.signer.lower(), Protocol.sequence(block.previousHash))
+        ratio =t[0]
+        all_ratio+=ratio
+        if ratio>4:
+            print("RATIO!!!", ratio)
+
 
         if i>0:
             b0 : Block = chain.blocks[i-1]
@@ -54,3 +60,4 @@ if __name__ == '__main__':
     print(len(chain2.blocks))
 
     print(chain2.transaction_storage.nonces)
+    print("all_ratio", all_ratio)

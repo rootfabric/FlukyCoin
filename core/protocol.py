@@ -159,21 +159,6 @@ class Protocol:
         a = base58.b58encode(h).decode('utf-8')
         return a
 
-
-# def generate_data():
-#
-#     for a in range(10000):
-#         h = hashlib.sha256(str(a).encode('utf-8')).digest()
-#         a = base58.b58encode(h).decode('utf-8')
-#         data.append(a)
-#
-#     # Записываем список в файл
-#     with open('d.txt', 'w') as file:
-#         for item in data:
-#             file.write('%s\n' % item)
-#
-#     return data
-
 def load_data():
     # Считываем список из файла
     with open('d.txt', 'r') as file:

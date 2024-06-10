@@ -24,19 +24,28 @@ class ClientHandler:
     def ping_peers(self):
         """ """
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(self.servicer.check_active, peer): peer for peer in
+            futures = {executor.submit(self.check_active, peer): peer for peer in
                        self.servicer.known_peers}
             active_peers = {futures[future] for future in as_completed(futures, timeout=5) if future.result(timeout=5)}
             self.servicer.active_peers = active_peers
             # print("Active peers updated.", active_peers)
 
+    def check_active(self, address):
+        try:
+            with grpc.insecure_channel(address) as channel:
+                stub = network_pb2_grpc.NetworkServiceStub(channel)
+                stub.Ping(network_pb2.Empty(), timeout=1)  # Установка таймаута для пинга
+                return True
+        except grpc.RpcError as e:
+            # print(f"Failed to ping {address}: {str(e)}")
+            return False
     def register_with_peers(self, stub, local_address):
         response = stub.RegisterPeer(network_pb2.PeerRequest(address=local_address), timeout=5)
         return response.peers
 
     def connect_to_peers(self):
         with ThreadPoolExecutor(max_workers=5) as executor:
-            futures = {executor.submit(self.connect_to_peer, address): address for address in self.servicer.known_peers}
+            futures = {executor.submit(self.connect_to_peer, address): address for address in self.servicer.active_peers}
 
             active_peers = set()
             try:
@@ -44,12 +53,14 @@ class ClientHandler:
                     address = futures[future]
                     try:
                         result = future.result(timeout=5)  # Таймаут для получения результата задачи
+
                         if result:
                             active_peers.add(address)
                     except TimeoutError:
                         print(f"Timeout connecting to {address}")
                     except Exception as e:
                         print(f"Error connecting to {address}: {e}")
+                print(" OK connect_to_peers")
             except TimeoutError:
                 print("Timeout while waiting for futures to complete")
 
@@ -75,7 +86,7 @@ class ClientHandler:
 
                 if new_peers:
                     self.servicer.active_peers.update(new_peers)
-                    self.resend_addresses(new_peers)
+                    # self.resend_addresses(new_peers)
 
                 return True
 
@@ -186,20 +197,24 @@ class ClientHandler:
     def distribute_block(self, block):
         """Распространение блока среди всех активных пиров."""
         with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {}
-            for peer in self.servicer.active_peers:
-                if peer != self.servicer.local_address:  # Исключаем себя из рассылки
-                    futures[executor.submit(self.send_block_to_peer, peer, block)] = peer
+            try:
+                futures = {}
+                for peer in self.servicer.active_peers:
+                    if peer != self.servicer.local_address:  # Исключаем себя из рассылки
+                        futures[executor.submit(self.send_block_to_peer, peer, block)] = peer
 
-            for future in as_completed(futures, timeout=10):
-                peer = futures[future]
-                try:
-                    future.result(timeout=5)
-                    # print(f"Block successfully sent to {peer}.")
-                except TimeoutError:
-                    self.log.error(f"Timeout error: Block sending to {peer} took too long.")
-                except Exception as e:
-                    self.log.error(f"Failed to send block to {peer}: {str(e)}")
+                for future in as_completed(futures, timeout=10):
+                    peer = futures[future]
+                    try:
+                        future.result(timeout=5)
+                        # print(f"Block successfully sent to {peer}.")
+                    except TimeoutError:
+                        self.log.error(f"Timeout error: Block sending to {peer} took too long.")
+                    except Exception as e:
+                        self.log.error(f"Failed to send block to {peer}: {str(e)}")
+
+            except Exception as e:
+                self.log.error(f"distribute_block: {str(e)}")
 
     def send_block_to_peer(self, peer, block):
         """Отправка блока одному пиру."""
@@ -222,14 +237,15 @@ class ClientHandler:
                 with grpc.insecure_channel(address) as channel:
                     stub = network_pb2_grpc.NetworkServiceStub(channel)
                     request = network_pb2.BlockRequest(block_number=block_number)
-                    print("get_block_by_number")
+                    print("get_block_by_number", address)
                     response = stub.GetBlockByNumber(request, timeout=5)  # Добавление таймаута
-                    print("get_block_by_number res",response)
+                    print("get_block_by_number res OK")
                     if response.block_data:
                         block = Block.from_json(response.block_data)
                         return block
                     else:
                         raise Exception("Block not found or error occurred")
+                        return None
             except grpc.RpcError as e:
                 attempt += 1
                 self.log.error(f"Attempt {attempt} failed: {str(e)}")

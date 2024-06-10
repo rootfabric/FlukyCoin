@@ -169,13 +169,13 @@ class NodeManager:
         """ проверка синхронности ноды """
 
         drop_sync_signal = False
-
+        count_sync = 0
         if not self._synced:
             for address, info in peer_info.items():
                 """ """
-                # print(address, "info.blocks", info.blocks)
+                print(address, "info.blocks", info.blocks, info.synced)
                 if info.synced:
-
+                    count_sync+=1
                     if info.blocks > self.chain.blocks_count():
                         """ На синхронной ноде больше блоков. """
 
@@ -195,12 +195,11 @@ class NodeManager:
             self.timer_drop_synced = time.time()
             print("Включен таймер потери синхронизации")
 
-        if self._synced is False and len(
-                peer_info) == 1 and time.time() > self.start_time + Protocol.TIME_WAIN_CONNECT_TO_NODES_START:
+        if count_sync == 0 and self._synced is False and time.time() > self.start_time + Protocol.TIME_WAIN_CONNECT_TO_NODES_START:
             self.log.info("Ноды не найдены, включаем синхронизацию")
             self.set_node_synced(True)
 
-        if len(peer_info) > 1 and drop_sync_signal is False and self._synced is False:
+        if count_sync>0 and len(peer_info) > 1 and drop_sync_signal is False and self._synced is False:
 
             self.timer_drop_synced = None
 
@@ -252,7 +251,11 @@ class NodeManager:
                 if timer_ping_peers + Protocol.TIME_PAUSE_PING_PEERS < time.time():
                     timer_ping_peers = time.time()
                     self.client_handler.ping_peers()
-                    self.client_handler.connect_to_peers()
+                    try:
+                        self.client_handler.connect_to_peers()
+                    except Exception as e:
+                        print("error connect_to_peers", e)
+
                     peer_info = self.client_handler.fetch_info_from_peers()
 
                 self.check_sync(peer_info)
@@ -284,7 +287,9 @@ class NodeManager:
                 self.log.info(
                     f"---synced {self._synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
                 self.log.info(
-                    f"{self.server.servicer.active_peers}")
+                    f"active_peers: {self.server.servicer.active_peers}")
+                self.log.info(
+                    f"known_peers: {self.server.servicer.known_peers}")
 
             if not self._synced:
                 # нода не синхронна, не работаем
@@ -313,7 +318,10 @@ class NodeManager:
                               new_block.signer)
                 # self.network_manager.distribute_block(self.chain.block_candidate)
                 # print("self.server.servicer.active_peers", self.server.servicer.active_peers)
-                self.client_handler.distribute_block(self.chain.block_candidate)
+
+
+                self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
+
 
             needClose = self.chain.need_close_block()
             if needClose and self.chain.block_candidate is not None:

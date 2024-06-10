@@ -9,7 +9,7 @@ class GrpcServer:
         self.config = config
         self.address = f"{self.config.get('host')}:{self.config.get('port')}"
         self.server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-        self.servicer = NetworkService(self.address, node_manager)
+        self.servicer = NetworkService(self.config, node_manager)
         network_pb2_grpc.add_NetworkServiceServicer_to_server(self.servicer, self.server)
         self.server.add_insecure_port(self.address)
 

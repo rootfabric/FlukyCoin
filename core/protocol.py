@@ -59,6 +59,8 @@ class Protocol:
 
     MAX_MESSAGE_SIZE = 128
 
+    DEFAULT_PORT = 9333
+
 
     @staticmethod
     def find_longest_common_substring(s1, s2):

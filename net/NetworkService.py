@@ -11,7 +11,7 @@ from core.Block import Block
 # from node.node_manager import NodeManager
 
 class NetworkService(network_pb2_grpc.NetworkServiceServicer):
-    def __init__(self, local_address, node_manager):
+    def __init__(self, config, node_manager):
 
         self.version = Protocol.VERSION
         self.node_manager = node_manager
@@ -20,7 +20,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
         self.known_transactions = set()  # Хранение известных хешей транзакций
 
-        self.local_address = local_address
+        self.local_address = f"{config.get('external_host', config.get('host'))}:{config.get('port', Protocol.DEFAULT_PORT)}"
 
         # доабавлен свой адрес
         self.known_peers.add(self.local_address)
@@ -44,21 +44,13 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def GetPeers(self, request, context):
         # Возвращаем только активные адреса
-        return network_pb2.PeerResponse(peers=list(self.active_peers))
+        return network_pb2.PeerResponse(peers=list(self.known_peers))
 
     # def GetNodeInfo(self, request, context):
     #     data = self.node_manager.fetch_data()
     #     return network_pb2.PeerInfoResponse(version=self.version, state="active", current_time=data)
 
-    def check_active(self, address):
-        try:
-            with grpc.insecure_channel(address) as channel:
-                stub = network_pb2_grpc.NetworkServiceStub(channel)
-                stub.Ping(network_pb2.Empty(), timeout=1)  # Установка таймаута для пинга
-                return True
-        except grpc.RpcError as e:
-            # print(f"Failed to ping {address}: {str(e)}")
-            return False
+
 
     def GetPeerInfo(self, request, context):
         try:

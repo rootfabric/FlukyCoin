@@ -216,12 +216,15 @@ class ClientHandler:
     def get_block_by_number(self, block_number, address):
         attempt = 0
         max_attempts = 3
+
         while attempt < max_attempts:
             try:
                 with grpc.insecure_channel(address) as channel:
                     stub = network_pb2_grpc.NetworkServiceStub(channel)
                     request = network_pb2.BlockRequest(block_number=block_number)
+                    print("get_block_by_number")
                     response = stub.GetBlockByNumber(request, timeout=5)  # Добавление таймаута
+                    print("get_block_by_number res",response)
                     if response.block_data:
                         block = Block.from_json(response.block_data)
                         return block

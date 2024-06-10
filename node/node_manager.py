@@ -248,30 +248,30 @@ class NodeManager:
         timer_ping_peers = 0
 
         while self.running:
-            # try:
-            if timer_ping_peers + Protocol.TIME_PAUSE_PING_PEERS < time.time():
-                timer_ping_peers = time.time()
-                self.client_handler.ping_peers()
-                self.client_handler.connect_to_peers()
-                peer_info = self.client_handler.fetch_info_from_peers()
+            try:
+                if timer_ping_peers + Protocol.TIME_PAUSE_PING_PEERS < time.time():
+                    timer_ping_peers = time.time()
+                    self.client_handler.ping_peers()
+                    self.client_handler.connect_to_peers()
+                    peer_info = self.client_handler.fetch_info_from_peers()
 
-            self.check_sync(peer_info)
+                self.check_sync(peer_info)
 
-            if self._synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
-                timer_get_nodes = time.time()
+                if self._synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
+                    timer_get_nodes = time.time()
 
-                self.client_handler.get_peers_list()
-                self.client_handler.fetch_transactions_from_all_peers()
+                    self.client_handler.get_peers_list()
+                    self.client_handler.fetch_transactions_from_all_peers()
 
-            if not self._synced:
-                continue
+                if not self._synced:
+                    continue
 
-            time.sleep(1)
-        # except KeyboardInterrupt:
-        #     self.running = False
-        #     exit()
-        # except Exception as e:
-        #     print("Ошибка технического блока ", e)
+                time.sleep(1)
+            except KeyboardInterrupt:
+                self.running = False
+                exit()
+            except Exception as e:
+                print("Ошибка технического блока ", e)
 
     def run_node(self):
         """ Основной цикл  """

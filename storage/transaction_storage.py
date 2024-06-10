@@ -88,6 +88,11 @@ class TransactionStorage:
         else:
             self.nonces[address] = 1
 
+    def pop_nonses_to_address(self, address):
+        # Обновление nonce для адреса отправителя
+        if address in self.nonces:
+            self.nonces[address] -= 1
+
     def get_balance(self, address):
         """
         Возвращает текущий баланс по указанному адресу.
@@ -152,9 +157,13 @@ class TransactionStorage:
         for transaction in reversed(block.transactions):
             self.rollback_transaction(transaction)
 
-        # Откат nonce для подписавшего блока
-        if block.signer in self.nonces:
-            self.nonces[block.signer] -= 1
+        # Добавляем майнера
+        if block.signer in self.miners:
+            self.miners.remove(block.signer)
+
+        # Учитываем подпись ключа блока
+        self.pop_nonses_to_address(block.signer)
+
 
     def rollback_transaction(self, transaction: Transaction):
         from_address = transaction.fromAddress
@@ -166,23 +175,23 @@ class TransactionStorage:
         if transaction in self.transactions:
             self.transactions.remove(transaction)
 
-            # Если это coinbase-транзакция, просто удаляем ее из списка и откатываем соответствующие изменения
-            if transaction.tx_type == 'coinbase':
-                # Уменьшаем баланс получателя на сумму coinbase
-                for i, address in enumerate(to_address):
-                    self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
-            else:
-                # Обычная транзакция: возвращаем средства отправителю и уменьшаем у получателей
-                self.balances[from_address] = self.balances.get(from_address, 0) + amounts + fee
+        # Если это coinbase-транзакция, просто удаляем ее из списка и откатываем соответствующие изменения
+        if transaction.tx_type == 'coinbase':
+            # Уменьшаем баланс получателя на сумму coinbase
+            for i, address in enumerate(to_address):
+                self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
+        else:
+            # Обычная транзакция: возвращаем средства отправителю и уменьшаем у получателей
+            self.balances[from_address] = self.balances.get(from_address, 0) + amounts + fee
 
-                # Возврат комиссии майнеру (убираем из баланса адреса награды)
-                if transaction.reward_address in self.balances:
-                    self.balances[transaction.reward_address] = self.balances.get(transaction.reward_address, 0) - fee
+            # Возврат комиссии майнеру (убираем из баланса адреса награды)
+            if transaction.reward_address in self.balances:
+                self.balances[transaction.reward_address] = self.balances.get(transaction.reward_address, 0) - fee
 
-                # Вычитание средств у получателей
-                for i, address in enumerate(to_address):
-                    self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
+            # Вычитание средств у получателей
+            for i, address in enumerate(to_address):
+                self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
 
-                # Откат nonce для адреса отправителя
-                if from_address in self.nonces:
-                    self.nonces[from_address] -= 1
+        # Откат nonce для адреса отправителя
+        if from_address in self.nonces:
+            self.nonces[from_address] -= 1

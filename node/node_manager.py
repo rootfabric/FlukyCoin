@@ -175,7 +175,7 @@ class NodeManager:
                 """ """
                 print(address, "info.blocks", info.blocks, info.synced)
                 if info.synced:
-                    count_sync+=1
+                    count_sync += 1
                     if info.blocks > self.chain.blocks_count():
                         """ На синхронной ноде больше блоков. """
 
@@ -187,6 +187,9 @@ class NodeManager:
 
                         if self.chain.validate_and_add_block(block):
                             print(f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
+                            if self.chain.blocks_count() % 100 == 0:
+                                print("Save chain")
+                                self.chain.save_chain_to_disk()
                         else:
                             print(f"{block_number_to_load + 1} reset")
                             self.chain.drop_last_block()
@@ -199,14 +202,14 @@ class NodeManager:
             self.log.info("Ноды не найдены, включаем синхронизацию")
             self.set_node_synced(True)
 
-        if count_sync>0 and len(peer_info) > 1 and drop_sync_signal is False and self._synced is False:
+        if count_sync > 0 and len(peer_info) > 1 and drop_sync_signal is False and self._synced is False:
 
             self.timer_drop_synced = None
 
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
             # дожидаемся начала блока и не начина
-            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL + 1:
+            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.chain.time() < last_block_time + Protocol.BLOCK_START_CHECK_PAUSE * 2:
                 print("Нода синхронизирована")
                 self.set_node_synced(True)
             else:
@@ -319,9 +322,7 @@ class NodeManager:
                 # self.network_manager.distribute_block(self.chain.block_candidate)
                 # print("self.server.servicer.active_peers", self.server.servicer.active_peers)
 
-
                 self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
-
 
             needClose = self.chain.need_close_block()
             if needClose and self.chain.block_candidate is not None:
@@ -354,7 +355,6 @@ class NodeManager:
                 continue
 
             # print(len(self.mempool.transactions.keys()), self.mempool.transactions.keys())
-
 
             text = f"Check: {self.chain.blocks_count()} peers[{len(self.server.servicer.active_peers)}] txs[{self.mempool.size()}] "
             if self.chain.block_candidate is not None:

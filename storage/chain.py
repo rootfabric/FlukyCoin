@@ -468,21 +468,16 @@ class Chain():
         "Пока просто откатываемся на несколько блоков назад"
         "Нужна правильная отработка отката транзакций"
 
-        # self.transaction_storage.rollback_block(last_block)
 
-        # быстрый костыль, без робека
+        self.transaction_storage.rollback_block(last_block)
+
         self.blocks = self.blocks[:-1]
 
-        self.transaction_storage.clear()
+        if last_block.hash_block() in self.history_hash:
+            self.history_hash.pop(last_block.hash_block())
 
 
 
-        for block in self.blocks:
-            self.transaction_storage.add_nonses_to_address(block.signer)
-            for transaction in block.transactions:
-                if transaction.tx_type!="coinbase":
-                    self.transaction_storage.add_transaction(transaction)
-        self.reset_block_candidat()
 
 
 if __name__ == '__main__':

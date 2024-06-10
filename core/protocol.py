@@ -18,7 +18,7 @@ class Protocol:
     BLOCK_TIME_INTERVAL_LOG = 1
 
     # количество секунд. после смены блока, перед проверками
-    BLOCK_START_CHECK_PAUSE = 3
+    BLOCK_START_CHECK_PAUSE = 1
 
     # после закрытия блока, пауза перед созданием нового.
     # все ноды должны закрыть блок чтобы принять новый кандидат
@@ -45,7 +45,7 @@ class Protocol:
     # принудительно берем ноды у всех пирово
     TIME_PAUSE_GET_PEERS = 10
 
-    TIME_PAUSE_PING_PEERS = 10
+    TIME_PAUSE_PING_PEERS = 3
 
     hash_functions = {
         0: hashlib.sha256(),

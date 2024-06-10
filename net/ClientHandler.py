@@ -110,10 +110,10 @@ class ClientHandler:
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {executor.submit(self.fetch_info, peer): peer for peer in self.servicer.active_peers}
             peer_info = {}
-            for future in as_completed(futures, timeout=10):
+            for future in as_completed(futures, timeout=5):
                 peer = futures[future]
                 try:
-                    peer_info[peer] = future.result(timeout=5)
+                    peer_info[peer] = future.result(timeout=1)
                 except Exception as e:
                     print(f"Failed to fetch info from {peer}: {e}")
 
@@ -237,9 +237,9 @@ class ClientHandler:
                 with grpc.insecure_channel(address) as channel:
                     stub = network_pb2_grpc.NetworkServiceStub(channel)
                     request = network_pb2.BlockRequest(block_number=block_number)
-                    print("get_block_by_number", address)
+
                     response = stub.GetBlockByNumber(request, timeout=5)  # Добавление таймаута
-                    print("get_block_by_number res OK")
+
                     if response.block_data:
                         block = Block.from_json(response.block_data)
                         return block

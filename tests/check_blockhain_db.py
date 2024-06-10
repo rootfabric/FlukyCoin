@@ -39,10 +39,13 @@ if __name__ == '__main__':
 
         t = Protocol.find_longest_common_substring(block.signer.lower(), Protocol.sequence(block.previousHash))
         ratio =t[0]
-        all_ratio+=ratio
+
         if ratio>4:
             print("RATIO!!!", ratio)
 
+        h = Protocol.address_height(block.signer)
+
+        all_ratio += ratio*h
 
         if i>0:
             b0 : Block = chain.blocks[i-1]

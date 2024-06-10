@@ -159,6 +159,39 @@ class Protocol:
         a = base58.b58encode(h).decode('utf-8')
         return a
 
+    @staticmethod
+    def address_info(address):
+
+        # Декодирование адреса из Base58 и удаление префикса
+        decoded_address = base58.b58decode(address)
+
+        # Извлечение параметров и контрольной суммы
+        key_hash = decoded_address[:-6]
+        params = decoded_address[-6:-4]
+        checksum = decoded_address[-4:]
+
+        # Извлечение значений из параметров
+        hash_function_code = params[0] >> 4
+        tree_height = params[0] & 0x0F
+
+        extracted_info = {
+            "hash_function_code": hash_function_code,
+            "tree_height": tree_height,
+            "key_hash": key_hash,
+            "params": params,
+            "checksum": checksum
+        }
+
+        return extracted_info
+
+    @staticmethod
+    def address_height(address):
+        return Protocol.address_info(address)['tree_height']
+
+    @staticmethod
+    def address_max_sign(address):
+        return 2 ** Protocol.address_height(address)
+
 def load_data():
     # Считываем список из файла
     with open('d.txt', 'r') as file:

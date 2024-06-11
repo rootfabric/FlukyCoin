@@ -1,5 +1,7 @@
 port: 9333
 host: 192.168.0.2
+external_host: 95.154.71.53
+is_miner: True
 initial_peers:
 #  - "95.154.71.53:9333"
     - "5.35.98.126:9333"
@@ -7,4 +9,4 @@ initial_peers:
     - "95.154.71.53:9333"
     - "api.robotsimulator.ru:9333"
     - "api.robotsimulator.ru:9334"
-address: OutkXjncE8LxdGH5Gh8bwhr8VnpfYiZDgRL1URhW8FpN7sQ_SERV1
+address_reward: YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA

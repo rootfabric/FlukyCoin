@@ -12,13 +12,17 @@ class Protocol:
     WAIT_ACTIVE_PEERS_BEFORE_START = 30
     # WAIT_ACTIVE_PEERS_BEFORE_START = 10
 
-    BLOCK_TIME_INTERVAL =  30
-    # BLOCK_TIME_INTERVAL = 10
+    # BLOCK_TIME_INTERVAL =  30
+    BLOCK_TIME_INTERVAL = 30
 
-    BLOCK_TIME_INTERVAL_LOG = 5
+    BLOCK_TIME_INTERVAL_LOG = 1
 
     # количество секунд. после смены блока, перед проверками
-    BLOCK_START_CHECK_PAUSE = 5
+    BLOCK_START_CHECK_PAUSE = 1
+
+    # после закрытия блока, пауза перед созданием нового.
+    # все ноды должны закрыть блок чтобы принять новый кандидат
+    BLOCK_TIME_PAUSE_AFTER_CLOSE = 2
 
     # количество секунд перед закрытием, когда прекращаем синхронизации и проверки
     BLOCK_END_CHECK_PAUSE = 10
@@ -29,6 +33,9 @@ class Protocol:
     # если появилось подозрение на рассинхрон, сколько проаерять, прежде чем терять рассинхрон
     TIME_CONFIRM_LOST_SYNC = 60
 
+    # сколько вермени ищем новые ноды перед тем как начать свою цепь если первые
+    TIME_WAIN_CONNECT_TO_NODES_START = 5
+
     coinbase_address = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
                        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
 
@@ -37,6 +44,8 @@ class Protocol:
 
     # принудительно берем ноды у всех пирово
     TIME_PAUSE_GET_PEERS = 10
+
+    TIME_PAUSE_PING_PEERS = 3
 
     hash_functions = {
         0: hashlib.sha256(),
@@ -49,6 +58,8 @@ class Protocol:
     DEFAULT_HEIGHT = 10
 
     MAX_MESSAGE_SIZE = 128
+
+    DEFAULT_PORT = 9333
 
 
     @staticmethod
@@ -150,20 +161,38 @@ class Protocol:
         a = base58.b58encode(h).decode('utf-8')
         return a
 
+    @staticmethod
+    def address_info(address):
 
-# def generate_data():
-#
-#     for a in range(10000):
-#         h = hashlib.sha256(str(a).encode('utf-8')).digest()
-#         a = base58.b58encode(h).decode('utf-8')
-#         data.append(a)
-#
-#     # Записываем список в файл
-#     with open('d.txt', 'w') as file:
-#         for item in data:
-#             file.write('%s\n' % item)
-#
-#     return data
+        # Декодирование адреса из Base58 и удаление префикса
+        decoded_address = base58.b58decode(address)
+
+        # Извлечение параметров и контрольной суммы
+        key_hash = decoded_address[:-6]
+        params = decoded_address[-6:-4]
+        checksum = decoded_address[-4:]
+
+        # Извлечение значений из параметров
+        hash_function_code = params[0] >> 4
+        tree_height = params[0] & 0x0F
+
+        extracted_info = {
+            "hash_function_code": hash_function_code,
+            "tree_height": tree_height,
+            "key_hash": key_hash,
+            "params": params,
+            "checksum": checksum
+        }
+
+        return extracted_info
+
+    @staticmethod
+    def address_height(address):
+        return Protocol.address_info(address)['tree_height']
+
+    @staticmethod
+    def address_max_sign(address):
+        return 2 ** Protocol.address_height(address)
 
 def load_data():
     # Считываем список из файла

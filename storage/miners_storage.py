@@ -5,19 +5,21 @@ from tools.logger import Log
 
 
 class MinerStorage:
-    def __init__(self, dir=""):
+    def __init__(self, config):
         """ """
-        self.dir = dir
+        self.config = config
+        self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
         self.log = Log()
         self.keys: {str: XMSS} = {}
+        self.old_keys: {str: XMSS} = {}
 
-        self.load_from_disk(dir=dir)
+        self.load_from_disk(dir=self.dir)
 
         if len(self.keys) == 0:
-            self.generate_keys(10, height=2)
-            self.save_storage_to_disk(dir=dir)
+            self.generate_keys(10, height=1)
+            self.save_storage_to_disk(dir=self.dir)
 
-    def generate_keys(self, size=10, height=5):
+    def generate_keys(self, size=10, height=1):
         """ Генерация заданного количества ключей для майнинга"""
         self.log.info("Генерация ключей")
         count_sign = 0
@@ -28,10 +30,16 @@ class MinerStorage:
             self.log.info(f"[{i + 1}/{size}]  {xmss.address} signs:{xmss.keyPair.PK.max_height()}")
 
         self.log.info(f"Ключей создано: {size}, подписей:  {count_sign}")
+        self.save_storage_to_disk(dir=self.dir)
+
+    def close_key(self, key: XMSS):
+        """ Переносим в израсходованные """
+        key = self.keys.pop(key)
+        self.old_keys[key.address] = key
 
     def save_storage_to_disk(self, dir="", filename='miners_storage.db'):
         # Нормализация имени директории и формирование пути
-        dir = self.dir if self.dir!="" else dir
+        dir = self.dir if self.dir != "" else dir
         dir = dir.replace(":", "_")
         base_dir = "node_data"
         dir_path = os.path.join(base_dir, dir)
@@ -45,7 +53,10 @@ class MinerStorage:
 
         # Сохранение данных
         with open(full_path, 'wb') as file:
-            pickle.dump([key.to_json() for key in self.keys.values()], file)
+            pickle.dump((
+                [key.to_json() for key in self.keys.values()],
+                [key2.to_json() for key2 in self.old_keys.values()]
+            ), file)
 
         # print(f"Blockchain saved to disk at {full_path}.")
 
@@ -61,11 +72,16 @@ class MinerStorage:
         try:
             count_sign = 0
             with open(full_path, 'rb') as file:
-                keys_json = pickle.load(file)
+                keys_json , old_keys_json= pickle.load(file)
                 for key_json in keys_json:
                     xmss = XMSS.from_json(key_json)
                     count_sign += xmss.keyPair.PK.max_height()
                     self.keys[xmss.address] = xmss
+
+                for key_json in old_keys_json:
+                    xmss = XMSS.from_json(key_json)
+                    count_sign += xmss.keyPair.PK.max_height()
+                    self.old_keys[xmss.address] = xmss
 
             self.log.info(f"Miner storage loaded from disk. {len(self.keys)} signs:{count_sign}")
 

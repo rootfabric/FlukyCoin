@@ -68,11 +68,13 @@ if __name__ == "__main__":
     server_address = '192.168.0.26:9334'  # Адрес сервера
     # server_address = '127.0.0.1:9335'  # Адрес сервера
 
-    xmss = XMSS.create()
+    xmss = XMSS.create(seed_phrase =input())
+    # xmss = XMSS.create(seed_phrase = )
     print(xmss.address)
 
-    tt = TransferTransaction(xmss.address, ["2"], [100], message_data=["test message"])
-    tt.nonce = 1
+    # tt = TransferTransaction(xmss.address, ["Runsb7FX8Qzr3SBxzWmBpNJD3sG2HCSxLHgbXEfiUTPiGLEfbQsZ"], [10000000], message_data=["test message"])
+    tt = TransferTransaction(xmss.address, ["YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA"], [1000000000], message_data=["test message"])
+    tt.nonce = 5
     tt.make_hash()
     tt.make_sign(xmss)
     json_transaction = tt.to_json()

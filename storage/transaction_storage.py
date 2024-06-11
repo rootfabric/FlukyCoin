@@ -1,5 +1,7 @@
 from core.Transactions import Transaction
+
 import json
+
 
 class TransactionStorage:
     def __init__(self):
@@ -12,7 +14,43 @@ class TransactionStorage:
         # Список для хранения всех транзакций
         self.transactions = []
 
-    def add_transaction(self, transaction: Transaction, address_reward:str):
+        # список манйнеров
+        self.miners = set()
+
+    def clear(self):
+        self.balances.clear()
+        self.nonces.clear()
+        self.transactions.clear()
+        self.miners.clear()
+
+    def add_block(self, block):
+        """  добавляем все данные по блоку в хранилище"""
+        # for new_node in block.new_nodes:
+        #     self.nodes_rating[new_node] = 0
+
+
+        # для зачисления коммисии нужен адрес
+        address_reward = None
+        for transaction in block.transactions:
+            if transaction.tx_type == "coinbase":
+                address_reward = transaction.toAddress[0]
+                break
+
+
+        for transaction in block.transactions:
+            self.add_transaction(transaction, address_reward)
+
+        # Добавляем майнера
+        self.miners.add(block.signer)
+
+        # Учитываем подпись ключа блока
+        self.add_nonses_to_address(block.signer)
+
+
+
+
+
+    def add_transaction(self, transaction: Transaction, address_reward: str):
         """
         Добавляет транзакцию и обновляет балансы адресов, если у отправителя достаточно средств.
 
@@ -40,6 +78,7 @@ class TransactionStorage:
 
         # Обновление nonce для адреса отправителя
         self.add_nonses_to_address(from_address)
+
         return True
 
     def add_nonses_to_address(self, address):
@@ -48,6 +87,11 @@ class TransactionStorage:
             self.nonces[address] += 1
         else:
             self.nonces[address] = 1
+
+    def pop_nonses_to_address(self, address):
+        # Обновление nonce для адреса отправителя
+        if address in self.nonces:
+            self.nonces[address] -= 1
 
     def get_balance(self, address):
         """
@@ -81,7 +125,7 @@ class TransactionStorage:
 
         :return: список адресов
         """
-        return sorted(self.balances.items(), key=lambda x: x[1]/100000000, reverse=True)
+        return sorted(self.balances.items(), key=lambda x: x[1] / 100000000, reverse=True)
 
     def to_json(self):
         """
@@ -90,7 +134,8 @@ class TransactionStorage:
         return json.dumps({
             'balances': self.balances,
             'nonces': self.nonces,
-            'transactions': [t.to_json() for t in self.transactions]
+            'transactions': [t.to_json() for t in self.transactions],
+            'miners': list(self.miners)
         })
 
     @classmethod
@@ -103,52 +148,54 @@ class TransactionStorage:
         storage.balances = data['balances']
         storage.nonces = data['nonces']
         storage.transactions = [Transaction.from_json(t) for t in data['transactions']]
+        storage.miners = set(data['miners'])
         return storage
-# # Пример использования класса
-transaction_storage = TransactionStorage()
 
-import random
+    def rollback_block(self, block):
+        """ Откат блока в хранилище """
+        # Перебираем все транзакции в блоке, начиная с конца, чтобы сначала откатить обычные транзакции, затем coinbase
+        for transaction in reversed(block.transactions):
+            self.rollback_transaction(transaction)
 
-class TransactionGenerator:
-    def __init__(self, address_count=100, transaction_count=1000):
-        self.addresses = [f"Адрес{i}" for i in range(1, address_count + 1)]
-        self.transaction_count = transaction_count
+        # Добавляем майнера
+        if block.signer in self.miners:
+            self.miners.remove(block.signer)
 
-    def generate_transactions(self):
-        transactions = []
-        for _ in range(self.transaction_count):
-            from_address = random.choice(self.addresses)
-            to_address = random.choice([addr for addr in self.addresses if addr != from_address])
-            amount = random.uniform (0, 1)
-            # transactions.append({'from': from_address, 'to': to_address, 'amount': amount})
-            transactions.append(Transaction(fromAddress=from_address, toAddress=to_address, amount=amount))
-        return transactions
-
-    def generate_transactions_from_genesis(self):
-        transactions = []
-        for _ in range(self.transaction_count):
-            from_address = "0"
-            to_address = random.choice([addr for addr in self.addresses if addr != from_address])
-            amount = 10
-            # transactions.append({'from': from_address, 'to': to_address, 'amount': amount})
-            transactions.append(Transaction(fromAddress=from_address, toAddress=to_address, amount=amount))
-        return transactions
-if __name__ == '__main__':
-    # Использование генератора транзакций
-    generator = TransactionGenerator(address_count=2, transaction_count=100)
-    transactions = generator.generate_transactions_from_genesis()
-    for transaction in transactions:
-        transaction_storage.add_transaction(transaction)
+        # Учитываем подпись ключа блока
+        self.pop_nonses_to_address(block.signer)
 
 
-    generator = TransactionGenerator(address_count=2, transaction_count=1000000)
-    transactions = generator.generate_transactions()
-    for transaction in transactions:
-        transaction_storage.add_transaction(transaction)
+    def rollback_transaction(self, transaction: Transaction):
+        from_address = transaction.fromAddress
+        amounts = transaction.all_amounts()
+        fee = transaction.fee
+        to_address = transaction.toAddress
 
+        # Удаление транзакции из списка транзакций
+        if transaction in self.transactions:
+            self.transactions.remove(transaction)
 
-    # print("Баланс Адрес1:", transaction_storage.get_balance("Адрес1"))
-    # print("Баланс Адрес2:", transaction_storage.get_balance("Адрес2"))
-    # print("Баланс Адрес3:", transaction_storage.get_balance("Адрес3"))
-    print("Все балансы:", transaction_storage.get_all_balances())
-    print(transaction_storage.get_addresses_sorted_by_balance())
+        # Если это coinbase-транзакция, просто удаляем ее из списка и откатываем соответствующие изменения
+        if transaction.tx_type == 'coinbase':
+            # Уменьшаем баланс получателя на сумму coinbase
+            for i, address in enumerate(to_address):
+                self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
+        else:
+            # Обычная транзакция: возвращаем средства отправителю и уменьшаем у получателей
+            self.balances[from_address] = self.balances.get(from_address, 0) + amounts + fee
+
+            # Возврат комиссии майнеру (убираем из баланса адреса награды)
+            if transaction.reward_address in self.balances:
+                self.balances[transaction.reward_address] = self.balances.get(transaction.reward_address, 0) - fee
+
+            # Вычитание средств у получателей
+            for i, address in enumerate(to_address):
+                self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
+
+        # Откат nonce для адреса отправителя
+        if from_address in self.nonces:
+            self.nonces[from_address] -= 1
+
+    def get_transactions_by_address(self, address):
+        # Возвращаем транзакции, где address является отправителем или получателем
+        return [tr for tr in self.transactions if tr.fromAddress == address or address in tr.toAddress]

@@ -5,12 +5,13 @@ import grpc
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.protocol import Protocol
 from core.Transactions import Transaction
+from core.Block import Block
 
 
 # from node.node_manager import NodeManager
 
 class NetworkService(network_pb2_grpc.NetworkServiceServicer):
-    def __init__(self, local_address, node_manager):
+    def __init__(self, config, node_manager):
 
         self.version = Protocol.VERSION
         self.node_manager = node_manager
@@ -19,7 +20,11 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
         self.known_transactions = set()  # Хранение известных хешей транзакций
 
-        self.local_address = local_address
+        self.local_address = f"{config.get('external_host', config.get('host'))}:{config.get('port', Protocol.DEFAULT_PORT)}"
+
+        # доабавлен свой адрес
+        self.known_peers.add(self.local_address)
+
         self.peer_addresses = {}  # Клиентский адрес -> серверный адрес
         self.executor = ThreadPoolExecutor(max_workers=5)  # Пул потоков для асинхронной работы
 
@@ -28,6 +33,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         return network_pb2.Empty()  # Просто возвращает пустой ответ
 
     def RegisterPeer(self, request, context):
+        # print("RegisterPeer", request)
         client_address = context.peer()
         server_address = request.address
         self.known_peers.add(server_address)
@@ -38,47 +44,51 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def GetPeers(self, request, context):
         # Возвращаем только активные адреса
-        return network_pb2.PeerResponse(peers=list(self.active_peers))
+        return network_pb2.PeerResponse(peers=list(self.known_peers))
 
-    def GetNodeInfo(self, request, context):
-        data = self.node_manager.fetch_data()
-        return network_pb2.PeerInfoResponse(version=self.version, state="active", current_time=data)
-
-    def check_active(self, address):
-        try:
-            with grpc.insecure_channel(address) as channel:
-                stub = network_pb2_grpc.NetworkServiceStub(channel)
-                stub.Ping(network_pb2.Empty(), timeout=1)  # Установка таймаута для пинга
-                return True
-        except grpc.RpcError as e:
-            # print(f"Failed to ping {address}: {str(e)}")
-            return False
-
-    def check_active(self, address):
-        try:
-            with grpc.insecure_channel(address) as channel:
-                stub = network_pb2_grpc.NetworkServiceStub(channel)
-                stub.Ping(network_pb2.Empty(), timeout=1)  # Установка таймаута для пинга
-                return True
-        except grpc.RpcError as e:
-            # print(f"Failed to ping {address}: {str(e)}")
-            return False
 
     def GetPeerInfo(self, request, context):
-        # print(
-        #     f"Sending version: {self.node_manager.version}, synced: {self.node_manager.synced}, candidate: {self.node_manager.block_candidate}")
-        response = network_pb2.PeerInfoResponse(
-            version=self.node_manager.version,
-            synced=self.node_manager.synced,
-            block_candidate=self.node_manager.block_candidate
-        )
-        return response
+        try:
+            version = str(self.node_manager.version)
+            synced = bool(self.node_manager._synced)
+            blocks = self.node_manager.chain.blocks_count()
+            latest_block = str(self.node_manager.chain.last_block_hash())
+            block_candidate = str(self.node_manager.chain.block_candidate_hash)
+            uptime = self.node_manager.uptime()
+            peer_count = int(len(self.active_peers))
+            network_info = str(self.local_address)
+            pending_transactions = int(self.node_manager.mempool.size())
+
+            # Detailed debug output
+            # print(f"version: {type(version)}, synced: {type(synced)}, latest_block: {type(latest_block)}, "
+            #       f"block_candidate: {type(block_candidate)}, uptime: {type(uptime)}, "
+            #       f"peer_count: {type(peer_count)}, network_info: {type(network_info)}, "
+            #       f"pending_transactions: {type(pending_transactions)}")
+
+            response = network_pb2.PeerInfoResponse(
+                version=version,
+                synced=synced,
+                blocks=blocks,
+                latest_block=latest_block,
+                block_candidate=block_candidate,
+                uptime=uptime,
+                peer_count=peer_count,
+                network_info=network_info,
+                pending_transactions=pending_transactions
+            )
+
+            return response
+        except Exception as e:
+            print(f"Error occurred: {e}")
+            context.set_details(f"Exception calling application: {e}")
+            context.set_code(grpc.StatusCode.UNKNOWN)
+            return None
 
     def BroadcastTransactionHash(self, request, context):
         # if request.hash not in self.known_transactions:
-        if not self.node_manager.mempool.chech_hash_transaction(request.hash):
+        if not self.node_manager.mempool.check_hash_transaction(request.hash):
             # если транзакции нет, делаем сразу запрос в ответ, с запросом полной транзакции
-            if request.from_host!="":
+            if request.from_host != "":
                 self.request_full_transaction(request.hash, request.from_host)
         return network_pb2.Ack(success=True)
 
@@ -163,18 +173,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     #                     print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
     #             except Exception as e:
     #                 print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
-    #
-    # def add_new_transaction(self, transaction: Transaction):
-    #     if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
-    #         # новая транзакция
-    #         # self.save_transaction(transaction_hash, transaction_data)
-    #
-    #         """ добавить валидацию транзакции в цепи """
-    #         self.node_manager.add_transaction_to_mempool(transaction)
-    #
-    #         self.distribute_transaction_hash(transaction.txhash)
-    #
-    #         print("New transaction added and hash distributed.")
 
     def GetAllTransactions(self, request, context):
 
@@ -182,41 +180,99 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
         return network_pb2.TransactionList(transactions=[network_pb2.Transaction(json_data=tr) for tr in transactions])
 
-    def add_new_transaction(self, transaction: Transaction):
-        if not self.node_manager.mempool.chech_hash_transaction(transaction.txhash):
-            """ добавить валидацию транзакции в цепи """
-            self.node_manager.add_transaction_to_mempool(transaction)
-
-            # Запускаем дистрибуцию хэша в отдельном потоке
-            self.executor.submit(self.distribute_transaction_hash, transaction.txhash)
-
-            print("New transaction added and hash distributed.")
-
-    def distribute_transaction_hash(self, transaction_hash):
-        # Логика распределения хэша
-        with ThreadPoolExecutor(max_workers=10) as executor:
-            futures = {}
-            for peer in self.active_peers:
-                if peer != self.local_address:  # Исключаем себя из рассылки
-                    channel = grpc.insecure_channel(peer)
-                    stub = network_pb2_grpc.NetworkServiceStub(channel)
-                    future = executor.submit(stub.BroadcastTransactionHash,
-                                             network_pb2.TransactionHash(hash=transaction_hash))
-                    futures[future] = peer
-
-            # Обработка результатов асинхронных вызовов
-            for future in as_completed(futures):
-                peer = futures[future]
-                try:
-                    response = future.result()
-                    if response.success:
-                        print(f"Hash {transaction_hash} successfully broadcasted to peer {peer}.")
-                    else:
-                        print(f"Failed to broadcast hash {transaction_hash} to peer {peer}.")
-                except Exception as e:
-                    print(f"Exception during broadcasting hash {transaction_hash} to peer {peer}: {str(e)}")
-
     def AddTransaction(self, request, context):
         transaction = Transaction.from_json(request.json_data)
-        self.add_new_transaction(transaction)
+        self.node_manager.add_new_transaction(transaction)
         return network_pb2.Ack(success=True)
+
+    def BroadcastBlock(self, request, context):
+        # Логика обработки принятого блока
+        if not self.node_manager._synced:
+            # нода не синхронна, блоки не нужны
+            return network_pb2.Ack(success=False)
+
+        block = Block.from_json(request.data)  # Десериализация блока
+        # print("BroadcastBlock", block.hash_block())
+        if self.node_manager.chain.add_block_candidate(block):
+            # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
+            #       block.signer)
+            self.node_manager.client_handler.distribute_block(self.node_manager.chain.block_candidate)
+
+            return network_pb2.Ack(success=True)
+        else:
+            return network_pb2.Ack(success=False)
+
+    def GetBlockByNumber(self, request, context):
+        try:
+            block_number = request.block_number
+            block = self.node_manager.chain.get_block_by_number(block_number)
+            if block:
+                block_json = block.to_json()
+                return network_pb2.BlockResponse(block_data=block_json)
+            else:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details(f"Block number {block_number} not found")
+                print(f"Block number {block_number} not found")
+                return network_pb2.BlockResponse()
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            print(f"Error fetching block: {str(e)}")
+            context.set_details(f"Error fetching block: {str(e)}")
+            return network_pb2.BlockResponse()
+
+    def get_block_by_number(self, block_number, address):
+        attempt = 0
+        max_attempts = 3
+        while attempt < max_attempts:
+            try:
+                with grpc.insecure_channel(address) as channel:
+                    stub = network_pb2_grpc.NetworkServiceStub(channel)
+                    request = network_pb2.BlockRequest(block_number=block_number)
+                    self.log.info(f"Requesting block {block_number} from {address}, attempt {attempt + 1}")
+                    response = stub.GetBlockByNumber(request, timeout=5)
+                    if response.block_data:
+                        block = Block.from_json(response.block_data)
+                        self.log.info(f"Successfully received block {block_number} from {address}")
+                        return block
+                    else:
+                        self.log.error(f"Block data not found for block number {block_number}")
+                        raise Exception("Block not found or error occurred")
+            except grpc.RpcError as e:
+                attempt += 1
+                self.log.error(f"Attempt {attempt} failed: {str(e)}")
+                if attempt == max_attempts:
+                    self.log.error(f"Max attempts reached. Unable to connect to {address}")
+            except Exception as e:
+                self.log.error(f"Unexpected error on attempt {attempt}: {str(e)}")
+            time.sleep(0.1)
+        return None
+
+
+    def GetBlockCandidate(self, request, context):
+        try:
+            block = self.node_manager.chain.block_candidate
+            if block is not None:
+                block_json = block.to_json()
+                return network_pb2.BlockResponse(block_data=block_json)
+            else:
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                context.set_details(f"Block is None")
+                return network_pb2.BlockResponse()
+        except Exception as e:
+            context.set_code(grpc.StatusCode.INTERNAL)
+            context.set_details(f"Error fetching block: {str(e)}")
+            return network_pb2.BlockResponse()
+
+    def GetAddressInfo(self, request, context):
+        address = request.address
+        balance = self.node_manager.chain.address_ballance(address)
+        nonce = self.node_manager.chain.next_address_nonce(address)
+        transactions = self.node_manager.chain.transaction_storage.get_transactions_by_address(address)
+
+        transaction_protos = [network_pb2.Transaction(json_data=tr.to_json()) for tr in transactions]
+
+        return network_pb2.AddressInfoResponse(
+            balance=balance,
+            nonce=nonce,
+            transactions=transaction_protos
+        )

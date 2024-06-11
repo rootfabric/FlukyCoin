@@ -57,7 +57,8 @@ if __name__ == '__main__':
     tt.make_sign(xmss1)
     print("transaction hash",  tt.txhash)
 
-    c1.validate_transaction(tt)
+    is_valid = c1.validate_transaction(tt)
+    print("transaction is_valid", is_valid)
 
     """ Создание блока с транзакциями и валидация в цепи """
     # пользователи создают блоки

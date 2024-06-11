@@ -27,6 +27,7 @@ from hashlib import sha256
 from math import floor, log2, log, ceil
 from crypto.world_list import word_list
 from core.protocol import Protocol
+from tools.logger import Log
 
 
 class XMSSPrivateKey:
@@ -105,6 +106,36 @@ class XMSSPublicKey:
         address = base58.b58encode(full_key).decode('utf-8')
 
         return f"{self.address_start}{address}"
+
+    def address_info(self, address):
+
+        # Декодирование адреса из Base58 и удаление префикса
+        decoded_address = base58.b58decode(address[len(self.address_start):])
+
+        # Извлечение параметров и контрольной суммы
+        key_hash = decoded_address[:-6]
+        params = decoded_address[-6:-4]
+        checksum = decoded_address[-4:]
+
+        # Извлечение значений из параметров
+        hash_function_code = params[0] >> 4
+        tree_height = params[0] & 0x0F
+
+        extracted_info = {
+            "hash_function_code": hash_function_code,
+            "tree_height": tree_height,
+            "key_hash": key_hash,
+            "params": params,
+            "checksum": checksum
+        }
+
+        return extracted_info
+
+    def address_height(self, address):
+        return self.address_info(address)['tree_height']
+
+    def address_max_sign(self, address):
+        return 2 ** self.address_height(address)
 
     def is_valid_address(self, address):
         try:
@@ -977,7 +1008,7 @@ def seed_phrase_to_key(seed_phrase):
 
 
 class XMSS():
-    def __init__(self, height, n, w, seed_phrase, private_key, address, key_pair):
+    def __init__(self, height, n, w, seed_phrase, private_key, address, key_pair, idx = 0, log=Log()):
         self.height = height
         self.n = n
         self.w = w
@@ -986,9 +1017,13 @@ class XMSS():
         self.address = address
         self.keyPair: XMSSKeypair = key_pair
 
+        self.keyPair.SK.idx = idx
+
+        self.log = log
+
     def count_sign(self):
         """ Количество оставшихся подписей """
-        return self.keyPair.PK.max_height() - self.keyPair.SK.idx -1
+        return self.keyPair.PK.max_height() - self.keyPair.SK.idx
 
     @classmethod
     def create(cls, height=5, hash_function_code=Protocol.DEFAULT_HASH_FUNCTION_CODE, key=None, seed_phrase=None):
@@ -1034,6 +1069,7 @@ class XMSS():
             'height': self.height,
             'n': self.n,
             'w': self.w,
+            'idx': self.idx(),
             'seed_phrase': self.seed_phrase,
             'private_key': self.private_key.hex(),
             'address': self.address,
@@ -1045,13 +1081,26 @@ class XMSS():
         height = json_data['height']
         n = json_data['n']
         w = json_data['w']
+        idx =  json_data['idx']
         seed_phrase = json_data['seed_phrase']
         private_key = bytes.fromhex(json_data['private_key'])  # Преобразуем обратно из строки hex
         address = json_data['address']
         key_pair = keypair_from_json(json_data['keyPair'])
 
-        return cls(height, n, w, seed_phrase, private_key, address, key_pair)
 
+        return cls(height, n, w, seed_phrase, private_key, address, key_pair, idx=idx)
+
+    def set_idx(self, new_idx):
+        """ Низкоуровневое выставление счетчика подписей """
+
+        new_idx_fixed = max(0, min(new_idx, self.keyPair.PK.max_height()))
+        # self.log.info(f"Change .keyPair.SK.idx: old{self.keyPair.SK.idx} new {new_idx_fixed}")
+        self.keyPair.SK.idx = new_idx_fixed
+        return self.keyPair.SK.idx
+
+    def idx(self):
+        """ Текущее количество счетчика подписей """
+        return self.keyPair.SK.idx
 
 if __name__ == '__main__':
     # WOTS_demo(bytearray(b'0e4575aa2c51'))

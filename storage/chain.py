@@ -28,17 +28,25 @@ class Chain():
 
         self.time_ntpt = NTPTimeSynchronizer(log=self.log) if time_ntpt is None else time_ntpt
 
-        self.miners = set()
+        # self.miners = set()
+
+        self.config = config
 
         if config is not None:
+            self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
+
             host = config.get("host", "localhost")
             port = config.get("port", "5555")
-            dir = f"{host}_{port}"
-            self.load_from_disk(dir=dir)
+
+            self.load_from_disk()
 
         self.history_hash = {}
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
+
+    def get_block_by_number(self, num):
+        if num < len(self.blocks):
+            return self.blocks[num]
 
     def time(self):
         return self.time_ntpt.get_corrected_time()
@@ -63,9 +71,9 @@ class Chain():
         #     return True
         return None
 
-    def save_chain_to_disk(self, dir="", filename='blockchain.db'):
+    def save_chain_to_disk(self, filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
-        dir = dir.replace(":", "_")
+        dir = self.dir.replace(":", "_")
         base_dir = "node_data"
         dir_path = os.path.join(base_dir, dir)
 
@@ -86,9 +94,9 @@ class Chain():
 
         # print(f"Blockchain saved to disk at {full_path}.")
 
-    def load_from_disk(self, dir="", filename='blockchain.db'):
+    def load_from_disk(self, filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
-        dir = dir.replace(":", "_")
+        dir = self.dir.replace(":", "_")
         base_dir = "node_data"
         dir_path = os.path.join(base_dir, dir)
 
@@ -105,10 +113,11 @@ class Chain():
 
                 self.blocks = [Block.from_json(j) for j in blocks_json]
 
-            for block in self.blocks:
-                self.miners.add(block.signer)
+            # for block in self.blocks:
+            #     self.miners.add(block.signer)
 
-            self.log.info(f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.miners)}")
+            self.log.info(
+                f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.transaction_storage.miners)}")
         except FileNotFoundError:
             self.log.error("No blockchain file found.")
         except Exception as e:
@@ -116,7 +125,7 @@ class Chain():
 
     def validate_block_hash(self, block: Block):
         if block.previousHash != self.last_block_hash():
-            self.log.warning("validateblock.previousHash != self.last_block_hash()")
+            # self.log.warning("validateblock.previousHash != self.last_block_hash()")
             return False
         return True
 
@@ -127,6 +136,14 @@ class Chain():
         if block.timestamp_seconds <= self.last_block().timestamp_seconds:
             self.log.warning("Блок не проходит валидацию по времени")
             return False
+
+        # # если время последнего блока еще не вышло
+        # last_block = self.last_block()
+        # if last_block is not None:
+        #     if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time_ntpt.get_corrected_time():
+        #         # self.log.warning("Блок не проходит валидацию по времени. Сильно мало с последнего блока")
+        #         return False
+
         return True
 
     def validate_block_number(self, block: Block):
@@ -180,15 +197,46 @@ class Chain():
         PK = block.XMSSPublicKey()
         address = PK.generate_address()
 
-        if PK.max_height() <= self.next_address_nonce(address):
+        if PK.max_height() < self.next_address_nonce(address):
             self.log.warning(
                 f"PK.max_height() {PK.max_height()} self.next_address_nonce(PK.generate_address()) {self.next_address_nonce(address)}")
             self.log.warning("Количество подписей больше высоты")
             return False
         return True
 
+    def validate_rewards(self, block: Block):
+        """ Проверка вознаграждения за блок """
+        coinbase_transaction: Transaction = None
+        for transaction in block.transactions:
+            if transaction.tx_type == "coinbase":
+                coinbase_transaction = transaction
+                break
+
+        if coinbase_transaction is None:
+            self.log.warning(f"Нету coinbase транзакции")
+            return False
+
+        block_num = block.block_number
+
+        if block_num != coinbase_transaction.nonce - 1:
+            self.log.warning(f"Неверный nonce coinbase транзакции")
+            return False
+
+        sec = Protocol.sequence(block.previousHash)
+        block_reward, ratio, lcs = Protocol.reward(block.signer, sec, block_number=block_num)
+        amount = coinbase_transaction.all_amounts()
+
+        if amount != block_reward:
+            self.log.warning(f"Неверное вознаграждение блока {block_reward} нужно: {amount}")
+            return False
+
+        return True
+
     def validate_block(self, block):
         """ Проверка блока в цепи """
+
+        if block is None:
+            return False
 
         if not block.validate():
             return False
@@ -209,9 +257,14 @@ class Chain():
         for transaction in block.transactions:
             if transaction.tx_type == "coinbase":
                 count_coinbase += 1
+
             if not self.validate_transaction(transaction):
                 self.log.warning(f"Транзакция {transaction.txhash} не валидна")
                 return False
+
+        if not self.validate_rewards(block):
+            self.log.warning(f"Неверное вознаграждение за блок")
+            return False
 
         if count_coinbase != 1:
             self.log.warning(f"Неверно количество coinbase транзакций: {count_coinbase} шт")
@@ -228,29 +281,16 @@ class Chain():
         if not self.validate_block(block):
             return False
 
-        self.add_block(block)
+        self._add_block(block)
         return True
 
-    def add_block(self, block: Block):
+    def _add_block(self, block: Block):
         """  """
         self.blocks.append(block)
 
-        # for new_node in block.new_nodes:
-        #     self.nodes_rating[new_node] = 0
-        address_reward = None
-        for transaction in block.transactions:
-            if transaction.tx_type == "coinbase":
-                address_reward = transaction.toAddress[0]
-                break
+        self.transaction_storage.add_block(block)
 
-        for transaction in block.transactions:
-            self.transaction_storage.add_transaction(transaction, address_reward)
-
-            # # при любом вознаграждении повышаем рейтинг
-            # if transaction.fromAddress == '0000000000000000000000000000000000':
-            #     self.nodes_rating[transaction.toAddress] = self.nodes_rating.get(transaction.toAddress, 0)+1
-
-        self.miners.add(block.signer)
+        # self.miners.add(block.signer)
 
         self.history_hash[block.hash_block()] = block
         # self.save_to_disk()
@@ -274,7 +314,7 @@ class Chain():
         return self.blocks[-1] if len(self.blocks) > 0 else None
 
     def check_miners(self, addr):
-        return addr in self.miners
+        return addr in self.transaction_storage.miners
 
     def validate_candidate(self, block: Block):
         """ Является ли блок кандидатом """
@@ -296,6 +336,12 @@ class Chain():
         """  В цепи лежит блок, который является доминирующим"""
 
         if block is None:
+            return False
+
+        if not self.validate_candidate(block):
+            return False
+
+        if not self.validate_block(block):
             return False
 
         # первый блок
@@ -400,9 +446,10 @@ class Chain():
 
     def close_block(self):
         """ Берем блок кандидата как верный """
-
+        if self.block_candidate is None:
+            self.log.info("Кандидат None. Блок нельзя закрыть")
+            return False
         if self.validate_and_add_block(Block.from_json(self.block_candidate.to_json())):
-            self.transaction_storage.add_nonses_to_address(self.block_candidate.signer)
             self.reset_block_candidat()
             return True
         else:
@@ -417,7 +464,13 @@ class Chain():
             return False
         # print(f"Check: {self.blocks_count()} txs[{self.mempool.size()}] delta: {self.block_candidate.time -self.time_ntpt.get_corrected_time():0.2f}  {self.block_candidate.hash_block()[:5]}...{self.block_candidate.hash_block()[-5:]}  singer: ...{self.block_candidate.signer [-5:]}")
 
-        if self.block_candidate.timestamp_seconds > self.time_ntpt.get_corrected_time():
+        # если время последнего блока еще не вышло
+        last_block = self.last_block()
+        if last_block is not None:
+            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time():
+                return False
+
+        if self.block_candidate.timestamp_seconds > self.time():
             return False
 
         return True
@@ -434,6 +487,27 @@ class Chain():
         #     return True
         #
         # return False
+
+    def drop_last_block(self):
+        """ При рассинхронах, откатываемся назад """
+
+        print("drop_last_block")
+        last_block = self.last_block()
+
+        if last_block is None:
+            return False
+
+        "Возникает ситуация, когда своя цепочка не сопадает с присылаемой"
+        "Тут надо делать более сложный форк"
+        "Пока просто откатываемся на несколько блоков назад"
+        "Нужна правильная отработка отката транзакций"
+
+        self.transaction_storage.rollback_block(last_block)
+
+        self.blocks = self.blocks[:-1]
+
+        if last_block.hash_block() in self.history_hash:
+            self.history_hash.pop(last_block.hash_block())
 
 
 if __name__ == '__main__':

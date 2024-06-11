@@ -7,7 +7,7 @@ from core.protocol import Protocol
 from core.BlockHeader import BlockHeader
 import os, json
 import random
-from storage.transaction_storage import TransactionStorage, TransactionGenerator
+from storage.transaction_storage import TransactionStorage
 import base64
 from crypto.xmss import XMSS, XMSSPublicKey, SigXMSS, XMSS_verify
 from crypto.mercle import merkle_tx_hash, MerkleTools
@@ -37,7 +37,7 @@ class Block:
         self.signer = None
 
         self.transactions:[Transaction] = []
-        self.log = Log()
+        # self.log = Log()
 
     def mining_reward(self):
         for tx in self.transactions:
@@ -203,12 +203,12 @@ class Block:
         new_hash = self.calculate_hash()
 
         if old_hash != new_hash:
-            self.log.error("Ошибка валидации блока. не совпадает хеш")
+            print("Ошибка валидации блока. не совпадает хеш")
             return False
 
         PK2 = self.XMSSPublicKey()
         if self.signer !=PK2.generate_address():
-            self.log.error("Ошибка валидации блока. не совпадает майнер")
+            print("Ошибка валидации блока. не совпадает майнер")
             return False
 
         signature = SigXMSS.from_base64(self.sign)
@@ -216,7 +216,7 @@ class Block:
         # Верификация подписи
         verf = XMSS_verify(signature, bytes.fromhex(new_hash), PK2)
         if not verf:
-            self.log.error("Ошибка валидации блока. не совпадает подпись")
+            print("Ошибка валидации блока. не совпадает подпись")
             return False
 
         """
@@ -229,11 +229,11 @@ class Block:
             mt.add_leaf(transaction.txhash)
         mt.make_tree()
         if not mt.is_ready:
-            self.log.error("Ошибка валидации MerkleTools. is_ready False")
+            print("Ошибка валидации MerkleTools. is_ready False")
             return False
 
         if mt.get_merkle_root() !=self.merkle_root:
-            self.log.error("Ошибка валидации MerkleTools. Не верный merkle_root")
+            print("Ошибка валидации MerkleTools. Не верный merkle_root")
             return False
 
 

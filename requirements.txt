@@ -2,4 +2,5 @@ ntplib
 base58
 grpcio
 grpcio-tools
+ipwhois
 

@@ -4,11 +4,12 @@ from crypto.xmss import *
 
 if __name__ == '__main__':
     # Пример использования
-    keys = XMSS.create(5)
+    keys = XMSS.create(1)
 
     PK = keys.keyPair.PK
 
     print(PK.generate_address())
+    print(PK.max_height())
 
     pk_hex = PK.to_hex()
 
@@ -26,3 +27,14 @@ if __name__ == '__main__':
     PK2 = XMSSPublicKey.from_hex(pk_hex)
 
     print(PK2.generate_address())
+
+    print(keys.sign(b"1"))
+    print(keys.count_sign())
+    print(keys.sign(b"2"))
+    print(keys.count_sign())
+    print(keys.sign(b"3"))
+    print(keys.count_sign())
+    print(keys.sign(b"4"))
+    print(keys.count_sign())
+    print(keys.sign(b"4"))
+    print(keys.count_sign())

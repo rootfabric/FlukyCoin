@@ -6,7 +6,7 @@ from core.Transactions import Transaction
 from core.protocol import Protocol
 import os, json
 import random
-from storage.transaction_storage import TransactionStorage, TransactionGenerator
+from storage.transaction_storage import TransactionStorage
 import base64
 # from crypto.xmss import *
 

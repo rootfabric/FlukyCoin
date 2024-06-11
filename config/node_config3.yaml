@@ -1,14 +1,15 @@
 port: 9335
-host: 127.0.0.1
+host: 192.168.0.26
+is_miner: True
 initial_peers:
     - "192.168.0.26:9334"
-    - "127.0.0.1:9333"
-    - "127.0.0.1:9334"
-    - "127.0.0.1:9335"
     - "5.35.98.126:9333"
     - "yglamazdin.fvds.ru:9333"
     - "95.154.71.53:9333"
     - "api.robotsimulator.ru:9333"
     - "api.robotsimulator.ru:9334"
+    - "95.154.71.53:9333"
+    - "95.154.71.53:9334"
+    - "5.35.98.126:9334"
 
-address: OutGkzTP3mv8x7t3zwUM3Ly8YfhEY79oNdpBRgtobK2fDSFH_HOME3
+address_reward: Runsb7FX8Qzr3SBxzWmBpNJD3sG2HCSxLHgbXEfiUTPiGLEfbQsZ

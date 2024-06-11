@@ -9,6 +9,14 @@ service NetworkService {
   rpc GetFullTransaction(TransactionHash) returns (Transaction);
   rpc AddTransaction(Transaction) returns (Ack);
   rpc GetAllTransactions(Empty) returns (TransactionList) {}
+  rpc BroadcastBlock(Block) returns (Ack);
+  rpc GetBlockByNumber(BlockRequest) returns (BlockResponse);
+  rpc GetBlockCandidate(Empty) returns (BlockResponse);
+  // rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse);
+  rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse) {
+    option (google.api.http) = {
+      get: "/address-info/{address}"
+    };
 
 }
 
@@ -30,7 +38,21 @@ message NodeInfoRequest {
 message PeerInfoResponse {
   string version = 1;
   bool synced = 2;
-  string block_candidate = 3;
+  int32 blocks = 3;
+  string latest_block = 4;
+  string block_candidate = 5;
+  float  uptime = 6;
+  int32 peer_count = 7;
+  string network_info = 8;
+  int32 pending_transactions = 9;
+}
+
+message BlockRequest {
+    int64 block_number = 1;
+}
+
+message BlockResponse {
+    string block_data = 1;  // JSON-представление блока
 }
 
 message TransactionHash {
@@ -41,6 +63,26 @@ message TransactionHash {
 message Transaction {
   string json_data = 1;
 }
+
+message Block {
+  // Поле для хранения данных блока в виде строки JSON
+  string data = 1;
+}
+
+//message AddressRequest {
+//  string address = 1;
+//}
+message AddressRequest {
+  string address = 1 [(google.api.http).path = "address"];
+}
+
+message AddressInfoResponse {
+  double balance = 1;
+  int32 nonce = 2;
+  repeated Transaction transactions = 3;
+}
+
+
 
 message Ack {
   bool success = 1;

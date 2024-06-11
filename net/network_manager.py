@@ -351,7 +351,7 @@ class NetworkManager:
                         self.list_need_broadcast_transaction.append(self.mempool.transactions[t])
 
                 for h in mem_hashes:
-                    if not self.mempool.chech_hash_transaction(h):
+                    if not self.mempool.check_hash_transaction(h):
                         response = client.send_request({'command': 'gettransaction', 'tx_id': h})
                         self.handle_request_node(response)
 

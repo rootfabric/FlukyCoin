@@ -7,7 +7,7 @@ from crypto.file_crypto import FileEncryptor
 
 
 class Wallet:
-    def __init__(self, server='192.168.0.26:8080', filename = "keys.dat"):
+    def __init__(self, server='192.168.0.26:9334', filename = "keys.dat"):
         """ """
         self.filename = filename
         self.server = server
@@ -96,9 +96,9 @@ if __name__ == '__main__':
 
     wallet = Wallet(filename = "keys.dat")
 
-    wallet.load_from_file(input("пароль:"))
+    # wallet.load_from_file(input("пароль:"))
 
-    print(wallet.keys_address())
+    # print(wallet.keys_address())
 
     # wallet.add_key(seed_phrase=input("сид:"))
 
@@ -106,6 +106,8 @@ if __name__ == '__main__':
     # wallet.save_to_file(input("пароль:"))
 
     # info = wallet.info("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")
-    # print(info)
+    wallet.info_text("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")
+    wallet.info_text("bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm")
+
 
     # wallet.create_transaction()

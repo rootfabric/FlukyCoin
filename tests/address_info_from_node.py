@@ -43,7 +43,7 @@ def get_address_info(server_address, address):
         print(f"Ошибка запроса: {e}")
 
 if __name__ == '__main__':
-    server_address = '192.168.0.26:8080'  # Адрес сервера
+    server_address = '192.168.0.26:9333'  # Адрес сервера
     address = "YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA"  # Пример Bitcoin адреса
     get_address_info(server_address, address)
 

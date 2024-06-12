@@ -58,6 +58,21 @@ def index():
                 <html>
                 <head>
                     <title>Wallet Balance</title>
+                    <style>
+                        body {
+                            font-family: Arial, sans-serif;
+                        }
+                        .balance-info {
+                            font-size: 1.2em;
+                            margin-top: 20px;
+                        }
+                        .address {
+                            font-weight: bold;
+                        }
+                        .balance {
+                            color: green;
+                        }
+                    </style>
                 </head>
                 <body>
                     <h1>Node Information</h1>
@@ -70,7 +85,10 @@ def index():
                         {% endfor %}
                     </ul>
                     <p><strong>Last Block Time:</strong> {{ node_info.last_block_time }}</p>
-                    <h1>Balance for address {{ address }}: {{ balance }}</h1>
+                    <div class="balance-info">
+                        <p class="address">Balance for address {{ address }}:</p>
+                        <p class="balance">{{ balance }}</p>
+                    </div>
                     <a href="/">Check another address</a>
                 </body>
                 </html>
@@ -83,6 +101,21 @@ def index():
         <html>
         <head>
             <title>Wallet Balance</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                }
+                .balance-info {
+                    font-size: 1.2em;
+                    margin-top: 20px;
+                }
+                .address {
+                    font-weight: bold;
+                }
+                .balance {
+                    color: green;
+                }
+            </style>
         </head>
         <body>
             <h1>Node Information</h1>
@@ -105,4 +138,4 @@ def index():
     ''', node_info=node_info)
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True, port = 80)

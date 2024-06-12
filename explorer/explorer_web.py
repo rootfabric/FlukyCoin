@@ -1,3 +1,10 @@
+import os, sys
+
+# Получаем путь на директорию выше
+parent_directory = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+# Добавляем этот путь в sys.path
+sys.path.append(parent_directory)
+
 import grpc
 from flask import Flask, request, render_template_string
 from protos import network_pb2, network_pb2_grpc
@@ -6,6 +13,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 wallet = Wallet()  # Инициализируйте ваш кошелек здесь
+
 
 def parse_node_info(response):
     """ Преобразование ответа gRPC в словарь """
@@ -23,7 +31,8 @@ def parse_node_info(response):
         "last_block_time": last_block_time
     }
 
-def get_info(server="192.168.0.26:9334"):
+
+def get_info(server="5.35.98.126:9333"):
     """ Информация с ноды """
     # Создание канала связи с сервером
     channel = grpc.insecure_channel(server)
@@ -41,10 +50,11 @@ def get_info(server="192.168.0.26:9334"):
         print(f"Ошибка gRPC: {str(e)}")
         return None
 
+
 @app.route('/', methods=['GET', 'POST'])
 def index():
     node_info = get_info()
-
+    print(node_info)
     if node_info is None:
         return "Ошибка получения информации о ноде"
 
@@ -137,5 +147,7 @@ def index():
         </html>
     ''', node_info=node_info)
 
+
 if __name__ == '__main__':
-    app.run(debug=True, port = 80)
+    app.run(debug=False, host='5.35.98.126', port=80)
+    # app.run()

@@ -6,7 +6,8 @@ from core.Transactions import Transaction, TransferTransaction
 from crypto.file_crypto import FileEncryptor
 
 
-def get_info(server="192.168.0.26:9334"):
+# def get_info(server="192.168.0.26:9334"):
+def get_info(server="5.35.98.126:9333"):
     """ Информация с ноды """
     """ Информация с ноды """
     # Создание канала связи с сервером

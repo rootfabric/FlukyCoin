@@ -1,0 +1,14 @@
+[Unit]
+Description=Explorer Web Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/F/explorer
+ExecStart=/usr/bin/python3 /root/F/explorer/explorer_web.py
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

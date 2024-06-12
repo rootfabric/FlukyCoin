@@ -1,0 +1,14 @@
+[Unit]
+Description=Node Service
+After=network.target
+
+[Service]
+User=root
+WorkingDirectory=/root/F
+ExecStart=/usr/bin/python3 /root/F/main.py --config node_config_server_fvds.yaml
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

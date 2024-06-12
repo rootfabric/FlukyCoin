@@ -7,7 +7,7 @@ from crypto.file_crypto import FileEncryptor
 
 
 class Wallet:
-    def __init__(self, server='192.168.0.26:9334', filename = "keys.dat"):
+    def __init__(self,  filename = "keys.dat", server='192.168.0.26:9334'):
         """ """
         self.filename = filename
         self.server = server = '95.154.71.53:9333'
@@ -15,20 +15,32 @@ class Wallet:
 
 
 
-    def load_from_file(self, password):
+    def load_from_file(self, password,  filename = None):
         """ Сохранение файла кошелька """
         # Расшифровка данных из файла
         file_encryptor = FileEncryptor(password)
+        # try:
+
+        if filename is not None:
+            self.filename = filename
+
         decrypted_data = file_encryptor.decrypt_file(self.filename)
 
         for json_key in decrypted_data:
             key = XMSS.from_json(json_key)
             self.keys[key.address] = key
 
+        # except Exception as e:
+        #     # файл не найден или не расшифрован
+        #     print(e)
 
-    def save_to_file(self, password):
+
+
+    def save_to_file(self, password, filename = None):
         """ Загрузка кошелька из файла """
 
+        if filename is not None:
+            self.filename = filename
         file_encryptor = FileEncryptor(password)
 
         data = [k.to_json() for k in  self.keys.values()]
@@ -64,10 +76,10 @@ class Wallet:
         for transaction in response.transactions:
             print(transaction.json_data)
 
-    def make_transaction(self, xmss, address_to, ammount, fee=0, message=""):
+    def make_transaction(self, xmss, address_to, amount, fee=0, message=""):
         """ создание транзакции """
-        transaction = TransferTransaction(xmss.address, [address_to], [ammount], fee=fee,
-                                 message_data=[message])
+        transaction = TransferTransaction(xmss.address, [address_to], [amount], fee=fee,
+                                          message_data=[message])
 
         transaction.nonce = self.info(xmss.address).nonce
         transaction.make_hash()
@@ -103,6 +115,8 @@ class Wallet:
         """  Добавление ключа в кошелек """
         xmss_keys = XMSS.create(height=height, hash_function_code=hash_function_code, key=key, seed_phrase=seed_phrase)
         self.keys[xmss_keys.address] = xmss_keys
+
+        return xmss_keys
 
     def keys_address(self):
         return [key.address for key in self.keys.values()]

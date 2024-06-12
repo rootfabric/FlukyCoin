@@ -12,12 +12,24 @@ service NetworkService {
   rpc BroadcastBlock(Block) returns (Ack);
   rpc GetBlockByNumber(BlockRequest) returns (BlockResponse);
   rpc GetBlockCandidate(Empty) returns (BlockResponse);
-  // rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse);
-  rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse) {
+  rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse);
+  rpc GetNetInfo(Empty) returns (NetInfoResponse);
+  /*rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse) {
     option (google.api.http) = {
       get: "/address-info/{address}"
     };
+  rpc GetNetInfo(Empty) returns (NetInfoResponse) {
+    option (google.api.http) = {
+      get: "/address-info/{address}"
+    };
+    */
+}
 
+message NetInfoResponse {
+    bool synced = 1;
+    int32 blocks = 2;
+    repeated string peers = 3;
+    int32 last_block_time = 4;
 }
 
 message TransactionList {
@@ -73,7 +85,8 @@ message Block {
 //  string address = 1;
 //}
 message AddressRequest {
-  string address = 1 [(google.api.http).path = "address"];
+  //string address = 1 [(google.api.http).path = "address"];
+  string address = 1 ;
 }
 
 message AddressInfoResponse {

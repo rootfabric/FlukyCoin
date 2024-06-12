@@ -1,3 +1,5 @@
+import json
+
 from protos import network_pb2, network_pb2_grpc
 import datetime
 import grpc
@@ -45,7 +47,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def GetPeers(self, request, context):
         # Возвращаем только активные адреса
         return network_pb2.PeerResponse(peers=list(self.known_peers))
-
 
     def GetPeerInfo(self, request, context):
         try:
@@ -247,7 +248,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             time.sleep(0.1)
         return None
 
-
     def GetBlockCandidate(self, request, context):
         try:
             block = self.node_manager.chain.block_candidate
@@ -275,4 +275,15 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             balance=balance,
             nonce=nonce,
             transactions=transaction_protos
+        )
+
+    def GetNetInfo(self, request, context):
+        """ Информация о состоянии сети """
+        last_block:Block = self.node_manager.chain.last_block()
+        last_block_time = last_block.timestamp_seconds
+        return network_pb2.NetInfoResponse(
+            synced=self.node_manager.is_synced(),
+            blocks=self.node_manager.chain.blocks_count(),
+            peers=list(self.active_peers),
+            last_block_time=last_block_time
         )

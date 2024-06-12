@@ -66,6 +66,8 @@ class NodeManager:
 
         self.executor = ThreadPoolExecutor(max_workers=2)
 
+    def is_synced(self):
+        return self._synced
     def set_node_synced(self, state):
         self._synced = state
         self.log.info(f"Node sync is {self._synced}")
@@ -232,7 +234,7 @@ class NodeManager:
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
             # дожидаемся начала блока и не начина
-            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.chain.time() < last_block_time + Protocol.BLOCK_START_CHECK_PAUSE * 2:
+            if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL/2:
                 print("Нода синхронизирована")
                 self.set_node_synced(True)
             else:

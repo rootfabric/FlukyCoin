@@ -10,7 +10,7 @@ class Wallet:
     def __init__(self, server='192.168.0.26:9334', filename = "keys.dat"):
         """ """
         self.filename = filename
-        self.server = server
+        self.server = server = '95.154.71.53:9333'
         self.keys: {str: XMSS} = dict()
 
 
@@ -64,20 +64,36 @@ class Wallet:
         for transaction in response.transactions:
             print(transaction.json_data)
 
-    def create_transaction(self, xmss, address_to, ammount, fee=0, message=""):
+    def make_transaction(self, xmss, address_to, ammount, fee=0, message=""):
         """ создание транзакции """
-        tt = TransferTransaction(xmss.address, [address_to], [ammount], fee=fee,
+        transaction = TransferTransaction(xmss.address, [address_to], [ammount], fee=fee,
                                  message_data=[message])
 
-        tt.nonce = self.info(xmss.address).nonce
-        tt.make_hash()
-        tt.make_sign(xmss)
+        transaction.nonce = self.info(xmss.address).nonce
+        transaction.make_hash()
+        transaction.make_sign(xmss)
         # json_transaction = tt.to_json()
 
-        self.send_transaction(tt)
+        self.send_transaction(transaction)
 
-    def send_transaction(self):
-        """ Отсылка транзакции в сеть """
+    def send_transaction(self, transaction: Transaction):
+        # Создание gRPC канала
+        channel = grpc.insecure_channel(self.server)
+        stub = network_pb2_grpc.NetworkServiceStub(channel)
+
+        json_data = transaction.to_json()
+        # Создание объекта транзакции
+        transaction = network_pb2.Transaction(json_data=json_data)
+
+        # Отправка транзакции на сервер
+        try:
+            response = stub.AddTransaction(transaction)
+            if response.success:
+                print("Transaction successfully added.")
+            else:
+                print("Failed to add transaction.")
+        except grpc.RpcError as e:
+            print(f"Failed to connect to server: {str(e)}")
 
     @staticmethod
     def create_wallet():
@@ -94,20 +110,23 @@ class Wallet:
 
 if __name__ == '__main__':
 
-    wallet = Wallet(filename = "keys.dat")
+    wallet = Wallet(filename ="keys.dat")
 
-    # wallet.load_from_file(input("пароль:"))
+    password = input("пароль:")
+    wallet.load_from_file(password)
 
     # print(wallet.keys_address())
 
     # wallet.add_key(seed_phrase=input("сид:"))
+    wallet.add_key(key=input("ключ:"))
 
     #
-    # wallet.save_to_file(input("пароль:"))
+    wallet.save_to_file(password)
 
     # info = wallet.info("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")
     wallet.info_text("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")
     wallet.info_text("bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm")
+
 
 
     # wallet.create_transaction()

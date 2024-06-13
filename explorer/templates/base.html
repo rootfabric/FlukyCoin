@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; }
+        .header { background-color: #f1f1f1; padding: 10px; text-align: center; }
+        .header a { text-decoration: none; color: black; padding: 10px 20px; margin: 5px; display: inline-block; background-color: #ddd; }
+        .header a:hover { background-color: #ccc; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <a href="/">Home</a>
+        <a href="/addresses">Addresses</a>
+    </div>
+    {% block content %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,16 @@
+{% extends 'base.html' %}
+{% block content %}
+    <h1>All Addresses and Balances</h1>
+    <table>
+        <tr>
+            <th>Address</th>
+            <th>Balance</th>
+        </tr>
+        {% for address_info in sorted_addresses %}
+        <tr>
+            <td>{{ address_info.address }}</td>
+            <td>{{ address_info.balance | float / 10000000 }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+{% endblock %}

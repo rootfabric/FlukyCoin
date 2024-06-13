@@ -14,6 +14,7 @@ service NetworkService {
   rpc GetBlockCandidate(Empty) returns (BlockResponse);
   rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse);
   rpc GetNetInfo(Empty) returns (NetInfoResponse);
+  rpc GetAllAddresses(Empty) returns (AddressList);
   /*rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse) {
     option (google.api.http) = {
       get: "/address-info/{address}"
@@ -24,6 +25,15 @@ service NetworkService {
     };
     */
 }
+message AddressInfo {
+    string address = 1;
+    string balance = 2;
+}
+
+message AddressList {
+    repeated AddressInfo addresses = 1;
+}
+
 
 message NetInfoResponse {
     bool synced = 1;

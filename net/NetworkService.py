@@ -287,3 +287,11 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             peers=list(self.active_peers),
             last_block_time=last_block_time
         )
+    def GetAllAddresses(self, request, context):
+        # Получаем все балансы из хранилища транзакций
+        all_balances = self.node_manager.chain.transaction_storage.get_all_balances()
+        address_infos = [
+            network_pb2.AddressInfo(address=address, balance=str(balance))
+            for address, balance in all_balances.items()
+        ]
+        return network_pb2.AddressList(addresses=address_infos)

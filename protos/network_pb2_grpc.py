@@ -104,6 +104,11 @@ class NetworkServiceStub(object):
                 request_serializer=network__pb2.Empty.SerializeToString,
                 response_deserializer=network__pb2.NetInfoResponse.FromString,
                 _registered_method=True)
+        self.GetAllAddresses = channel.unary_unary(
+                '/NetworkService/GetAllAddresses',
+                request_serializer=network__pb2.Empty.SerializeToString,
+                response_deserializer=network__pb2.AddressList.FromString,
+                _registered_method=True)
 
 
 class NetworkServiceServicer(object):
@@ -183,6 +188,12 @@ class NetworkServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetNetInfo(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetAllAddresses(self, request, context):
         """rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse) {
         option (google.api.http) = {
         get: "/address-info/{address}"
@@ -263,6 +274,11 @@ def add_NetworkServiceServicer_to_server(servicer, server):
                     servicer.GetNetInfo,
                     request_deserializer=network__pb2.Empty.FromString,
                     response_serializer=network__pb2.NetInfoResponse.SerializeToString,
+            ),
+            'GetAllAddresses': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetAllAddresses,
+                    request_deserializer=network__pb2.Empty.FromString,
+                    response_serializer=network__pb2.AddressList.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -616,6 +632,33 @@ class NetworkService(object):
             '/NetworkService/GetNetInfo',
             network__pb2.Empty.SerializeToString,
             network__pb2.NetInfoResponse.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def GetAllAddresses(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/GetAllAddresses',
+            network__pb2.Empty.SerializeToString,
+            network__pb2.AddressList.FromString,
             options,
             channel_credentials,
             insecure,

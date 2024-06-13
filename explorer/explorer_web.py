@@ -14,6 +14,8 @@ from datetime import datetime
 app = Flask(__name__)
 wallet = Wallet()  # Инициализируйте ваш кошелек здесь
 
+# node_addres= '5.35.98.126:9333'
+node_addresses= '192.168.0.26:9334'
 
 def parse_node_info(response):
     """ Преобразование ответа gRPC в словарь """
@@ -147,7 +149,67 @@ def index():
         </html>
     ''', node_info=node_info)
 
+@app.route('/addresses', methods=['GET'])
+def addresses():
+    """Страница со списком всех адресов и их балансов."""
+    # Создание канала связи с сервером
+    # channel = grpc.insecure_channel('5.35.98.126:9333')  # Укажите адрес вашего сервера
+    channel = grpc.insecure_channel(node_addresses)  # Укажите адрес вашего сервера
+    stub = network_pb2_grpc.NetworkServiceStub(channel)
+
+    # Запрос на получение всех адресов
+    all_addresses_request = network_pb2.Empty()
+
+    try:
+        # Отправка запроса и получение ответа
+        response = stub.GetAllAddresses(all_addresses_request)
+        # Сортировка полученных адресов по балансу в порядке убывания
+        sorted_addresses = sorted(response.addresses, key=lambda x: float(x.balance), reverse=True)
+        return render_template_string('''
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>All Addresses</title>
+                <style>
+                    body {
+                        font-family: Arial, sans-serif;
+                    }
+                    table {
+                        width: 100%;
+                        border-collapse: collapse;
+                    }
+                    th, td {
+                        border: 1px solid #dddddd;
+                        text-align: left;
+                        padding: 8px;
+                    }
+                    tr:nth-child(even) {
+                        background-color: #f2f2f2;
+                    }
+                </style>
+            </head>
+            <body>
+                <h1>All Addresses and Balances</h1>
+                <table>
+                    <tr>
+                        <th>Address</th>
+                        <th>Balance</th>
+                    </tr>
+                    {% for address_info in sorted_addresses %}
+                    <tr>
+                        <td>{{ address_info.address }}</td>
+                        <td>{{ address_info.balance }}</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+            </body>
+            </html>
+        ''', sorted_addresses=sorted_addresses)
+
+    except grpc.RpcError as e:
+        print(f"Ошибка gRPC: {str(e)}")
+        return "Ошибка получения данных о адресах"
 
 if __name__ == '__main__':
-    app.run(debug=False, host='5.35.98.126', port=80)
-    # app.run()
+    # app.run(debug=False, host='5.35.98.126', port=80)
+    app.run()

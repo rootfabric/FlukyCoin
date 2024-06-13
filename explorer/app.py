@@ -45,7 +45,8 @@ def parse_node_info(response):
         "blocks": response.blocks,
         "peers": list(response.peers),
         "peer_count": len(response.peers),
-        "last_block_time": last_block_time
+        "last_block_time": last_block_time,
+        "last_block_hash": response.last_block_hash
     }
 
 if __name__ == '__main__':

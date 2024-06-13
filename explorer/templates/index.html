@@ -6,7 +6,7 @@
     <p><strong>Peers ({{ node_info.peer_count }}):</strong></p>
     <ul>
         {% for peer in node_info.peers %}
-        <li>{{ peer }}</li>
+        <li>{{node_info.last_block_hash[:4]}}...{{node_info.last_block_hash[-4:]}} : {{ peer }}</li>
         {% endfor %}
     </ul>
     <p><strong>Last Block Time:</strong> {{ node_info.last_block_time }}</p>

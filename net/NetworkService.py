@@ -281,11 +281,13 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         """ Информация о состоянии сети """
         last_block:Block = self.node_manager.chain.last_block()
         last_block_time = last_block.timestamp_seconds
+        last_block_hash = last_block.hash_block()
         return network_pb2.NetInfoResponse(
             synced=self.node_manager.is_synced(),
             blocks=self.node_manager.chain.blocks_count(),
             peers=list(self.active_peers),
-            last_block_time=last_block_time
+            last_block_time=last_block_time,
+            last_block_hash=last_block_hash
         )
     def GetAllAddresses(self, request, context):
         # Получаем все балансы из хранилища транзакций

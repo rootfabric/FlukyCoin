@@ -40,6 +40,7 @@ message NetInfoResponse {
     int32 blocks = 2;
     repeated string peers = 3;
     int32 last_block_time = 4;
+    string last_block_hash = 5;
 }
 
 message TransactionList {

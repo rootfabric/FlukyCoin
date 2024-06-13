@@ -6,6 +6,10 @@ sudo systemctl enable explorer.service
 sudo systemctl start node.service
 sudo systemctl start explorer.service
 
+# Перезапустить службы
+sudo systemctl restart node.service
+sudo systemctl restart explorer.service
+
 
 # Проверка статуса node.service
 sudo systemctl status node.service

@@ -13,7 +13,7 @@ class Protocol:
     # WAIT_ACTIVE_PEERS_BEFORE_START = 10
 
     # BLOCK_TIME_INTERVAL =  30
-    BLOCK_TIME_INTERVAL = 30
+    BLOCK_TIME_INTERVAL = 10
 
     BLOCK_TIME_INTERVAL_LOG = 1
 
@@ -22,10 +22,10 @@ class Protocol:
 
     # после закрытия блока, пауза перед созданием нового.
     # все ноды должны закрыть блок чтобы принять новый кандидат
-    BLOCK_TIME_PAUSE_AFTER_CLOSE = 2
+    BLOCK_TIME_PAUSE_AFTER_CLOSE = 1
 
     # количество секунд перед закрытием, когда прекращаем синхронизации и проверки
-    BLOCK_END_CHECK_PAUSE = 10
+    BLOCK_END_CHECK_PAUSE = 1
 
     # 11 2-4 в день
     KEY_BLOCK_POROG = 11
@@ -45,7 +45,7 @@ class Protocol:
     # принудительно берем ноды у всех пирово
     TIME_PAUSE_GET_PEERS = 10
 
-    TIME_PAUSE_PING_PEERS = 3
+    TIME_PAUSE_PING_PEERS = 2
 
     hash_functions = {
         0: hashlib.sha256(),

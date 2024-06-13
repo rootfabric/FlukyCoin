@@ -4,11 +4,24 @@
     <p><strong>Synced:</strong> {{ node_info.synced }}</p>
     <p><strong>Blocks:</strong> {{ node_info.blocks }}</p>
     <p><strong>Peers ({{ node_info.peer_count }}):</strong></p>
-    <ul>
-        {% for peer in node_info.peers %}
-        <li>{{node_info.last_block_hash[:4]}}...{{node_info.last_block_hash[-4:]}} : {{ peer }}</li>
-        {% endfor %}
-    </ul>
+    <table>
+        <thead>
+            <tr>
+                <th>Last Block Hash</th>
+                <th>Peer</th>
+                <th>Difficulty</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for peer in node_info.peers %}
+            <tr>
+                <td>{{node_info.last_block_hash[:4]}}...{{node_info.last_block_hash[-4:]}}</td>
+                <td>{{ peer }}</td>
+                <td>{{node_info.difficulty}}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     <p><strong>Last Block Time:</strong> {{ node_info.last_block_time }}</p>
     <h1>Enter Wallet Address</h1>
     <form method="post">

@@ -23,6 +23,7 @@ class Chain():
         self.mempool: Mempool = mempool
         self.protocol = Protocol()
         self.log = log
+        self.difficulty = 0
 
         self.block_candidate: Block = None
 
@@ -43,6 +44,8 @@ class Chain():
         self.history_hash = {}
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
+
+
 
     def get_block_by_number(self, num):
         if num < len(self.blocks):
@@ -113,15 +116,31 @@ class Chain():
 
                 self.blocks = [Block.from_json(j) for j in blocks_json]
 
-            # for block in self.blocks:
-            #     self.miners.add(block.signer)
+            self.calculate_difficulty()
 
             self.log.info(
-                f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.transaction_storage.miners)}")
+                f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.transaction_storage.miners)} all_ratio: {self.difficulty}")
         except FileNotFoundError:
             self.log.error("No blockchain file found.")
         except Exception as e:
             self.log.error(f"Failed to load blockchain: {e}")
+
+    def calculate_difficulty(self):
+        """ Сложность цепи """
+
+        # при больших объемах, нужно хранить отдельно
+        self.difficulty = 0
+        for block in self.blocks:
+            self.difficulty += self.block_difficulty(block)
+
+    def block_difficulty(self, block: Block):
+        """ Сложность блока """
+
+        ratio, _ = Protocol.find_longest_common_substring(block.signer.lower(), Protocol.sequence(block.previousHash))
+
+        address_height = Protocol.address_height(block.signer)
+
+        return ratio * address_height
 
     def validate_block_hash(self, block: Block):
         if block.previousHash != self.last_block_hash():
@@ -290,7 +309,8 @@ class Chain():
 
         self.transaction_storage.add_block(block)
 
-        # self.miners.add(block.signer)
+        # Увеличиваем сложность цепи
+        self.difficulty += self.block_difficulty(block)
 
         self.history_hash[block.hash_block()] = block
         # self.save_to_disk()

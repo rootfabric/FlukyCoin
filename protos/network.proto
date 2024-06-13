@@ -41,6 +41,7 @@ message NetInfoResponse {
     repeated string peers = 3;
     int32 last_block_time = 4;
     string last_block_hash = 5;
+    int32 difficulty = 6;
 }
 
 message TransactionList {
@@ -68,6 +69,7 @@ message PeerInfoResponse {
   int32 peer_count = 7;
   string network_info = 8;
   int32 pending_transactions = 9;
+  int32 difficulty = 10;
 }
 
 message BlockRequest {

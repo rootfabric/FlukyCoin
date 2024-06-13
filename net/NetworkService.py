@@ -59,6 +59,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             peer_count = int(len(self.active_peers))
             network_info = str(self.local_address)
             pending_transactions = int(self.node_manager.mempool.size())
+            difficulty = self.node_manager.chain.difficulty
 
             # Detailed debug output
             # print(f"version: {type(version)}, synced: {type(synced)}, latest_block: {type(latest_block)}, "
@@ -75,7 +76,8 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
                 uptime=uptime,
                 peer_count=peer_count,
                 network_info=network_info,
-                pending_transactions=pending_transactions
+                pending_transactions=pending_transactions,
+                difficulty=difficulty
             )
 
             return response
@@ -279,7 +281,8 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def GetNetInfo(self, request, context):
         """ Информация о состоянии сети """
-        last_block:Block = self.node_manager.chain.last_block()
+        last_block: Block = self.node_manager.chain.last_block()
+        difficulty= self.node_manager.chain.difficulty
         last_block_time = last_block.timestamp_seconds
         last_block_hash = last_block.hash_block()
         return network_pb2.NetInfoResponse(
@@ -287,8 +290,10 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             blocks=self.node_manager.chain.blocks_count(),
             peers=list(self.active_peers),
             last_block_time=last_block_time,
-            last_block_hash=last_block_hash
+            last_block_hash=last_block_hash,
+            difficulty = difficulty
         )
+
     def GetAllAddresses(self, request, context):
         # Получаем все балансы из хранилища транзакций
         all_balances = self.node_manager.chain.transaction_storage.get_all_balances()

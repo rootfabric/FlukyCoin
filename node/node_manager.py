@@ -11,13 +11,15 @@ from core.protocol import Protocol
 from storage.mempool import Mempool
 from storage.miners_storage import MinerStorage
 from storage.chain import Chain
-import signal
+
+import threading
+
 import datetime
-from net.client import Client
-from net.network_manager import NetworkManager
+import signal
+
 from tools.time_sync import NTPTimeSynchronizer
 from tools.logger import Log
-import json
+
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from net.GrpcServer import GrpcServer
@@ -61,17 +63,28 @@ class NodeManager:
 
         self.server.start()
 
-        self.block_candidate = "123"
-
         self._synced = False
         self.timer_drop_synced = None
         self.running = True
 
-        self.executor = ThreadPoolExecutor(max_workers=2)
-
-
+        self.system_executor = ThreadPoolExecutor(max_workers=5)
+        self.executor = ThreadPoolExecutor(max_workers=10)
 
         self.enable_load_info = True
+        self.enable_distribute_block = True
+
+        self.shutdown_event = threading.Event()
+
+        signal.signal(signal.SIGINT, self.signal_handler)
+        signal.signal(signal.SIGTERM, self.signal_handler)
+
+    def signal_handler(self, signum, frame):
+        self.log.info("Signal received, shutting down...")
+        self.shutdown_event.set()
+        self.running = False
+        self.executor.shutdown(wait=False)
+        self.system_executor.shutdown(wait=False)
+
     def is_synced(self):
         return self._synced
 
@@ -247,6 +260,8 @@ class NodeManager:
                 self.set_node_synced(True)
             else:
                 print("Ждем начала блока")
+                time.sleep(1)
+
 
         # отключен механизм потери синхронизации
         # if self.timer_drop_synced is not None:
@@ -272,6 +287,7 @@ class NodeManager:
                                 if info.block_candidate == self.chain.block_candidate_hash:
                                     # print(""" На синхронной ноде кандидат отличается """)
                                     candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
+                                    # candidate_from_peer = self.client_handler.request_block_candidate_from_peer(info.network_info)
 
                                     if self.chain.validate_block(candidate_from_peer):
                                         if self.chain.validate_candidate(candidate_from_peer):
@@ -334,9 +350,9 @@ class NodeManager:
                 if command[0] == "1":
                     self.enable_load_info = not self.enable_load_info
                     print(f"enable_load_info {'enabled' if self.enable_load_info else 'disabled'}.")
-                elif command[0] == "b":
-                    feature_b_enabled = not feature_b_enabled
-                    print(f"Feature B {'enabled' if feature_b_enabled else 'disabled'}.")
+                elif command[0] == "2":
+                    self.enable_distribute_block = not self.enable_distribute_block
+                    print(f"enable_distribute_block {'enabled' if self.enable_distribute_block else 'disabled'}.")
                 else:
                     print(f"No such feature: {command[1]}")
             elif command[0] == "exit":
@@ -348,11 +364,11 @@ class NodeManager:
     def run_node(self):
         """ Основной цикл  """
 
-        self.executor.submit(self.technical_block)
+        self.system_executor.submit(self.technical_block)
 
-        self.executor.submit(self.toggle_feature)
+        self.system_executor.submit(self.toggle_feature)
 
-        while True:
+        while self.running:
 
             if not self._synced:
                 self.log.info(
@@ -387,10 +403,10 @@ class NodeManager:
             if self.chain.add_block_candidate(new_block):
                 self.log.info(f"Свой Блок кандидат добавлен", new_block.hash,
                               new_block.signer)
-                # self.network_manager.distribute_block(self.chain.block_candidate)
-                # print("self.server.servicer.active_peers", self.server.servicer.active_peers)
 
-                self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
+                # print("self.server.servicer.active_peers", self.server.servicer.active_peers)
+                if self.enable_distribute_block:
+                    self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
 
             needClose = self.chain.need_close_block()
             if needClose and self.chain.block_candidate is not None:

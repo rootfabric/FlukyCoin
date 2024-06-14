@@ -195,7 +195,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             return network_pb2.Ack(success=False)
 
         block = Block.from_json(request.data)  # Десериализация блока
-        # print("BroadcastBlock", block.hash_block())
+        print("BroadcastBlock", block.hash_block())
         if self.node_manager.chain.add_block_candidate(block):
             # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
             #       block.signer)
@@ -288,10 +288,11 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
         peers_info = []
 
-        for info in self.node_manager.peer_info.values():
+        for key, info in self.node_manager.peer_info.items():
             # print('network_info', info.network_info)
             peers_info.append({
-                'network_info': info.network_info,
+                # 'network_info': info.network_info,
+                'network_info': key,
                 'synced': info.synced,
                 'blocks': info.blocks,
                 'latest_block': info.latest_block,

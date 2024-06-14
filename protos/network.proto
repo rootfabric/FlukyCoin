@@ -36,12 +36,21 @@ message AddressList {
 
 
 message NetInfoResponse {
-    bool synced = 1;
-    int32 blocks = 2;
-    repeated string peers = 3;
-    int32 last_block_time = 4;
-    string last_block_hash = 5;
-    int32 difficulty = 6;
+  bool synced = 1;
+  int32 blocks = 2;
+  int64 last_block_time = 3;
+  string last_block_hash = 4;
+  int32 difficulty = 5;
+  repeated PeerInfo peers_info = 6;
+}
+
+message PeerInfo {
+  string network_info = 1;
+  bool synced = 2;
+  int32 blocks = 3;
+  string latest_block = 4;
+  float uptime = 5;
+  int32 difficulty = 6;
 }
 
 message TransactionList {

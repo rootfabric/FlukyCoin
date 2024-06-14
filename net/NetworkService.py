@@ -282,16 +282,29 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def GetNetInfo(self, request, context):
         """ Информация о состоянии сети """
         last_block: Block = self.node_manager.chain.last_block()
-        difficulty= self.node_manager.chain.difficulty
+        difficulty = self.node_manager.chain.difficulty
         last_block_time = last_block.timestamp_seconds
         last_block_hash = last_block.hash_block()
+
+        peers_info = []
+
+        for info in self.node_manager.peer_info.values():
+            peers_info.append({
+                'network_info': info.network_info,
+                'synced': info.synced,
+                'blocks': info.blocks,
+                'latest_block': info.latest_block,
+                'uptime': info.uptime,
+                'difficulty': info.difficulty
+            })
+
         return network_pb2.NetInfoResponse(
             synced=self.node_manager.is_synced(),
             blocks=self.node_manager.chain.blocks_count(),
-            peers=list(self.active_peers),
             last_block_time=last_block_time,
             last_block_hash=last_block_hash,
-            difficulty = difficulty
+            difficulty=difficulty,
+            peers_info=peers_info
         )
 
     def GetAllAddresses(self, request, context):

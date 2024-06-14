@@ -44,6 +44,9 @@ class NodeManager:
         # self.initial_peers.append(self.address)
         self.version = Protocol.VERSION
 
+        self.peer_info = []
+
+
         self.time_ntpt = NTPTimeSynchronizer(log=log)
 
         self.mempool = Mempool(config)
@@ -65,6 +68,8 @@ class NodeManager:
         self.running = True
 
         self.executor = ThreadPoolExecutor(max_workers=2)
+
+
 
         self.enable_load_info = True
     def is_synced(self):
@@ -299,10 +304,10 @@ class NodeManager:
 
                     if self.enable_load_info:
                         print("fetch_info_from_peers")
-                        peer_info = self.client_handler.fetch_info_from_peers()
+                        self.peer_info = self.client_handler.fetch_info_from_peers()
 
                 if self.enable_load_info:
-                    self.check_sync(peer_info)
+                    self.check_sync(self.peer_info)
 
                 if self._synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
                     timer_get_nodes = time.time()
@@ -351,7 +356,7 @@ class NodeManager:
 
             if not self._synced:
                 self.log.info(
-                    f"---synced {self._synced}-------is_miner {self.config.get('is_miner', 'False')}-----------")
+                    f"---synced {self._synced}-------is_miner {self.config.get('is_miner', 'False')}-----------active_peers: {self.server.servicer.active_peers}")
                 # self.log.info(
                 #     f"active_peers: {self.server.servicer.active_peers}")
                 # self.log.info(

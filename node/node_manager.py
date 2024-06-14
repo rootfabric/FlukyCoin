@@ -66,6 +66,7 @@ class NodeManager:
 
         self.executor = ThreadPoolExecutor(max_workers=2)
 
+        self.enable_load_info = True
     def is_synced(self):
         return self._synced
 
@@ -296,9 +297,12 @@ class NodeManager:
                     except Exception as e:
                         print("error connect_to_peers", e)
 
-                    peer_info = self.client_handler.fetch_info_from_peers()
+                    if self.enable_load_info:
+                        print("fetch_info_from_peers")
+                        peer_info = self.client_handler.fetch_info_from_peers()
 
-                self.check_sync(peer_info)
+                if self.enable_load_info:
+                    self.check_sync(peer_info)
 
                 if self._synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
                     timer_get_nodes = time.time()
@@ -316,10 +320,32 @@ class NodeManager:
             except Exception as e:
                 print("Ошибка технического блока ", e)
 
+    def toggle_feature(self):
+        """ Для дебага управление функционалом ноды """
+
+        while True:
+            command = input("Enter command: ").strip().split()
+            if len(command) == 1:
+                if command[0] == "1":
+                    self.enable_load_info = not self.enable_load_info
+                    print(f"enable_load_info {'enabled' if self.enable_load_info else 'disabled'}.")
+                elif command[0] == "b":
+                    feature_b_enabled = not feature_b_enabled
+                    print(f"Feature B {'enabled' if feature_b_enabled else 'disabled'}.")
+                else:
+                    print(f"No such feature: {command[1]}")
+            elif command[0] == "exit":
+                print("Exiting...")
+                break
+            else:
+                print("Unknown command.")
+
     def run_node(self):
         """ Основной цикл  """
 
         self.executor.submit(self.technical_block)
+
+        self.executor.submit(self.toggle_feature)
 
         while True:
 

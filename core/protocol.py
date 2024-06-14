@@ -34,7 +34,7 @@ class Protocol:
     TIME_CONFIRM_LOST_SYNC = 60
 
     # сколько вермени ищем новые ноды перед тем как начать свою цепь если первые
-    TIME_WAIN_CONNECT_TO_NODES_START = 5
+    TIME_WAIN_CONNECT_TO_NODES_START = 60
 
     coinbase_address = b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00' \
                        b'\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'

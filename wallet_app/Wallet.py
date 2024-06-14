@@ -11,6 +11,9 @@ class Wallet:
         """ """
         self.filename = filename
         self.server = server = '95.154.71.53:9333'
+        # self.server = server = 'yglamazdin.fvds.ru:9333'
+        # self.server = server = 'yglamazdin.fvds.ru:9333'
+        # self.server = server = '5.35.98.126:9334'
         self.keys: {str: XMSS} = dict()
 
 
@@ -126,16 +129,16 @@ if __name__ == '__main__':
 
     wallet = Wallet(filename ="keys.dat")
 
-    password = input("пароль:")
-    wallet.load_from_file(password)
-
-    # print(wallet.keys_address())
-
-    # wallet.add_key(seed_phrase=input("сид:"))
-    wallet.add_key(key=input("ключ:"))
-
+    # password = input("пароль:")
+    # wallet.load_from_file(password)
     #
-    wallet.save_to_file(password)
+    # # print(wallet.keys_address())
+    #
+    # # wallet.add_key(seed_phrase=input("сид:"))
+    # wallet.add_key(key=input("ключ:"))
+    #
+    # #
+    # wallet.save_to_file(password)
 
     # info = wallet.info("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")
     wallet.info_text("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")

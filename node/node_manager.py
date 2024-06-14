@@ -303,7 +303,7 @@ class NodeManager:
                         print("error connect_to_peers", e)
 
                     if self.enable_load_info:
-                        print("fetch_info_from_peers")
+                        # print("fetch_info_from_peers")
                         self.peer_info = self.client_handler.fetch_info_from_peers()
 
                 if self.enable_load_info:

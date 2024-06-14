@@ -34,7 +34,7 @@ class ClientHandler:
         try:
             with grpc.insecure_channel(address) as channel:
                 stub = network_pb2_grpc.NetworkServiceStub(channel)
-                stub.Ping(network_pb2.Empty(), timeout=1)  # Установка таймаута для пинга
+                stub.Ping(network_pb2.Empty(), timeout=2)  # Установка таймаута для пинга
                 return True
         except grpc.RpcError as e:
             # print(f"Failed to ping {address}: {str(e)}")
@@ -109,6 +109,7 @@ class ClientHandler:
     def fetch_info_from_peers(self):
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {executor.submit(self.fetch_info, peer): peer for peer in self.servicer.active_peers}
+            # print("start active peers:", len(self.servicer.active_peers))
             peer_info = {}
             for future in as_completed(futures, timeout=5):
                 peer = futures[future]
@@ -117,7 +118,7 @@ class ClientHandler:
                 except Exception as e:
                     print(f"Failed to fetch info from {peer}: {e}")
 
-            # print("Fetched info from active peers:", peer_info)
+            # print("Fetched info from active peers:", len(peer_info))
             return peer_info
 
     def fetch_info(self, address):

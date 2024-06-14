@@ -3,26 +3,35 @@
     <h1>Node Information</h1>
     <p><strong>Synced:</strong> {{ node_info.synced }}</p>
     <p><strong>Blocks:</strong> {{ node_info.blocks }}</p>
-    <p><strong>Peers ({{ node_info.peer_count }}):</strong></p>
-    <table>
-        <thead>
-            <tr>
-                <th>Last Block Hash</th>
-                <th>Peer</th>
-                <th>Difficulty</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for peer in node_info.peers %}
-            <tr>
-                <td>{{node_info.last_block_hash[:4]}}...{{node_info.last_block_hash[-4:]}}</td>
-                <td>{{ peer }}</td>
-                <td>{{node_info.difficulty}}</td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
     <p><strong>Last Block Time:</strong> {{ node_info.last_block_time }}</p>
+    <p><strong>Last Block Hash:</strong> {{ node_info.last_block_hash }}</p>
+    <p><strong>Difficulty:</strong> {{ node_info.difficulty }}</p>
+    <p><strong>Peers ({{ node_info.peer_count }}):</strong></p>
+    <table border="1">
+    <thead>
+        <tr>
+            <th>Network Info</th>
+            <th>Synced</th>
+            <th>Blocks</th>
+            <th>Latest Block</th>
+            <th>Uptime</th>
+            <th>Difficulty</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for peer in node_info.peers | sort(attribute='network_info') %}
+        <tr>
+            <td>{{ peer.network_info }}</td>
+            <td>{{ peer.synced }}</td>
+            <td>{{ peer.blocks }}</td>
+            <td>{{ peer.latest_block }}</td>
+            <td>{{ peer.uptime }}</td>
+            <td>{{ peer.difficulty }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
     <h1>Enter Wallet Address</h1>
     <form method="post">
         <input type="text" name="address" placeholder="Enter wallet address" required>

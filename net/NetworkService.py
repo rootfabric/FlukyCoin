@@ -289,15 +289,15 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         peers_info = []
 
         for info in self.node_manager.peer_info.values():
+            # print('network_info', info.network_info)
             peers_info.append({
                 'network_info': info.network_info,
                 'synced': info.synced,
                 'blocks': info.blocks,
                 'latest_block': info.latest_block,
-                'uptime': info.uptime,
+                'uptime': round(info.uptime, 2),
                 'difficulty': info.difficulty
             })
-
         return network_pb2.NetInfoResponse(
             synced=self.node_manager.is_synced(),
             blocks=self.node_manager.chain.blocks_count(),

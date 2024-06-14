@@ -12,4 +12,5 @@ initial_peers:
 #    - "api.robotsimulator.ru:9333"
 #    - "api.robotsimulator.ru:9334"
     - "95.154.71.53:9334"
+    - "95.154.71.53:9335"
 address_reward: bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm

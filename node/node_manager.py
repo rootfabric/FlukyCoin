@@ -260,7 +260,7 @@ class NodeManager:
                 self.set_node_synced(True)
             else:
                 print("Ждем начала блока")
-                time.sleep(1)
+                time.sleep(0.5)
 
 
         # отключен механизм потери синхронизации

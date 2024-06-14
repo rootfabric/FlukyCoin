@@ -13,12 +13,12 @@ class Protocol:
     # WAIT_ACTIVE_PEERS_BEFORE_START = 10
 
     # BLOCK_TIME_INTERVAL =  30
-    BLOCK_TIME_INTERVAL = 10
+    BLOCK_TIME_INTERVAL = 5
 
     BLOCK_TIME_INTERVAL_LOG = 1
 
     # количество секунд. после смены блока, перед проверками
-    BLOCK_START_CHECK_PAUSE = 1
+    BLOCK_START_CHECK_PAUSE = 0
 
     # после закрытия блока, пауза перед созданием нового.
     # все ноды должны закрыть блок чтобы принять новый кандидат

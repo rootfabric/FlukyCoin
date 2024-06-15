@@ -7,13 +7,13 @@ from crypto.file_crypto import FileEncryptor
 
 
 class Wallet:
-    def __init__(self,  filename = "keys.dat", server='192.168.0.26:9334'):
+    def __init__(self,  filename = "keys.dat", server='5.35.98.126:9333'):
         """ """
         self.filename = filename
         # self.server = server = '95.154.71.53:9333'
         # self.server = server = 'yglamazdin.fvds.ru:9333'
         # self.server = server = 'yglamazdin.fvds.ru:9333'
-        self.server = server = '5.35.98.126:9333'
+        self.server = server
         self.keys: {str: XMSS} = dict()
 
 
@@ -127,7 +127,7 @@ class Wallet:
 
 if __name__ == '__main__':
 
-    wallet = Wallet(filename ="keys.dat")
+    wallet = Wallet(filename ="keys.dat", server='192.168.0.26:9334')
 
     # password = input("пароль:")
     # wallet.load_from_file(password)
@@ -142,7 +142,7 @@ if __name__ == '__main__':
 
     # info = wallet.info("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")
     wallet.info_text("YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA")
-    wallet.info_text("bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm")
+    # wallet.info_text("bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm")
 
 
 

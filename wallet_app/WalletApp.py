@@ -6,9 +6,10 @@ from core.protocol import Protocol
 import os
 
 class WalletApp(tk.Tk):
-    def __init__(self):
+    def __init__(self, server='5.35.98.126:9333'):
         super().__init__()
-        self.wallet = Wallet()
+        self.server = server
+        self.wallet = Wallet(server=self.server)
         self.title("Кошелек")
         self.geometry("700x400")  # Увеличил размер для лучшего отображения вкладок
         self.password = None
@@ -29,7 +30,7 @@ class WalletApp(tk.Tk):
         self.password = simpledialog.askstring("Пароль", "Введите пароль кошелька:", show='*')
         if self.password:
             try:
-                self.wallet = Wallet(filename = filename)  # Создаем экземпляр кошелька с указанием файла
+                self.wallet = Wallet(filename = filename, server=self.server)  # Создаем экземпляр кошелька с указанием файла
                 self.wallet.load_from_file(self.password)
                 self.populate_first_address()
                 self.update_balance_info()
@@ -56,7 +57,7 @@ class WalletApp(tk.Tk):
                 info = self.wallet.info(address)
                 self.lbl_balance.config(text=f"Баланс: {info.balance / 10000000} coins, Нонс: {info.nonce} ,Всего подписей: {Protocol.address_max_sign(address)}")
             except Exception as e:
-                messagebox.showerror("Ошибка", str(e))
+                # messagebox.showerror("Ошибка", str(e))
                 return  # Возвращаемся, если произошла ошибка, чтобы избежать бесконечного цикла
         self.after(5000, self.update_balance_info)  # Планируем следующее обновление через 5 секунд
 
@@ -239,5 +240,6 @@ class WalletApp(tk.Tk):
 
 # Инициализация и запуск приложения
 # wallet = Wallet()  # Замените этим ваш объект кошелька
-app = WalletApp()
+# app = WalletApp(server='5.35.98.126:9333')
+app = WalletApp(server='192.168.0.26:9334')
 app.mainloop()

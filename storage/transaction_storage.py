@@ -28,14 +28,12 @@ class TransactionStorage:
         # for new_node in block.new_nodes:
         #     self.nodes_rating[new_node] = 0
 
-
         # для зачисления коммисии нужен адрес
         address_reward = None
         for transaction in block.transactions:
             if transaction.tx_type == "coinbase":
                 address_reward = transaction.toAddress[0]
                 break
-
 
         for transaction in block.transactions:
             self.add_transaction(transaction, address_reward)
@@ -45,10 +43,6 @@ class TransactionStorage:
 
         # Учитываем подпись ключа блока
         self.add_nonses_to_address(block.signer)
-
-
-
-
 
     def add_transaction(self, transaction: Transaction, address_reward: str):
         """
@@ -153,9 +147,18 @@ class TransactionStorage:
 
     def rollback_block(self, block):
         """ Откат блока в хранилище """
+
+        # для отката коммисии нужен адрес
+        address_reward = None
+        for transaction in block.transactions:
+            if transaction.tx_type == "coinbase":
+                address_reward = transaction.toAddress[0]
+                break
+
+
         # Перебираем все транзакции в блоке, начиная с конца, чтобы сначала откатить обычные транзакции, затем coinbase
         for transaction in reversed(block.transactions):
-            self.rollback_transaction(transaction)
+            self.rollback_transaction(transaction, address_reward)
 
         # Добавляем майнера
         if block.signer in self.miners:
@@ -164,8 +167,7 @@ class TransactionStorage:
         # Учитываем подпись ключа блока
         self.pop_nonses_to_address(block.signer)
 
-
-    def rollback_transaction(self, transaction: Transaction):
+    def rollback_transaction(self, transaction: Transaction, address_reward):
         from_address = transaction.fromAddress
         amounts = transaction.all_amounts()
         fee = transaction.fee
@@ -185,8 +187,8 @@ class TransactionStorage:
             self.balances[from_address] = self.balances.get(from_address, 0) + amounts + fee
 
             # Возврат комиссии майнеру (убираем из баланса адреса награды)
-            if transaction.reward_address in self.balances:
-                self.balances[transaction.reward_address] = self.balances.get(transaction.reward_address, 0) - fee
+            if address_reward in self.balances:
+                self.balances[address_reward] = self.balances.get(address_reward, 0) - fee
 
             # Вычитание средств у получателей
             for i, address in enumerate(to_address):
@@ -196,6 +198,13 @@ class TransactionStorage:
         if from_address in self.nonces:
             self.nonces[from_address] -= 1
 
-    def get_transactions_by_address(self, address):
-        # Возвращаем транзакции, где address является отправителем или получателем
-        return [tr for tr in self.transactions if tr.fromAddress == address or address in tr.toAddress]
+    def get_transactions_by_address(self, address, transactions_start=0, transactions_end=0):
+
+        # # Возвращаем транзакции, где address является отправителем или получателем
+        # if transactions_start is None:
+        #     transactions_start = 0
+        #
+        # if transactions_end is None:
+        #     transactions_start = 10
+
+        return [tr for tr in self.transactions[transactions_start:transactions_end] if tr.fromAddress == address or address in tr.toAddress]

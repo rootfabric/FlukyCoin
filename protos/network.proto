@@ -97,6 +97,8 @@ message Block {
 
 message AddressRequest {
   string address = 1;
+  int32 transactions_start = 2;
+  int32 transactions_end = 3;
 }
 
 message AddressInfoResponse {

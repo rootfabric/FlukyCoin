@@ -115,7 +115,7 @@ class SyncManager:
                 self.log.info("Ждем начала блока")
                 time.sleep(0.5)
 
-        if self._synced:
+        if self.is_synced():
             self.unsync_count = 0
             last_block_time = self.last_block_time()
             if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE:
@@ -124,6 +124,18 @@ class SyncManager:
                         continue
                     if self.is_block_candidate_new(info):
                         self.node_manager.client_handler.request_block_candidate_from_peer(info.network_info)
+
+            if self.unsync_count>0:
+
+                """ Требуется выяснить, текущая нода принадлежит главной цепи или нет """
+                print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
+
+                if self.node_manager.chain.difficulty<max_difficulty:
+                    print("Сложность текущей цепи ниже чем в сети")
+                    print("Потеря синхронизации")
+                    self.set_node_synced(False)
+
+
 
     def last_block_time(self):
         return self.node_manager.chain.last_block_time()
@@ -136,7 +148,7 @@ class SyncManager:
         if info.block_candidate == 'None':
             return False
         if info.blocks != self.node_manager.chain.blocks_count():
-            self.log.info("Различие в длине цепи", info.blocks, self.node_manager.chain.blocks_count())
+            # self.log.info("Различие в длине цепи", info.blocks, self.node_manager.chain.blocks_count())
             return False
         if info.latest_block != self.node_manager.chain.last_block_hash():
             self.log.info("Различие в блоках", info.latest_block, self.node_manager.chain.last_block_hash())

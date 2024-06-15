@@ -15,25 +15,17 @@ service NetworkService {
   rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse);
   rpc GetNetInfo(Empty) returns (NetInfoResponse);
   rpc GetAllAddresses(Empty) returns (AddressList);
-  /*rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse) {
-    option (google.api.http) = {
-      get: "/address-info/{address}"
-    };
-  rpc GetNetInfo(Empty) returns (NetInfoResponse) {
-    option (google.api.http) = {
-      get: "/address-info/{address}"
-    };
-    */
+  rpc BroadcastBlockHash(BlockHash) returns (BlockHashResponse);  // Новый метод
 }
+
 message AddressInfo {
-    string address = 1;
-    string balance = 2;
+  string address = 1;
+  string balance = 2;
 }
 
 message AddressList {
-    repeated AddressInfo addresses = 1;
+  repeated AddressInfo addresses = 1;
 }
-
 
 message NetInfoResponse {
   bool synced = 1;
@@ -54,7 +46,7 @@ message PeerInfo {
 }
 
 message TransactionList {
-    repeated Transaction transactions = 1;
+  repeated Transaction transactions = 1;
 }
 
 message PeerRequest {
@@ -74,7 +66,7 @@ message PeerInfoResponse {
   int32 blocks = 3;
   string latest_block = 4;
   string block_candidate = 5;
-  float  uptime = 6;
+  float uptime = 6;
   int32 peer_count = 7;
   string network_info = 8;
   int32 pending_transactions = 9;
@@ -82,11 +74,11 @@ message PeerInfoResponse {
 }
 
 message BlockRequest {
-    int64 block_number = 1;
+  int64 block_number = 1;
 }
 
 message BlockResponse {
-    string block_data = 1;  // JSON-представление блока
+  string block_data = 1;  // JSON-представление блока
 }
 
 message TransactionHash {
@@ -103,12 +95,8 @@ message Block {
   string data = 1;
 }
 
-//message AddressRequest {
-//  string address = 1;
-//}
 message AddressRequest {
-  //string address = 1 [(google.api.http).path = "address"];
-  string address = 1 ;
+  string address = 1;
 }
 
 message AddressInfoResponse {
@@ -117,11 +105,17 @@ message AddressInfoResponse {
   repeated Transaction transactions = 3;
 }
 
-
-
 message Ack {
   bool success = 1;
 }
 
 message Empty {
+}
+
+message BlockHash {
+  string hash = 1;
+}
+
+message BlockHashResponse {
+  bool need_block = 1;
 }

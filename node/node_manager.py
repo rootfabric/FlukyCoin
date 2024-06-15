@@ -46,8 +46,7 @@ class NodeManager:
         # self.initial_peers.append(self.address)
         self.version = Protocol.VERSION
 
-        self.peer_info = []
-
+        self.peer_info = {}
 
         self.time_ntpt = NTPTimeSynchronizer(log=log)
 
@@ -74,6 +73,9 @@ class NodeManager:
         self.enable_distribute_block = True
 
         self.shutdown_event = threading.Event()
+
+        ## для блока синхры потом на вынос
+        self.unsync_count = 0
 
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
@@ -219,6 +221,9 @@ class NodeManager:
             for address, info in peer_info.items():
                 """ """
                 # print(address, "info.blocks", info.blocks, info.synced)
+                if info is None:
+                    continue
+
                 if info.synced:
                     count_sync += 1
                     if info.blocks > self.chain.blocks_count():
@@ -262,7 +267,6 @@ class NodeManager:
                 print("Ждем начала блока")
                 time.sleep(0.5)
 
-
         # отключен механизм потери синхронизации
         # if self.timer_drop_synced is not None:
         #     if time.time() > self.timer_drop_synced + Protocol.TIME_CONFIRM_LOST_SYNC:
@@ -271,37 +275,63 @@ class NodeManager:
 
         if self._synced:
 
-            unsinc_count = 0
+            self.unsync_count = 0
 
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
 
             # чтобы не создавать спам пакетов на срезах блоков, деламем паузу
             if self.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE:
-
                 """ если засинхрино, проверяем кандидаты """
                 for address, info in peer_info.items():
-                    """ """
-                    if info.synced:
-                        if info.block_candidate != 'None':
-                            if info.latest_block == self.chain.last_block_hash():
-                                if info.block_candidate == self.chain.block_candidate_hash:
-                                    # print(""" На синхронной ноде кандидат отличается """)
-                                    candidate_from_peer = self.client_handler.get_block_candidate(info.network_info)
-                                    # candidate_from_peer = self.client_handler.request_block_candidate_from_peer(info.network_info)
+                    if not self.is_valid_peer_info(info):
+                        continue
 
-                                    if self.chain.validate_block(candidate_from_peer):
-                                        if self.chain.validate_candidate(candidate_from_peer):
-                                            if self.chain.add_block_candidate(candidate_from_peer):
-                                                print(""" Новый кандидат добавлен """)
-                                                print(""" Делаем рассылку  """)
-                                                self.client_handler.distribute_block(candidate_from_peer)
-                            else:
-                                """ На нодах разные последние блоки, признаки рассинхрона """
-                                print("Различие  в блоках", info.latest_block, self.chain.last_block_hash())
-                                unsinc_count += 1
-            if unsinc_count + 1 == len(peer_info) and  len(peer_info) >2:
+                    if self.is_block_candidate_new(info):
+                        self.client_handler.request_block_candidate_from_peer(info.network_info)
+                    # else:
+                    #     print(f"Блок-кандидат с хешем {info.block_candidate} уже проверялся.")
+
+            if self.unsync_count + 1 == len(peer_info) and len(peer_info) > 2:
                 print("Наша нода единственная отличается от цепи")
-                self.set_node_synced(False)
+                # self.set_node_synced(False)
+
+    def is_valid_peer_info(self, info):
+        if info is None:
+            return False
+        if not info.synced:
+            return False
+        if info.block_candidate == 'None':
+            return False
+        if info.blocks != self.chain.blocks_count():
+            print("Различие в длине цепи", info.blocks, self.chain.blocks_count())
+            return False
+        if info.latest_block != self.chain.last_block_hash():
+            print("Различие в блоках", info.latest_block, self.chain.last_block_hash())
+            self.unsync_count += 1
+            return False
+        return True
+
+    def is_block_candidate_new(self, info):
+        if info.block_candidate != self.chain.block_candidate_hash and info.block_candidate not in self.chain.history_hash:
+            return True
+        return False
+
+    def is_node_desynced(self, unsync_count, peer_info):
+        return unsync_count + 1 == len(peer_info) and len(peer_info) > 2
+
+    def sync_block(self):
+        """ блок синхронизации """
+        while self.running:
+            try:
+                if self.enable_load_info:
+                    # print(self.peer_info)
+
+                    self.check_sync(self.peer_info)
+
+                if self.is_synced():
+                    time.sleep(1)
+            except Exception as e:
+                self.log.error('sync_block', e)
 
     def technical_block(self):
 
@@ -310,7 +340,10 @@ class NodeManager:
 
         while self.running:
             try:
-                if timer_ping_peers + Protocol.TIME_PAUSE_PING_PEERS < time.time():
+
+                pause_ping = Protocol.TIME_PAUSE_PING_PEERS_SYNCED if self.is_synced() else Protocol.TIME_PAUSE_PING_PEERS_NOT_SYNCED
+                # print("technical_block", pause_ping)
+                if timer_ping_peers + pause_ping < time.time():
                     timer_ping_peers = time.time()
                     self.client_handler.ping_peers()
                     try:
@@ -322,10 +355,7 @@ class NodeManager:
                         # print("fetch_info_from_peers")
                         self.peer_info = self.client_handler.fetch_info_from_peers()
 
-                if self.enable_load_info:
-                    self.check_sync(self.peer_info)
-
-                if self._synced and timer_get_nodes + Protocol.TIME_PAUSE_GET_PEERS < time.time():
+                if self._synced and timer_get_nodes + pause_ping < time.time():
                     timer_get_nodes = time.time()
 
                     self.client_handler.get_peers_list()
@@ -339,7 +369,8 @@ class NodeManager:
                 self.running = False
                 exit()
             except Exception as e:
-                print("Ошибка технического блока ", e)
+                self.log.error("Ошибка технического блока ", e)
+                self.running = False
 
     def toggle_feature(self):
         """ Для дебага управление функционалом ноды """
@@ -365,8 +396,8 @@ class NodeManager:
         """ Основной цикл  """
 
         self.system_executor.submit(self.technical_block)
-
-        self.system_executor.submit(self.toggle_feature)
+        self.system_executor.submit(self.sync_block)
+        # self.system_executor.submit(self.toggle_feature)
 
         while self.running:
 

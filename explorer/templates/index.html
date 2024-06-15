@@ -20,6 +20,7 @@
     </thead>
     <tbody>
         {% for peer in node_info.peers | sort(attribute='network_info') %}
+        {% if peer is not none %}
         <tr>
             <td>{{ peer.network_info }}</td>
             <td>{{ peer.synced }}</td>
@@ -28,6 +29,7 @@
             <td>{{ peer.uptime }}</td>
             <td>{{ peer.difficulty }}</td>
         </tr>
+        {% endif %}
         {% endfor %}
     </tbody>
 </table>

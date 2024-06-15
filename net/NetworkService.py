@@ -28,7 +28,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         self.known_peers.add(self.local_address)
 
         self.peer_addresses = {}  # Клиентский адрес -> серверный адрес
-        self.executor = ThreadPoolExecutor(max_workers=5)  # Пул потоков для асинхронной работы
+        self.executor = ThreadPoolExecutor(max_workers=20)  # Пул потоков для асинхронной работы
 
     # Реализация метода Ping
     def Ping(self, request, context):
@@ -195,7 +195,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             return network_pb2.Ack(success=False)
 
         block = Block.from_json(request.data)  # Десериализация блока
-        print("BroadcastBlock", block.hash_block())
+        print("BroadcastBlock", block.hash_block(), "from", request.address)
         if self.node_manager.chain.add_block_candidate(block):
             # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
             #       block.signer)
@@ -281,24 +281,24 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def GetNetInfo(self, request, context):
         """ Информация о состоянии сети """
-        last_block: Block = self.node_manager.chain.last_block()
+        last_block = self.node_manager.chain.last_block()
         difficulty = self.node_manager.chain.difficulty
-        last_block_time = last_block.timestamp_seconds
-        last_block_hash = last_block.hash_block()
+        last_block_time = last_block.timestamp_seconds if last_block else 'N/A'
+        last_block_hash = last_block.hash_block() if last_block else 'N/A'
 
         peers_info = []
 
         for key, info in self.node_manager.peer_info.items():
-            # print('network_info', info.network_info)
-            peers_info.append({
-                # 'network_info': info.network_info,
-                'network_info': key,
-                'synced': info.synced,
-                'blocks': info.blocks,
-                'latest_block': info.latest_block,
-                'uptime': round(info.uptime, 2),
-                'difficulty': info.difficulty
-            })
+            if info:
+                peers_info.append({
+                    'network_info': key,
+                    'synced': info.synced if info.synced else 'N/A',
+                    'blocks': info.blocks if info.blocks else 'N/A',
+                    'latest_block': info.latest_block if info.latest_block else 'N/A',
+                    'uptime': round(info.uptime, 2) if info.uptime else 'N/A',
+                    'difficulty': info.difficulty if info.difficulty else 'N/A'
+                })
+
         return network_pb2.NetInfoResponse(
             synced=self.node_manager.is_synced(),
             blocks=self.node_manager.chain.blocks_count(),
@@ -316,3 +316,13 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             for address, balance in all_balances.items()
         ]
         return network_pb2.AddressList(addresses=address_infos)
+
+    def BroadcastBlockHash(self, request, context):
+        """Обрабатывает отправку хеша блока от другого пира."""
+        block_hash = request.hash
+
+        # Проверяем, есть ли блок с таким хешем
+        if block_hash in self.node_manager.chain.history_hash:
+            return network_pb2.BlockHashResponse(need_block=False)
+        else:
+            return network_pb2.BlockHashResponse(need_block=True)

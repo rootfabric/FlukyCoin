@@ -118,7 +118,8 @@ class ClientHandler:
                 try:
                     peer_info[peer] = future.result(timeout=1)
                 except Exception as e:
-                    print(f"Failed to fetch info from {peer}: {e}")
+                    # print(f"Failed to fetch info from {peer}: {e}")
+                    """ """
             return peer_info
 
     def fetch_info(self, address):
@@ -133,7 +134,7 @@ class ClientHandler:
         except grpc.RpcError as e:
             if address in self.peer_channels:
                 del self.peer_channels[address]
-            print(f"Failed to fetch info from {address}: {e}")
+            # print(f"Failed to fetch info from {address}: {e}")
             return None
 
     def handle_new_transaction(self, transaction_data):
@@ -178,7 +179,7 @@ class ClientHandler:
         except grpc.RpcError as e:
             if address in self.peer_channels:
                 del self.peer_channels[address]
-            print(f"Failed to get peers info from {address}: {e}")
+            # print(f"Failed to get peers info from {address}: {e}")
             return []
 
     def fetch_transactions_from_all_peers(self):
@@ -215,30 +216,44 @@ class ClientHandler:
         except grpc.RpcError as e:
             if peer in self.peer_channels:
                 del self.peer_channels[peer]
-            print(f"Error fetching transactions from {peer}: {str(e)}")
+            # print(f"Error fetching transactions from {peer}: {str(e)}")
             return []
+
+    def send_block_hash_to_peer(self, peer, block_hash):
+        """Отправка хеша блока одному пиру."""
+        if peer not in self.peer_channels:
+            channel = grpc.insecure_channel(peer)
+            self.peer_channels[peer] = network_pb2_grpc.NetworkServiceStub(channel)
+
+        stub = self.peer_channels[peer]
+        try:
+            response = stub.BroadcastBlockHash(network_pb2.BlockHash(hash=block_hash), timeout=2)
+            return response.need_block  # True если пир запросил блок целиком
+        except grpc.RpcError as e:
+            if peer in self.peer_channels:
+                del self.peer_channels[peer]
+            # self.log.info(f"RPC failed for {peer}: {str(e)}")
+            return False
 
     def distribute_block(self, block):
         """Распространение блока среди всех активных пиров."""
+        block_hash = block.hash_block()
         with ThreadPoolExecutor(max_workers=10) as executor:
-            try:
-                futures = {}
-                for peer in self.servicer.active_peers:
-                    if peer != self.servicer.local_address:  # Исключаем себя из рассылки
-                        futures[executor.submit(self.send_block_to_peer, peer, block)] = peer
+            futures = {}
+            for peer in self.servicer.active_peers:
+                if peer != self.servicer.local_address:  # Исключаем себя из рассылки
+                    futures[executor.submit(self.send_block_hash_to_peer, peer, block_hash)] = peer
 
-                for future in as_completed(futures, timeout=10):
-                    peer = futures[future]
-                    try:
-                        future.result(timeout=5)
-                        print(f"Block {block.hash_block()} successfully sent to {peer}.")
-                    except TimeoutError:
-                        self.log.error(f"Timeout error: Block sending to {peer} took too long.")
-                    except Exception as e:
-                        self.log.error(f"Failed to send block to {peer}: {str(e)}")
-
-            except Exception as e:
-                self.log.error(f"distribute_block: {str(e)}")
+            for future in as_completed(futures, timeout=10):
+                peer = futures[future]
+                try:
+                    need_block = future.result(timeout=5)
+                    if need_block:
+                        self.executor.submit(self.send_block_to_peer, peer, block)
+                except TimeoutError:
+                    self.log.error(f"Timeout error: Block hash sending to {peer} took too long.")
+                except Exception as e:
+                    self.log.error(f"Failed to send block hash to {peer}: {str(e)}")
 
     def send_block_to_peer(self, peer, block):
         """Отправка блока одному пиру."""
@@ -248,19 +263,12 @@ class ClientHandler:
 
         stub = self.peer_channels[peer]
         try:
-            # Предполагается, что блок сериализуется в соответствии с вашей схемой
             block_data = block.to_json()  # Сериализация блока в JSON
-            response = stub.BroadcastBlock(network_pb2.Block(data=block_data), timeout=2)
-
-            # Проверка ответа и запрос блока-кандидата в случае ошибки
-            if not response.success:
-                self.log.info(f"Block rejected by peer {peer}, requesting block candidate.")
-                self.request_block_candidate_from_peer(peer)
-
+            stub.BroadcastBlock(network_pb2.Block(data=block_data), timeout=2)
         except grpc.RpcError as e:
             if peer in self.peer_channels:
                 del self.peer_channels[peer]
-            self.log.info(f"RPC failed for {peer}: {str(e)}")
+            # self.log.info(f"RPC failed for {peer}: {str(e)}")
             self.request_block_candidate_from_peer(peer)  # Запрос блока-кандидата при RPC ошибке
 
     def request_block_candidate_from_peer(self, peer):
@@ -276,11 +284,14 @@ class ClientHandler:
 
             if response.block_data:
                 candidate_block = Block.from_json(response.block_data)
-                self.log.info(f"Received block candidate from peer {peer}")
+                self.log.info(f"Received block candidate from peer {peer} {candidate_block.hash_block()}")
                 # Можно добавить обработку кандидата блока, например, валидацию и добавление в цепь
                 if self.node_manager.chain.validate_block(candidate_block):
                     if self.node_manager.chain.add_block_candidate(candidate_block):
                         self.log.info(f"Block candidate from peer {peer} added to chain.")
+
+                        # пересылаем всем кого знаем
+                        self.node_manager.client_handler.distribute_block(candidate_block)
             else:
                 self.log.error(f"No block candidate received from peer {peer}")
 
@@ -294,7 +305,7 @@ class ClientHandler:
         max_attempts = 3
 
         while attempt < max_attempts:
-            try:
+            # try:
                 if address not in self.peer_channels:
                     channel = grpc.insecure_channel(address)
                     self.peer_channels[address] = network_pb2_grpc.NetworkServiceStub(channel)
@@ -308,14 +319,14 @@ class ClientHandler:
                     return block
                 else:
                     raise Exception("Block not found or error occurred")
-            except grpc.RpcError as e:
-                attempt += 1
-                self.log.error(f"Attempt {attempt} failed: {str(e)}")
-                if attempt == max_attempts:
-                    if address in self.peer_channels:
-                        del self.peer_channels[address]
-                    self.log.error(f"Max attempts reached. Unable to connect to {address}")
-                time.sleep(0.1)  # Добавление задержки перед повторной попыткой
+            # except grpc.RpcError as e:
+            #     attempt += 1
+            #     self.log.error(f"Attempt {attempt} failed: {str(e)}")
+            #     if attempt == max_attempts:
+            #         if address in self.peer_channels:
+            #             del self.peer_channels[address]
+            #         self.log.error(f"Max attempts reached. Unable to connect to {address}")
+            #     time.sleep(0.1)  # Добавление задержки перед повторной попыткой
         return None
 
     def get_block_candidate(self, address):

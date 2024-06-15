@@ -109,6 +109,11 @@ class NetworkServiceStub(object):
                 request_serializer=network__pb2.Empty.SerializeToString,
                 response_deserializer=network__pb2.AddressList.FromString,
                 _registered_method=True)
+        self.BroadcastBlockHash = channel.unary_unary(
+                '/NetworkService/BroadcastBlockHash',
+                request_serializer=network__pb2.BlockHash.SerializeToString,
+                response_deserializer=network__pb2.BlockHashResponse.FromString,
+                _registered_method=True)
 
 
 class NetworkServiceServicer(object):
@@ -194,14 +199,13 @@ class NetworkServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def GetAllAddresses(self, request, context):
-        """rpc GetAddressInfo(AddressRequest) returns (AddressInfoResponse) {
-        option (google.api.http) = {
-        get: "/address-info/{address}"
-        };
-        rpc GetNetInfo(Empty) returns (NetInfoResponse) {
-        option (google.api.http) = {
-        get: "/address-info/{address}"
-        };
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def BroadcastBlockHash(self, request, context):
+        """Новый метод
         """
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -279,6 +283,11 @@ def add_NetworkServiceServicer_to_server(servicer, server):
                     servicer.GetAllAddresses,
                     request_deserializer=network__pb2.Empty.FromString,
                     response_serializer=network__pb2.AddressList.SerializeToString,
+            ),
+            'BroadcastBlockHash': grpc.unary_unary_rpc_method_handler(
+                    servicer.BroadcastBlockHash,
+                    request_deserializer=network__pb2.BlockHash.FromString,
+                    response_serializer=network__pb2.BlockHashResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -659,6 +668,33 @@ class NetworkService(object):
             '/NetworkService/GetAllAddresses',
             network__pb2.Empty.SerializeToString,
             network__pb2.AddressList.FromString,
+            options,
+            channel_credentials,
+            insecure,
+            call_credentials,
+            compression,
+            wait_for_ready,
+            timeout,
+            metadata,
+            _registered_method=True)
+
+    @staticmethod
+    def BroadcastBlockHash(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(
+            request,
+            target,
+            '/NetworkService/BroadcastBlockHash',
+            network__pb2.BlockHash.SerializeToString,
+            network__pb2.BlockHashResponse.FromString,
             options,
             channel_credentials,
             insecure,

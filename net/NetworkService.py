@@ -51,7 +51,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def GetPeerInfo(self, request, context):
         try:
             version = str(self.node_manager.version)
-            synced = bool(self.node_manager._synced)
+            synced = bool(self.node_manager.is_synced())
             blocks = self.node_manager.chain.blocks_count()
             latest_block = str(self.node_manager.chain.last_block_hash())
             block_candidate = str(self.node_manager.chain.block_candidate_hash)
@@ -190,7 +190,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def BroadcastBlock(self, request, context):
         # Логика обработки принятого блока
-        if not self.node_manager._synced:
+        if not self.node_manager.is_synced():
             # нода не синхронна, блоки не нужны
             return network_pb2.Ack(success=False)
 

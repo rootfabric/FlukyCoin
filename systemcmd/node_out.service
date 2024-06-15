@@ -1,0 +1,14 @@
+[Unit]
+Description=Node Service
+After=network.target
+
+[Service]
+ExecStart=/usr/bin/python3 /home/yurig/FlukyCoin/main.py --config node_config_server.yaml
+WorkingDirectory=/home/yurig/FlukyCoin
+User=yurig
+Restart=always
+RestartSec=5
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

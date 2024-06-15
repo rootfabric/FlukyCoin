@@ -206,13 +206,16 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         return network_pb2.Ack(success=True)
 
     def BroadcastBlock(self, request, context):
+        # Получаем адрес, с которого пришел запрос
+        # client_address = context.peer()
+
         # Логика обработки принятого блока
         if not self.node_manager.is_synced():
             # нода не синхронна, блоки не нужны
             return network_pb2.Ack(success=False)
 
         block = Block.from_json(request.data)  # Десериализация блока
-        print("BroadcastBlock", block.hash_block(), "from", request.address)
+        # print(f"BroadcastBlock {block.hash_block()} from {client_address}")
         if self.node_manager.chain.add_block_candidate(block):
             # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
             #       block.signer)

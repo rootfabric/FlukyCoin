@@ -227,7 +227,8 @@ class ClientHandler:
 
         stub = self.peer_channels[peer]
         try:
-            response = stub.BroadcastBlockHash(network_pb2.BlockHash(hash=block_hash), timeout=2)
+            response = stub.BroadcastBlockHash(network_pb2.BlockHash(hash=block_hash), timeout=1)
+            self.log.info(f"Send hash to {peer}: {block_hash}")
             return response.need_block  # True если пир запросил блок целиком
         except grpc.RpcError as e:
             if peer in self.peer_channels:
@@ -244,7 +245,7 @@ class ClientHandler:
                 if peer != self.servicer.local_address:  # Исключаем себя из рассылки
                     futures[executor.submit(self.send_block_hash_to_peer, peer, block_hash)] = peer
 
-            for future in as_completed(futures, timeout=10):
+            for future in as_completed(futures, timeout=2):
                 peer = futures[future]
                 try:
                     need_block = future.result(timeout=5)
@@ -265,10 +266,11 @@ class ClientHandler:
         try:
             block_data = block.to_json()  # Сериализация блока в JSON
             stub.BroadcastBlock(network_pb2.Block(data=block_data), timeout=2)
+            self.log.info(f"Send to {peer} block {block.hash_block()}")
         except grpc.RpcError as e:
             if peer in self.peer_channels:
                 del self.peer_channels[peer]
-            # self.log.info(f"RPC failed for {peer}: {str(e)}")
+            self.log.info(f"RPC failed for {peer}: {str(e)}")
             self.request_block_candidate_from_peer(peer)  # Запрос блока-кандидата при RPC ошибке
 
     def request_block_candidate_from_peer(self, peer):

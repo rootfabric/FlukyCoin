@@ -16,7 +16,8 @@ from wallet_app.Wallet import Wallet
 
 app = Flask(__name__)
 wallet = Wallet()
-node_addresses = '192.168.0.26:9334'
+# node_addresses = '192.168.0.26:9334'
+node_addresses = '5.35.98.126:9333'
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -94,4 +95,5 @@ def parse_node_info(response):
 
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=80)
+    # app.run(debug=True, host='0.0.0.0', port=80)
+    app.run(debug=True, host='5.35.98.126', port=80)

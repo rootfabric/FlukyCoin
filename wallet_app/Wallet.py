@@ -10,10 +10,10 @@ class Wallet:
     def __init__(self,  filename = "keys.dat", server='192.168.0.26:9334'):
         """ """
         self.filename = filename
-        self.server = server = '95.154.71.53:9333'
+        # self.server = server = '95.154.71.53:9333'
         # self.server = server = 'yglamazdin.fvds.ru:9333'
         # self.server = server = 'yglamazdin.fvds.ru:9333'
-        # self.server = server = '5.35.98.126:9334'
+        self.server = server = '5.35.98.126:9333'
         self.keys: {str: XMSS} = dict()
 
 

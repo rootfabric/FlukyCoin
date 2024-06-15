@@ -1,5 +1,5 @@
 port: 9333
-host: 192.168.0.2
+host: 192.168.0.10
 external_host: 95.154.71.53
 is_miner: True
 initial_peers:

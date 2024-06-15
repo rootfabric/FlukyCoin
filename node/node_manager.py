@@ -105,11 +105,15 @@ class NodeManager:
             time_candidat = last_block_time + Protocol.BLOCK_TIME_INTERVAL
             block_timestamp_seconds = time_candidat if time_candidat > self.chain.time() else self.chain.time()
 
+
+            # берутся все транзакции без разбора
             transactions = []
             for tr in list(self.mempool.transactions.values()):
                 if self.chain.validate_transaction(tr):
                     transactions.append(tr)
-                    self.mempool.remove_transaction(tr.txhash)
+
+                self.mempool.remove_transaction(tr.txhash)
+
 
             block_candidate = Block.create(self.chain.blocks_count(), self.chain.last_block_hash(),
                                            block_timestamp_seconds, transactions, address_miner=xmss.address,

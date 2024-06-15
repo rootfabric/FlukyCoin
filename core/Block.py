@@ -36,14 +36,13 @@ class Block:
         # адрес публичного ключ того кто сделал блок.
         self.signer = None
 
-        self.transactions:[Transaction] = []
+        self.transactions: [Transaction] = []
         # self.log = Log()
 
     def mining_reward(self):
         for tx in self.transactions:
-            if tx.tx_type =="coinbase":
+            if tx.tx_type == "coinbase":
                 return tx.all_amounts()
-
 
     @staticmethod
     def create(
@@ -77,10 +76,11 @@ class Block:
 
         # coinbase_tx = CoinBase.create(dev_config, total_reward_amount, miner_address, block_number)
 
-        coinbase_tx = CoinbaseTransaction(toAddress=[address_reward], amounts=[block_reward])
-        # количество выплат с генезис адреса
-        coinbase_tx.nonce = block_number+1
+        coinbase_nonce = block_number + 1
 
+        coinbase_tx = CoinbaseTransaction(toAddress=[address_reward], amounts=[block_reward], nonce=coinbase_nonce)
+        # количество выплат с генезис адреса
+        coinbase_tx.nonce = block_number + 1
 
         h = coinbase_tx.txhash
         hashedtransactions.append(h)
@@ -137,6 +137,7 @@ class Block:
             'signer_pk': self.signer_pk
         }
         return block_dict
+
     def to_json(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON
         return json.dumps(self.to_dict())
@@ -207,7 +208,7 @@ class Block:
             return False
 
         PK2 = self.XMSSPublicKey()
-        if self.signer !=PK2.generate_address():
+        if self.signer != PK2.generate_address():
             print("Ошибка валидации блока. не совпадает майнер")
             return False
 
@@ -232,12 +233,12 @@ class Block:
             print("Ошибка валидации MerkleTools. is_ready False")
             return False
 
-        if mt.get_merkle_root() !=self.merkle_root:
+        if mt.get_merkle_root() != self.merkle_root:
             print("Ошибка валидации MerkleTools. Не верный merkle_root")
             return False
 
-
         return True
+
 
 if __name__ == '__main__':
     """ """

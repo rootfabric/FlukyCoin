@@ -279,6 +279,9 @@ class Chain():
 
             if not self.validate_transaction(transaction):
                 self.log.warning(f"Транзакция {transaction.txhash} не валидна")
+
+                # Сразу удаляем из мем пула если не валидна
+                self.mempool.remove_transaction(transaction.txhash)
                 return False
 
         if not self.validate_rewards(block):
@@ -314,6 +317,10 @@ class Chain():
 
         self.history_hash[block.hash_block()] = block
         # self.save_to_disk()
+
+        self.mempool.remove_transactions_in_block(block)
+
+
 
     def blocks_count(self):
         return len(self.blocks)

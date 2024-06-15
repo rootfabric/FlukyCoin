@@ -89,6 +89,11 @@ class Mempool:
         if tx_hash in self.transactions:
             del self.transactions[tx_hash]
 
+    def remove_transactions_in_block(self, block):
+        """ Убираем из мемпула транзакции """
+        for tx in block.transactions:
+            self.remove_transaction(tx.txhash)
+
 if __name__ == '__main__':
     # Пример использования класса Mempool
     mempool = Mempool()

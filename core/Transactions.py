@@ -7,12 +7,12 @@ from tools.logger import Log
 
 class Transaction:
 
-    def __init__(self, tx_type, fromAddress, toAddress, amounts, fee=0):
+    def __init__(self, tx_type, fromAddress, toAddress, amounts, fee=0, nonce=None):
         self.tx_type = tx_type
         self.fromAddress = fromAddress
         self.toAddress = toAddress
         self.amounts = amounts
-        self.nonce = None
+        self.nonce = nonce
         self.fee = fee
         self.message_data = None
         self.txhash = None
@@ -47,6 +47,7 @@ class Transaction:
             d['signature'] = None
             d['txhash'] = None
         return d
+
     def to_json(self, for_sign=False):
         # Сериализует объект в строку JSON
         return json.dumps(self.to_dict(for_sign))
@@ -183,16 +184,17 @@ class SlaveTransaction(Transaction):
 
 
 class CoinbaseTransaction(Transaction):
-    def __init__(self, toAddress, amounts):
-        super().__init__('coinbase', Protocol.coinbase_address.hex(), toAddress, amounts, 0)
+    def __init__(self, toAddress, amounts, nonce):
+        super().__init__('coinbase', Protocol.coinbase_address.hex(), toAddress, amounts, fee=0, nonce=nonce)
         self.make_hash()
 
     @classmethod
     def from_dict(cls, data):
         toAddress = data['toAddress']
         amounts = data['amounts']
-        tx = cls(toAddress, amounts)
-        tx.nonce = data.get('nonce')
+        nonce = data.get('nonce')
+        tx = cls(toAddress, amounts, nonce)
+        # tx.nonce = data.get('nonce')
         tx.txhash = data.get('txhash')
         return tx
 

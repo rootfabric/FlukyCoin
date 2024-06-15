@@ -53,8 +53,8 @@ class SyncManager:
         else:
             max_blocks, max_difficulty = 0, 0
 
-        if not self.node_manager.is_synced():
-            self.log.info(f"Max chain group: {max_group} with {max_blocks} blocks and difficulty {max_difficulty}")
+        # if not self.node_manager.is_synced():
+        #     self.log.info(f"Max chain group: {max_group} with {max_blocks} blocks and difficulty {max_difficulty}")
 
         return max_group, max_blocks, max_difficulty
 

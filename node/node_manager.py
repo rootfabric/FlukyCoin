@@ -43,7 +43,7 @@ class NodeManager:
         self.unsync_count = 0
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
-        self.sync_manager = SyncManager(self, log)
+        self.sync_manager = SyncManager(self,  log)
 
     def signal_handler(self, signum, frame):
         self.log.info("Signal received, shutting down...")

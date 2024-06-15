@@ -30,6 +30,21 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         self.peer_addresses = {}  # Клиентский адрес -> серверный адрес
         self.executor = ThreadPoolExecutor(max_workers=20)  # Пул потоков для асинхронной работы
 
+        # Load known peers from disk
+        self.load_known_peers()
+    def save_known_peers(self):
+        with open('known_peers.json', 'w') as f:
+            json.dump(list(self.known_peers), f)
+
+    def load_known_peers(self):
+        try:
+            with open('known_peers.json', 'r') as f:
+                peers = json.load(f)
+                self.known_peers.update(peers)
+        except FileNotFoundError:
+            self.node_manager.log.info("No known_peers.json file found, starting with initial peers.")
+
+
     # Реализация метода Ping
     def Ping(self, request, context):
         return network_pb2.Empty()  # Просто возвращает пустой ответ
@@ -42,6 +57,8 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         self.peer_addresses[client_address] = server_address
         if self.check_active(server_address):
             self.active_peers.add(server_address)
+
+        self.save_known_peers()
         return network_pb2.PeerResponse(peers=list(self.active_peers))
 
     def GetPeers(self, request, context):
@@ -292,11 +309,11 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             if info:
                 peers_info.append({
                     'network_info': key,
-                    'synced': info.synced if info.synced else 'N/A',
-                    'blocks': info.blocks if info.blocks else 'N/A',
-                    'latest_block': info.latest_block if info.latest_block else 'N/A',
-                    'uptime': round(info.uptime, 2) if info.uptime else 'N/A',
-                    'difficulty': info.difficulty if info.difficulty else 'N/A'
+                    'synced': info.synced if info.synced else False,
+                    'blocks': info.blocks if info.blocks else 0,
+                    'latest_block': info.latest_block if info.latest_block else '',
+                    'uptime': round(info.uptime, 2) if info.uptime else '0',
+                    'difficulty': info.difficulty if info.difficulty else '0'
                 })
 
         return network_pb2.NetInfoResponse(

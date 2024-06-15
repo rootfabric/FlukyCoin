@@ -4,6 +4,8 @@ import threading
 from tools.logger import Log
 from core.Block import Block
 from core.protocol import Protocol
+from collections import defaultdict
+
 
 class SyncManager:
     def __init__(self, node_manager, log=Log()):
@@ -27,10 +29,41 @@ class SyncManager:
         self._synced = state
         self.log.info(f"Node sync is {self._synced}")
 
+    def take_max_chain(self, peer_info):
+        """Поиск нод с максимальной длиной, с которыми нужно синхронизироваться"""
+        # Группировка пиров по количеству блоков и сложности сети
+        chain_groups = defaultdict(list)
+
+        for address, info in peer_info.items():
+            if info and info.synced:
+                chain_groups[(info.blocks, info.difficulty)].append(address)
+
+        # Найти группу с максимальным количеством одинаковых элементов
+        max_group_key = None
+        max_group = []
+
+        for key, group in chain_groups.items():
+            if len(group) > len(max_group) or (
+                    len(group) == len(max_group) and (max_group_key is None or key[1] > max_group_key[1])):
+                max_group_key = key
+                max_group = group
+
+        if max_group_key:
+            max_blocks, max_difficulty = max_group_key
+        else:
+            max_blocks, max_difficulty = 0, 0
+
+        if not self.node_manager.is_synced():
+            self.log.info(f"Max chain group: {max_group} with {max_blocks} blocks and difficulty {max_difficulty}")
+
+        return max_group, max_blocks, max_difficulty
+
     def check_sync(self, peer_info):
-        """ проверка синхронности ноды """
+        """ Проверка синхронности ноды """
         drop_sync_signal = False
         count_sync = 0
+
+        max_group, max_blocks, max_difficulty = self.take_max_chain(peer_info)
 
         if not self._synced:
             for address, info in peer_info.items():
@@ -41,16 +74,28 @@ class SyncManager:
                     if info.blocks > self.node_manager.chain.blocks_count():
                         drop_sync_signal = True
                         block_number_to_load = self.node_manager.chain.blocks_count()
-                        block = self.node_manager.client_handler.get_block_by_number(block_number_to_load, info.network_info)
+
+                        """ Берем блоки у максимальной цепи """
+                        if address not in max_group:
+                            continue
+                        if max_blocks != info.blocks:
+                            continue
+
+                        if info.difficulty != max_difficulty:
+                            continue
+
+                        block = self.node_manager.client_handler.get_block_by_number(block_number_to_load,
+                                                                                     info.network_info)
                         if self.node_manager.chain.validate_and_add_block(block):
-                            self.log.info(f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
+                            self.log.info(
+                                f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
                             if self.node_manager.chain.blocks_count() % 100 == 0:
                                 self.log.info("Save chain")
                                 self.node_manager.chain.save_chain_to_disk()
                         else:
                             self.log.info(f"{block_number_to_load + 1} reset")
                             self.node_manager.chain.drop_last_block()
-                            self.node_manager.chain.drop_last_block()
+                            # self.node_manager.chain.drop_last_block()
 
         if self._synced and drop_sync_signal and self.timer_drop_synced is not None:
             self.timer_drop_synced = time.time()
@@ -62,8 +107,8 @@ class SyncManager:
 
         if count_sync > 0 and len(peer_info) > 1 and not drop_sync_signal and not self._synced:
             self.timer_drop_synced = None
-            last_block_time = self.node_manager.chain.last_block().timestamp_seconds if self.node_manager.chain.last_block() is not None else self.node_manager.chain.time()
-            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL / 2:
+            last_block_time = self.last_block_time()
+            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL / 4:
                 self.log.info("Нода синхронизирована")
                 self.set_node_synced(True)
             else:
@@ -72,13 +117,16 @@ class SyncManager:
 
         if self._synced:
             self.unsync_count = 0
-            last_block_time = self.node_manager.chain.last_block().timestamp_seconds if self.node_manager.chain.last_block() is not None else self.node_manager.chain.time()
+            last_block_time = self.last_block_time()
             if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE:
                 for address, info in peer_info.items():
                     if not self.is_valid_peer_info(info):
                         continue
                     if self.is_block_candidate_new(info):
                         self.node_manager.client_handler.request_block_candidate_from_peer(info.network_info)
+
+    def last_block_time(self):
+        return self.node_manager.chain.last_block_time()
 
     def is_valid_peer_info(self, info):
         if info is None:
@@ -130,6 +178,10 @@ class SyncManager:
                     if self.node_manager.enable_load_info:
                         self.node_manager.peer_info = self.node_manager.client_handler.fetch_info_from_peers()
 
+                if self.node_manager.chain.time() > self.last_block_time() + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() > self.last_block_time() + Protocol.BLOCK_START_CHECK_PAUSE + 1:
+                    # как только сформировался блок, делаем опрос пиров
+                    self.node_manager.peer_info = self.node_manager.client_handler.fetch_info_from_peers()
+
                 if self._synced and timer_get_nodes + pause_ping < time.time():
                     timer_get_nodes = time.time()
                     self.node_manager.client_handler.get_peers_list()
@@ -138,7 +190,7 @@ class SyncManager:
                 if not self._synced:
                     continue
 
-                time.sleep(1)
+                time.sleep(0.1)
             except KeyboardInterrupt:
                 self.running = False
                 exit()

@@ -328,6 +328,9 @@ class Chain():
     def last_block_hash(self) -> Block:
         return self.blocks[-1].hash_block() if len(
             self.blocks) > 0 else Protocol.prev_hash_genesis_block.hex()
+    def last_block_time(self) -> float:
+        return self.blocks[-1].timestamp_seconds if len(
+            self.blocks) > 0 else 0
 
     def last_block(self) -> Block:
 
@@ -494,19 +497,6 @@ class Chain():
             return False
 
         return True
-        # last_block = self.last_block()
-        #
-        # if last_block is None:
-        #     print("Блоков нет")
-        #     return True
-        #
-        # delta = time.time() - last_block.time
-        # print(f"{datetime.datetime.now()} delta", delta, last_block.hash)
-        #
-        # if delta > 60:
-        #     return True
-        #
-        # return False
 
     def drop_last_block(self):
         """ При рассинхронах, откатываемся назад """
@@ -529,6 +519,7 @@ class Chain():
         if last_block.hash_block() in self.history_hash:
             self.history_hash.pop(last_block.hash_block())
 
+        self.difficulty -= self.block_difficulty(last_block)
 
 if __name__ == '__main__':
     """ """

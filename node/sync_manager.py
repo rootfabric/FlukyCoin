@@ -17,6 +17,9 @@ class SyncManager:
         self.unsync_count = 0
         self.shutdown_event = threading.Event()
 
+        # количество блоков в которых нода находится в рассинхроне с основной группой
+        self.count_unsync_block=0
+
     def signal_handler(self, signum, frame):
         self.log.info("Signal received, shutting down...")
         self.shutdown_event.set()
@@ -129,18 +132,24 @@ class SyncManager:
 
                 """ Требуется выяснить, текущая нода принадлежит главной цепи или нет """
                 print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
-
+                flag_unsing = False
                 if self.node_manager.chain.difficulty<max_difficulty :
                     print("Сложность текущей цепи ниже чем в сети")
-                    print("Потеря синхронизации")
-                    self.set_node_synced(False)
+                    flag_unsing=True
 
                 if self.node_manager.server.get_external_host_ip() not in max_group :
                     print("Нода вне большинства")
+                    flag_unsing = True
+
+                if flag_unsing:
+                    self.count_unsync_block+=1
+                    print(f"Нода в рассинхроне {self.count_unsync_block} блоков")
+                else:
+                    self.count_unsync_block = 0
+
+                if self.count_unsync_block>3:
                     print("Потеря синхронизации")
                     self.set_node_synced(False)
-
-
 
     def last_block_time(self):
         return self.node_manager.chain.last_block_time()

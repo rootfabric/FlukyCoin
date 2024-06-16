@@ -287,13 +287,14 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def GetAddressInfo(self, request, context):
         address = request.address
-
         transactions_start = request.transactions_start
         transactions_end = request.transactions_end
 
-        balance = self.node_manager.chain.address_ballance(address)
+        balance = self.node_manager.chain.address_balance(address)
         nonce = self.node_manager.chain.next_address_nonce(address)
-        transactions = self.node_manager.chain.transaction_storage.get_transactions_by_address(address, transactions_start, transactions_end)
+        transactions = self.node_manager.chain.transaction_storage.get_transactions_by_address(address,
+                                                                                               transactions_start,
+                                                                                               transactions_end)
 
         transaction_protos = [network_pb2.Transaction(json_data=tr.to_json()) for tr in transactions]
 

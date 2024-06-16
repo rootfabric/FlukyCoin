@@ -1,5 +1,4 @@
 from core.Transactions import Transaction
-
 import json
 
 
@@ -11,16 +10,15 @@ class TransactionStorage:
         # Словарь для хранения nonce адресов. Ключ - адрес, значение - nonce.
         self.nonces = {}
 
-        # Список для хранения всех транзакций
-        self.transactions = []
+        # Словарь для хранения всех транзакций. Ключ - хэш транзакции, значение - объект транзакции.
+        self.transactions = {}
 
-
-        # список манйнеров
+        # список майнеров
         self.miners = set()
 
     def get_transaction(self, hash):
-
         return self.transactions.get(hash)
+
     def clear(self):
         self.balances.clear()
         self.nonces.clear()
@@ -28,11 +26,7 @@ class TransactionStorage:
         self.miners.clear()
 
     def add_block(self, block):
-        """  добавляем все данные по блоку в хранилище"""
-        # for new_node in block.new_nodes:
-        #     self.nodes_rating[new_node] = 0
-
-        # для зачисления коммисии нужен адрес
+        """Добавляем все данные по блоку в хранилище"""
         address_reward = None
         for transaction in block.transactions:
             if transaction.tx_type == "coinbase":
@@ -46,7 +40,7 @@ class TransactionStorage:
         self.miners.add(block.signer)
 
         # Учитываем подпись ключа блока
-        self.add_nonses_to_address(block.signer)
+        self.add_nonce_to_address(block.signer)
 
     def add_transaction(self, transaction: Transaction, address_reward: str):
         """
@@ -58,118 +52,83 @@ class TransactionStorage:
         amounts = transaction.all_amounts()
         fee = transaction.fee
         to_address = transaction.toAddress
+
         # Проверка наличия средств
-        if transaction.tx_type != "coinbase" and self.get_balance(from_address) < amounts:
+        if transaction.tx_type != "coinbase" and self.get_balance(from_address) < amounts + fee:
             return False
 
-        # Добавление транзакции в список транзакций
-        self.transactions.append(transaction)
+        # Добавление транзакции в словарь транзакций
+        self.transactions[transaction.txhash] = transaction
 
         # Обновление баланса отправителя и получателя
         self.balances[from_address] = self.balances.get(from_address, 0) - amounts - fee
 
-        # награда на адрес который указал майнер для получения
+        # Награда на адрес, который указал майнер для получения
         self.balances[address_reward] = self.balances.get(address_reward, 0) + fee
 
         for i, address in enumerate(to_address):
             self.balances[address] = self.balances.get(address, 0) + transaction.amounts[i]
 
         # Обновление nonce для адреса отправителя
-        self.add_nonses_to_address(from_address)
+        self.add_nonce_to_address(from_address)
 
         return True
 
-    def add_nonses_to_address(self, address):
-        # Обновление nonce для адреса отправителя
+    def add_nonce_to_address(self, address):
         if address in self.nonces:
             self.nonces[address] += 1
         else:
             self.nonces[address] = 1
 
-    def pop_nonses_to_address(self, address):
-        # Обновление nonce для адреса отправителя
+    def pop_nonce_to_address(self, address):
         if address in self.nonces:
             self.nonces[address] -= 1
 
     def get_balance(self, address):
-        """
-        Возвращает текущий баланс по указанному адресу.
-
-        :param address: адрес для получения баланса
-        :return: баланс адреса
-        """
         return self.balances.get(address, 0)
 
     def get_nonce(self, address):
-        """
-        Возвращает текущий nonce по указанному адресу. Возвращает None, если адрес не найден.
-
-        :param address: адрес для получения nonce
-        :return: nonce адреса или None, если адрес не найден
-        """
         return self.nonces.get(address, 0)
 
     def get_all_balances(self):
-        """
-        Возвращает балансы всех адресов.
-
-        :return: словарь балансов
-        """
         return self.balances
 
     def get_addresses_sorted_by_balance(self):
-        """
-        Возвращает список адресов, отсортированный по размеру средств на балансе в порядке убывания.
-
-        :return: список адресов
-        """
         return sorted(self.balances.items(), key=lambda x: x[1] / 100000000, reverse=True)
 
     def to_json(self):
-        """
-        Сериализует объект TransactionStorage в JSON-строку.
-        """
         return json.dumps({
             'balances': self.balances,
             'nonces': self.nonces,
-            'transactions': [t.to_json() for t in self.transactions],
+            'transactions': {k: t.to_json() for k, t in self.transactions.items()},
             'miners': list(self.miners)
         })
 
     @classmethod
     def from_json(cls, json_str):
-        """
-        Десериализует объект TransactionStorage из JSON-строки.
-        """
         data = json.loads(json_str)
         storage = cls()
         storage.balances = data['balances']
         storage.nonces = data['nonces']
-        storage.transactions = [Transaction.from_json(t) for t in data['transactions']]
+        storage.transactions = {k: Transaction.from_json(t) for k, t in data['transactions'].items()}
         storage.miners = set(data['miners'])
         return storage
 
     def rollback_block(self, block):
-        """ Откат блока в хранилище """
-
-        # для отката коммисии нужен адрес
+        """Откат блока в хранилище"""
         address_reward = None
         for transaction in block.transactions:
             if transaction.tx_type == "coinbase":
                 address_reward = transaction.toAddress[0]
                 break
 
-
-        # Перебираем все транзакции в блоке, начиная с конца, чтобы сначала откатить обычные транзакции, затем coinbase
         for transaction in reversed(block.transactions):
             self.rollback_transaction(transaction, address_reward)
 
-        # Добавляем майнера
         if block.signer in self.miners:
             self.miners.remove(block.signer)
 
-        # Учитываем подпись ключа блока
-        self.pop_nonses_to_address(block.signer)
+        self.pop_nonce_to_address(block.signer)
 
     def rollback_transaction(self, transaction: Transaction, address_reward):
         from_address = transaction.fromAddress
@@ -177,38 +136,25 @@ class TransactionStorage:
         fee = transaction.fee
         to_address = transaction.toAddress
 
-        # Удаление транзакции из списка транзакций
-        if transaction in self.transactions:
-            self.transactions.remove(transaction)
+        if transaction.txhash in self.transactions:
+            del self.transactions[transaction.txhash]
 
-        # Если это coinbase-транзакция, просто удаляем ее из списка и откатываем соответствующие изменения
         if transaction.tx_type == 'coinbase':
-            # Уменьшаем баланс получателя на сумму coinbase
             for i, address in enumerate(to_address):
                 self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
         else:
-            # Обычная транзакция: возвращаем средства отправителю и уменьшаем у получателей
             self.balances[from_address] = self.balances.get(from_address, 0) + amounts + fee
 
-            # Возврат комиссии майнеру (убираем из баланса адреса награды)
             if address_reward in self.balances:
                 self.balances[address_reward] = self.balances.get(address_reward, 0) - fee
 
-            # Вычитание средств у получателей
             for i, address in enumerate(to_address):
                 self.balances[address] = self.balances.get(address, 0) - transaction.amounts[i]
 
-        # Откат nonce для адреса отправителя
         if from_address in self.nonces:
             self.nonces[from_address] -= 1
 
     def get_transactions_by_address(self, address, transactions_start=0, transactions_end=0):
-
-        # # Возвращаем транзакции, где address является отправителем или получателем
-        # if transactions_start is None:
-        #     transactions_start = 0
-        #
-        # if transactions_end is None:
-        #     transactions_start = 10
-
-        return [tr for tr in self.transactions[transactions_start:transactions_end] if tr.fromAddress == address or address in tr.toAddress]
+        filtered_transactions = [tr for tr in self.transactions.values() if
+                                 tr.fromAddress == address or address in tr.toAddress]
+        return filtered_transactions[transactions_start:transactions_end]

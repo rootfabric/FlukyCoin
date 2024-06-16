@@ -176,7 +176,7 @@ class Chain():
         """ сколько раз использовался адрес в цепи """
         return self.transaction_storage.get_nonce(address) + 1
 
-    def address_ballance(self, address):
+    def address_balance(self, address):
         """ Баланс адреса """
         return self.transaction_storage.get_balance(address)
 
@@ -204,9 +204,9 @@ class Chain():
         """ Проверка  баланса"""
         if transaction.tx_type == "transfer":
 
-            if self.address_ballance(transaction.fromAddress) < transaction.all_amounts() + transaction.fee:
+            if self.address_balance(transaction.fromAddress) < transaction.all_amounts() + transaction.fee:
                 self.log.warning(
-                    f"Транзакция не валидна. Остаток: {self.address_ballance(transaction.fromAddress)} < amounts:{transaction.all_amounts()} + fee {transaction.fee}")
+                    f"Транзакция не валидна. Остаток: {self.address_balance(transaction.fromAddress)} < amounts:{transaction.all_amounts()} + fee {transaction.fee}")
                 return False
 
         return True

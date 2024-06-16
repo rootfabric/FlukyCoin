@@ -4,8 +4,9 @@ import pickle
 from core.Transactions import Transaction
 
 class Mempool:
-    def __init__(self, config,  filepath='mempool.json'):
+    def __init__(self, config, node_manager, filepath='mempool.json'):
 
+        self.node_manager = node_manager
         self.config = config
         self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
         self.transactions = {}
@@ -24,6 +25,11 @@ class Mempool:
         """Добавить транзакцию в mempool и сохранить изменения."""
         if transaction.txhash in self.transactions:
             return False
+
+        if self.node_manager.chain.transaction_storage.get_transaction(transaction.txhash) is not None:
+            """Транзакция уже есть в проведенных """
+            return False
+
 
         self.transactions[transaction.txhash] = transaction
         # self.save_transactions()

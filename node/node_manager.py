@@ -26,7 +26,7 @@ class NodeManager:
         self.version = Protocol.VERSION
         self.peer_info = {}
         self.time_ntpt = NTPTimeSynchronizer(log=log)
-        self.mempool = Mempool(config)
+        self.mempool = Mempool(config, self)
         self.chain = Chain(config=self.config, mempool=self.mempool, log=self.log)
         self.miners_storage = MinerStorage(config)
         self.server = GrpcServer(self.config, self)

@@ -134,11 +134,13 @@ class SyncManager:
                 print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
                 flag_unsing = False
                 if self.node_manager.chain.difficulty<max_difficulty :
-                    print("Сложность текущей цепи ниже чем в сети")
+                    if self.count_unsync_block is not None:
+                        print("Сложность текущей цепи ниже чем в сети")
                     flag_unsing=True
 
                 if self.node_manager.server.get_external_host_ip() not in max_group :
-                    print("Нода вне большинства")
+                    if self.count_unsync_block is not None:
+                        print("Нода вне большинства")
                     flag_unsing = True
 
                 if flag_unsing:

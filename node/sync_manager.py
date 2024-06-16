@@ -130,8 +130,13 @@ class SyncManager:
                 """ Требуется выяснить, текущая нода принадлежит главной цепи или нет """
                 print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
 
-                if self.node_manager.chain.difficulty<max_difficulty:
+                if self.node_manager.chain.difficulty<max_difficulty :
                     print("Сложность текущей цепи ниже чем в сети")
+                    print("Потеря синхронизации")
+                    self.set_node_synced(False)
+
+                if self.node_manager.server.get_external_host_ip() not in max_group :
+                    print("Нода вне большинства")
                     print("Потеря синхронизации")
                     self.set_node_synced(False)
 
@@ -194,12 +199,12 @@ class SyncManager:
                     # как только сформировался блок, делаем опрос пиров
                     self.node_manager.peer_info = self.node_manager.client_handler.fetch_info_from_peers()
 
-                if self._synced and timer_get_nodes + pause_ping < time.time():
+                if self.is_synced() and timer_get_nodes + pause_ping < time.time():
                     timer_get_nodes = time.time()
                     self.node_manager.client_handler.get_peers_list()
                     self.node_manager.client_handler.fetch_transactions_from_all_peers()
 
-                if not self._synced:
+                if not self.is_synced():
                     continue
 
                 time.sleep(0.1)

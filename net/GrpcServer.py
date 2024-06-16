@@ -14,7 +14,9 @@ class GrpcServer:
         self.server.add_insecure_port(self.address)
         # self.server.add_insecure_port(f"{self.config.get('host')}:8080")
 
-
+    def get_external_host_ip(self):
+        """ Внешний адес хоста """
+        return f"{self.config.get('external_host', self.config.get('host'))}:{self.config.get('external_port', self.config.get('port'))}"
     def start(self):
         self.server.start()
         print(f"Server started on {self.address}")

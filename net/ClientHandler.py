@@ -228,7 +228,7 @@ class ClientHandler:
         stub = self.peer_channels[peer]
         try:
             response = stub.BroadcastBlockHash(network_pb2.BlockHash(hash=block_hash), timeout=1)
-            self.log.info(f"Send hash to {peer}: {block_hash}")
+            # self.log.info(f"Send hash to {peer}: {block_hash}")
             return response.need_block  # True если пир запросил блок целиком
         except grpc.RpcError as e:
             if peer in self.peer_channels:
@@ -266,7 +266,7 @@ class ClientHandler:
         try:
             block_data = block.to_json()  # Сериализация блока в JSON
             stub.BroadcastBlock(network_pb2.Block(data=block_data), timeout=2)
-            self.log.info(f"Send to {peer} block {block.hash_block()}")
+            # self.log.info(f"Send to {peer} block {block.hash_block()}")
         except grpc.RpcError as e:
             if peer in self.peer_channels:
                 del self.peer_channels[peer]

@@ -208,4 +208,4 @@ class SyncManager:
                 exit()
             except Exception as e:
                 self.log.error("Ошибка технического блока ", e)
-                self.running = False
+                # self.running = False

@@ -14,9 +14,13 @@ class TransactionStorage:
         # Список для хранения всех транзакций
         self.transactions = []
 
+
         # список манйнеров
         self.miners = set()
 
+    def get_transaction(self, hash):
+
+        return self.transactions.get(hash)
     def clear(self):
         self.balances.clear()
         self.nonces.clear()

@@ -111,7 +111,7 @@ class SyncManager:
         if count_sync > 0 and len(peer_info) > 1 and not drop_sync_signal and not self._synced:
             self.timer_drop_synced = None
             last_block_time = self.last_block_time()
-            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL / 4:
+            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL / 2:
                 self.log.info("Нода синхронизирована")
                 self.set_node_synced(True)
             else:
@@ -131,7 +131,9 @@ class SyncManager:
             if self.unsync_count>0:
 
                 """ Требуется выяснить, текущая нода принадлежит главной цепи или нет """
-                print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
+                if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_TIME_INTERVAL/2:
+                    print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
+
                 flag_unsing = False
                 if self.node_manager.chain.difficulty<max_difficulty :
                     if self.count_unsync_block is not None:

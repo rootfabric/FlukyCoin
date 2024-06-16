@@ -206,7 +206,7 @@ def load_data():
 
 def calculate_total_supply(initial_reward=50, halving_interval=210000, block_time=10, halvings_limit=None):
     """
-    Рассчитывает суммарное количество биткоинов, выплаченное в награду за блоки,
+    Рассчитывает суммарное количество монет, выплаченное в награду за блоки,
     количество halving и приблизительное количество лет до достижения этого момента.
 
     :param initial_reward: Начальная награда за блок (в биткоинах).
@@ -220,7 +220,7 @@ def calculate_total_supply(initial_reward=50, halving_interval=210000, block_tim
     halvings = 0
     blocks_per_year = (365.25 * 24 * 60) / block_time  # Переводим время в года
 
-    while current_reward >= 0.00000001:  # 1 сатоши
+    while current_reward >= 0.00000001:
         # Добавляем награду за текущий период
         total_supply += halving_interval * current_reward
         # Уменьшаем награду вдвое
@@ -265,15 +265,24 @@ def calculate_mined_coins(period_in_years, initial_reward=100, halving_interval=
 
 if __name__ == '__main__':
 
+
+    r, _, _= Protocol.reward("1234", "1234567890", 10000000)
+    print(r / 10000000)
+    r, _, _= Protocol.reward("1234", "1234567890", 0)
+
+    print(r/10000000)
+    exit()
     # Пример: Расчет за 4 года
-    # min_coins, max_coins = calculate_mined_coins(1)
-    # print(f"Минимальное количество монет, намайненных: {min_coins}")
-    # print(f"Максимальное количество монет, намайненных: {max_coins}")
-    #
-    # exit()
+    min_coins, max_coins = calculate_mined_coins(1)
+    print(f"Минимальное количество монет, намайненных: {min_coins}")
+    print(f"Максимальное количество монет, намайненных: {max_coins}")
+
+
 
     r = calculate_total_supply(initial_reward=4, block_time=1, halving_interval=2600000)
     print(r)
+    exit()
+
 
     p = Protocol()
     # p.reward_matrix()

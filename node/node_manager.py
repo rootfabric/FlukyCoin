@@ -198,8 +198,8 @@ class NodeManager:
                 self.mempool.save_mempool()
 
                 self.log.info(f"{datetime.datetime.now()} Дата закрытого блока: {self.chain.last_block().datetime()}")
-                if Protocol.is_key_block(self.chain.last_block().hash):
-                    self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
+                # if Protocol.is_key_block(self.chain.last_block().hash):
+                #     self.log.info("СЛЕДУЮЩИЙ КЛЮЧЕВОЙ БЛОК")
                 self.log.info(
                     f"*** END CLOSE {num_block_to_close} **************** Active peers: {self.server.servicer.active_peers}")
 

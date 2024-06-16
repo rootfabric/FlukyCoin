@@ -397,25 +397,25 @@ class Chain():
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex() if self.last_block() is None else self.last_block().hash
 
-        is_key_block = self.protocol.is_key_block(self._previousHash)
-        # print(f"Key block: {is_key_block}")
-
-        # при ключевом блоке проверяем, не является ли адрем новым
-        if not is_key_block:
-
-            if self.check_miners(self.block_candidate.signer) and not self.check_miners(block.signer):
-                """ кандидат не в списках майнеров """
-                # print(f"Текущий майнер {self.block_candidate.signer}, кандидат не в списках майнеров", block.signer, self.miners)
-                return False
-
-            if not self.check_miners(self.block_candidate.signer) and self.check_miners(block.signer):
-                """ кандидат в списках майнеров, а текущий нет """
-                # print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
-                # self.block_candidate = copy.deepcopy(block)
-                self.block_candidate = Block.from_json(block.to_json())
-                # print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
-                self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
-                return True
+        # is_key_block = self.protocol.is_key_block(self._previousHash)
+        # # print(f"Key block: {is_key_block}")
+        #
+        # # при ключевом блоке проверяем, не является ли адрем новым
+        # if not is_key_block:
+        #
+        #     if self.check_miners(self.block_candidate.signer) and not self.check_miners(block.signer):
+        #         """ кандидат не в списках майнеров """
+        #         # print(f"Текущий майнер {self.block_candidate.signer}, кандидат не в списках майнеров", block.signer, self.miners)
+        #         return False
+        #
+        #     if not self.check_miners(self.block_candidate.signer) and self.check_miners(block.signer):
+        #         """ кандидат в списках майнеров, а текущий нет """
+        #         # print(f"Кандидат майнер {self.block_candidate.signer}, пербивает кандидата", block.signer, self.miners)
+        #         # self.block_candidate = copy.deepcopy(block)
+        #         self.block_candidate = Block.from_json(block.to_json())
+        #         # print("New candidat", self.block_candidate.hash, self.block_candidate.signer)
+        #         self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+        #         return True
 
         win_address = self.protocol.winner([self.block_candidate.signer, block.signer],
                                            self.protocol.sequence(self._previousHash))
@@ -451,20 +451,20 @@ class Chain():
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex() if self.last_block() is None else self.last_block().hash
 
-        is_key_block = self.protocol.is_key_block(self._previousHash)
-        # print(f"Key block: {is_key_block}")
-
-        # при ключевом блоке проверяем, не является ли адрем новым
-        if not is_key_block:
-
-            if self.check_miners(candidate_signer) and not self.check_miners(address_candidate):
-                """ кандидат не в списках майнеров """
-                # print(f"Текущий майнер {self.block_candidate.signer}, кандидат не в списках майнеров", block.signer, self.miners)
-                return False
-
-            if not self.check_miners(candidate_signer) and self.check_miners(address_candidate):
-                """ кандидат в списках майнеров, а текущий нет """
-                return True
+        # is_key_block = self.protocol.is_key_block(self._previousHash)
+        # # print(f"Key block: {is_key_block}")
+        #
+        # # при ключевом блоке проверяем, не является ли адрем новым
+        # if not is_key_block:
+        #
+        #     if self.check_miners(candidate_signer) and not self.check_miners(address_candidate):
+        #         """ кандидат не в списках майнеров """
+        #         # print(f"Текущий майнер {self.block_candidate.signer}, кандидат не в списках майнеров", block.signer, self.miners)
+        #         return False
+        #
+        #     if not self.check_miners(candidate_signer) and self.check_miners(address_candidate):
+        #         """ кандидат в списках майнеров, а текущий нет """
+        #         return True
 
         win_address = self.protocol.winner([candidate_signer, address_candidate],
                                            self.protocol.sequence(self._previousHash))

@@ -12,7 +12,7 @@ class WalletApp(tk.Tk):
         self.server = server
         self.wallet = Wallet(server=self.server)
         self.title("Кошелек")
-        self.geometry("800x400")  # Увеличил размер для лучшего отображения вкладок
+        self.geometry("800x450")  # Увеличил размер для лучшего отображения вкладок
         self.password = None
         self.create_widgets()
         self.current_page = 0

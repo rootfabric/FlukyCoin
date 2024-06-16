@@ -102,7 +102,7 @@ class NodeManager:
                 edited_idx = xmss.set_idx(next_idx - 1)
 
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
-            time_candidat = last_block_time + Protocol.BLOCK_TIME_INTERVAL
+            time_candidat = last_block_time + Protocol.BLOCK_TIME_SECONDS
             block_timestamp_seconds = time_candidat if time_candidat > self.chain.time() else self.chain.time()
 
 

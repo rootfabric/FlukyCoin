@@ -1,9 +1,11 @@
-port: 9333
+port: 9337
 host: 127.0.0.1
 is_miner: True
 initial_peers:
-    - "yglamazdin.fvds.ru:9333"
-    - "yglamazdin.fvds.ru:9334"
-    - "api.robotsimulator.ru:9333"
+#    - "yglamazdin.fvds.ru:9333"
+#    - "yglamazdin.fvds.ru:9334"
+#    - "api.robotsimulator.ru:9333"
+    - "95.154.71.53:9334"
+    - "95.154.71.53:9335"
 
 address_reward: AKMxvU7oJPWraHpaMxiYebN6eZn92DJNSqmQEGxzkB7m2b25okMh

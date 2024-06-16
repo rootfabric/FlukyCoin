@@ -99,6 +99,10 @@ class SyncManager:
                             self.log.info(f"{block_number_to_load + 1} reset")
                             self.node_manager.chain.drop_last_block()
                             # self.node_manager.chain.drop_last_block()
+                    if info.blocks == self.node_manager.chain.blocks_count():
+                        if info.latest_block != self.node_manager.chain.last_block_hash():
+                            """ Цепи равны, но при этом разные блоки  """
+                            drop_sync_signal = True
 
         if self._synced and drop_sync_signal and self.timer_drop_synced is not None:
             self.timer_drop_synced = time.time()
@@ -111,9 +115,10 @@ class SyncManager:
         if count_sync > 0 and len(peer_info) > 1 and not drop_sync_signal and not self._synced:
             self.timer_drop_synced = None
             last_block_time = self.last_block_time()
-            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_INTERVAL / 2:
+            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_SECONDS / 2:
                 self.log.info("Нода синхронизирована")
                 self.set_node_synced(True)
+                self.count_unsync_block = None
             else:
                 self.log.info("Ждем начала блока")
                 time.sleep(0.5)
@@ -131,7 +136,7 @@ class SyncManager:
             if self.unsync_count>0:
 
                 """ Требуется выяснить, текущая нода принадлежит главной цепи или нет """
-                if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_TIME_INTERVAL/2:
+                if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_TIME_SECONDS/2:
                     print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
 
                 flag_unsing = False
@@ -149,7 +154,7 @@ class SyncManager:
                     if self.count_unsync_block is None:
                         self.count_unsync_block = self.node_manager.chain.blocks_count()
 
-                    print(f"Нода в рассинхроне {self.count_unsync_block} блоков")
+                    print(f"Нода в рассинхроне {self.node_manager.chain.blocks_count() - self.count_unsync_block} блоков")
                 else:
                     self.count_unsync_block = None
 

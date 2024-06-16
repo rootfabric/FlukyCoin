@@ -70,7 +70,8 @@ class Block:
         # Prepare coinbase tx
         # total_reward_amount = BlockHeader.block_reward_calc(block_number, dev_config) + fee_reward
         sec = Protocol.sequence(block.previousHash)
-        block_reward, ratio, lcs = Protocol.reward(block.signer, sec, block_number=block_number)
+        # block_reward, ratio, lcs = Protocol.reward(block.signer, sec, block_number=block_number)
+        block_reward = Protocol.reward(block_number=block_number)
 
         total_reward_amount = block_reward + fee_reward
 

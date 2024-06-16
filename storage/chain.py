@@ -241,8 +241,8 @@ class Chain():
             self.log.warning(f"Неверный nonce coinbase транзакции")
             return False
 
-        sec = Protocol.sequence(block.previousHash)
-        block_reward, ratio, lcs = Protocol.reward(block.signer, sec, block_number=block_num)
+        # sec = Protocol.sequence(block.previousHash)
+        block_reward= Protocol.reward(block_number=block_num)
         amount = coinbase_transaction.all_amounts()
 
         if amount != block_reward:
@@ -417,7 +417,7 @@ class Chain():
                 self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
                 return True
 
-        win_address = self.protocol.winner(self.block_candidate.signer, block.signer,
+        win_address = self.protocol.winner([self.block_candidate.signer, block.signer],
                                            self.protocol.sequence(self._previousHash))
         # print("---------------------------------------------", self.protocol.sequence(self.previousHash))
         # print(self.block_candidate.signer)
@@ -466,7 +466,7 @@ class Chain():
                 """ кандидат в списках майнеров, а текущий нет """
                 return True
 
-        win_address = self.protocol.winner(candidate_signer, address_candidate,
+        win_address = self.protocol.winner([candidate_signer, address_candidate],
                                            self.protocol.sequence(self._previousHash))
 
         if win_address == candidate_signer:
@@ -497,7 +497,7 @@ class Chain():
         # если время последнего блока еще не вышло
         last_block = self.last_block()
         if last_block is not None:
-            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_INTERVAL > self.time():
+            if last_block.timestamp_seconds + Protocol.BLOCK_TIME_SECONDS > self.time():
                 return False
 
         if self.block_candidate.timestamp_seconds > self.time():

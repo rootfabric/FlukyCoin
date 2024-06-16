@@ -32,7 +32,7 @@ class Protocol:
 
     # HALVING_INTERVAL = 1500000
     INITIAL_HALVING_INTERVAL = 1500000
-    INITIAL_REWARD = 50000000
+    INITIAL_REWARD = 100000000
     HALVING_FACTOR = 3
 
     # сколько вермени ищем новые ноды перед тем как начать свою цепь если первые

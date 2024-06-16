@@ -86,9 +86,6 @@ message TransactionHash {
   string from_host = 2;
 }
 
-message Transaction {
-  string json_data = 1;
-}
 
 message Block {
   // Поле для хранения данных блока в виде строки JSON
@@ -106,6 +103,11 @@ message AddressInfoResponse {
   int32 nonce = 2;
   repeated Transaction transactions = 3;
 }
+
+message Transaction {
+  string json_data = 1;
+}
+
 
 message Ack {
   bool success = 1;

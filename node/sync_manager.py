@@ -142,12 +142,14 @@ class SyncManager:
                     flag_unsing = True
 
                 if flag_unsing:
-                    self.count_unsync_block+=1
+                    if self.count_unsync_block is None:
+                        self.count_unsync_block = self.node_manager.chain.blocks_count()
+
                     print(f"Нода в рассинхроне {self.count_unsync_block} блоков")
                 else:
-                    self.count_unsync_block = 0
+                    self.count_unsync_block = None
 
-                if self.count_unsync_block>3:
+                if self.count_unsync_block is not None and self.count_unsync_block + 3 <self.node_manager.chain.blocks_count():
                     print("Потеря синхронизации")
                     self.set_node_synced(False)
 
@@ -163,6 +165,7 @@ class SyncManager:
             return False
         if info.blocks != self.node_manager.chain.blocks_count():
             # self.log.info("Различие в длине цепи", info.blocks, self.node_manager.chain.blocks_count())
+            self.unsync_count += 1
             return False
         if info.latest_block != self.node_manager.chain.last_block_hash():
             self.log.info("Различие в блоках", info.latest_block, self.node_manager.chain.last_block_hash())

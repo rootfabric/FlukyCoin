@@ -4,6 +4,7 @@ from wallet_app.Wallet import Wallet
 import pyperclip
 from core.protocol import Protocol
 import os
+import json
 
 class WalletApp(tk.Tk):
     def __init__(self, server='5.35.98.126:9333'):
@@ -11,9 +12,11 @@ class WalletApp(tk.Tk):
         self.server = server
         self.wallet = Wallet(server=self.server)
         self.title("Кошелек")
-        self.geometry("700x400")  # Увеличил размер для лучшего отображения вкладок
+        self.geometry("800x400")  # Увеличил размер для лучшего отображения вкладок
         self.password = None
         self.create_widgets()
+        self.current_page = 0
+        self.transactions_per_page = 10
         # self.request_password_and_load_wallet()
 
     def request_password_and_load_wallet(self, filename=None):
@@ -30,7 +33,7 @@ class WalletApp(tk.Tk):
         self.password = simpledialog.askstring("Пароль", "Введите пароль кошелька:", show='*')
         if self.password:
             try:
-                self.wallet = Wallet(filename = filename, server=self.server)  # Создаем экземпляр кошелька с указанием файла
+                self.wallet = Wallet(filename=filename, server=self.server)  # Создаем экземпляр кошелька с указанием файла
                 self.wallet.load_from_file(self.password)
                 self.populate_first_address()
                 self.update_balance_info()
@@ -54,12 +57,42 @@ class WalletApp(tk.Tk):
         address = self.combo_address.get()
         if address:
             try:
-                info = self.wallet.info(address)
-                self.lbl_balance.config(text=f"Баланс: {info.balance / 10000000} coins, Нонс: {info.nonce} ,Всего подписей: {Protocol.address_max_sign(address)}")
+                info = self.wallet.info(address, transactions_start=self.current_page * self.transactions_per_page,
+                                        transactions_end=(self.current_page + 1) * self.transactions_per_page)
+                self.lbl_balance.config(
+                    text=f"Баланс: {info.balance / 10000000} coins, Нонс: {info.nonce} ,Всего подписей: {Protocol.address_max_sign(address)}")
+
+                for item in self.tree_transactions.get_children():
+                    self.tree_transactions.delete(item)  # Очистить таблицу перед обновлением
+
+                for tx in info.transactions:
+                    tx_data = json.loads(tx.json_data)
+                    tx_type = "IN" if address in tx_data['toAddress'] else "OUT"
+                    tx_hash_short = f"{tx_data['txhash'][:3]}...{tx_data['txhash'][-3:]}"
+                    amount = tx_data['amounts'][0] / 10000000
+
+                    if tx_type == "IN":
+                        # from_address = f"{tx_data['fromAddress'][:3]}...{tx_data['fromAddress'][-3:]}"
+                        from_address = tx_data['fromAddress']
+                        self.tree_transactions.insert("", tk.END, values=(tx_type, tx_hash_short, from_address, "", amount))
+                    else:
+                        # to_address = f"{tx_data['toAddress'][0][:3]}...{tx_data['toAddress'][0][-3:]}"
+                        to_address = tx_data['toAddress']
+                        self.tree_transactions.insert("", tk.END, values=(tx_type, tx_hash_short, "", to_address, amount))
+
+                self.update_status(f"Страница {self.current_page + 1}")
             except Exception as e:
-                # messagebox.showerror("Ошибка", str(e))
                 return  # Возвращаемся, если произошла ошибка, чтобы избежать бесконечного цикла
-        self.after(5000, self.update_balance_info)  # Планируем следующее обновление через 5 секунд
+        self.after(5000, self.update_balance_info)
+
+    def next_page(self):
+        self.current_page += 1
+        self.update_balance_info()
+
+    def previous_page(self):
+        if self.current_page > 0:
+            self.current_page -= 1
+            self.update_balance_info()
 
     def create_widgets(self):
         input_width = 70
@@ -89,12 +122,31 @@ class WalletApp(tk.Tk):
         self.lbl_address.grid(row=0, column=0, sticky="e", padx=10, pady=10)
         self.combo_address = ttk.Combobox(self.tab_main, width=input_width)
         self.combo_address.grid(row=0, column=1, sticky="we", padx=(10, 10))
-        self.combo_address.bind('<<ComboboxSelected>>',
-                                self.update_balance_info)  # Привязка события выбора к обновлению баланса
+        self.combo_address.bind('<<ComboboxSelected>>', self.update_balance_info)  # Привязка события выбора к обновлению баланса
         self.btn_copy = tk.Button(self.tab_main, text="Копировать", command=self.copy_address)
         self.btn_copy.grid(row=0, column=2, padx=(5, 10), pady=10)
         self.lbl_balance = tk.Label(self.tab_main, text="")
         self.lbl_balance.grid(row=1, column=0, columnspan=3, sticky="ew", padx=10, pady=10)
+
+        # Добавление таблицы транзакций
+        self.tree_transactions = ttk.Treeview(self.tab_main, columns=("Type", "Hash", "From", "To", "Amount"), show='headings')
+        self.tree_transactions.heading("Type", text="Тип")
+        self.tree_transactions.heading("Hash", text="Хеш")
+        self.tree_transactions.heading("From", text="От")
+        self.tree_transactions.heading("To", text="Кому")
+        self.tree_transactions.heading("Amount", text="Сумма")
+        self.tree_transactions.column("Type", width=40, minwidth=40, stretch=tk.NO)
+        self.tree_transactions.column("Hash", width=30, minwidth=30, stretch=tk.YES)
+        self.tree_transactions.column("From", width=100, minwidth=100, stretch=tk.YES)
+        self.tree_transactions.column("To", width=100, minwidth=100, stretch=tk.YES)
+        self.tree_transactions.column("Amount", width=50, minwidth=50, stretch=tk.NO)
+        self.tree_transactions.grid(row=2, column=0, columnspan=3, sticky="ew", padx=10, pady=10)
+
+        self.btn_prev_page = tk.Button(self.tab_main, text="Предыдущая страница", command=self.previous_page)
+        self.btn_prev_page.grid(row=3, column=0, padx=(10, 5), pady=10)
+
+        self.btn_next_page = tk.Button(self.tab_main, text="Следующая страница", command=self.next_page)
+        self.btn_next_page.grid(row=3, column=2, padx=(5, 10), pady=10)
 
         # Вкладка создания транзакции
         self.lbl_send_to = tk.Label(self.tab_transaction, text="Отправить на адрес:")
@@ -111,6 +163,8 @@ class WalletApp(tk.Tk):
         self.entry_message.grid(row=2, column=1, sticky="we", padx=(10, 10))
         self.btn_send = tk.Button(self.tab_transaction, text="Отправить", command=self.send_transaction)
         self.btn_send.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+
+
 
         # Вкладка данных о ключе
         self.lbl_private_key = tk.Label(self.tab_key_info, text="Секретный ключ:")
@@ -148,7 +202,6 @@ class WalletApp(tk.Tk):
 
         self.btn_add_address.grid(row=4, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
         self.btn_save.grid(row=5, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
-
 
         # Добавление строки состояния
         self.status_bar = tk.Label(self, text="", bd=1, relief=tk.SUNKEN, anchor=tk.W)
@@ -240,6 +293,5 @@ class WalletApp(tk.Tk):
 
 # Инициализация и запуск приложения
 # wallet = Wallet()  # Замените этим ваш объект кошелька
-# app = WalletApp(server='5.35.98.126:9333')
 app = WalletApp(server='192.168.0.26:9334')
 app.mainloop()

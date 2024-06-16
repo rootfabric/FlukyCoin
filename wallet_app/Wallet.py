@@ -52,24 +52,23 @@ class Wallet:
         file_encryptor.encrypt_data_to_file(data, self.filename)
 
 
-    def info(self, address):
+    def info(self, address, transactions_start=0, transactions_end=10):
         """ Информация по адресу кошелька из ноды """
-
-        # Создание канала связи с сервером
         channel = grpc.insecure_channel(self.server)
         stub = network_pb2_grpc.NetworkServiceStub(channel)
 
-        # Запрос на получение информации по адресу
-        # address_request = network_pb2.AddressRequest(address="bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm")
-        address_request = network_pb2.AddressRequest(address=address)
+        address_request = network_pb2.AddressRequest(
+            address=address,
+            transactions_start=transactions_start,
+            transactions_end=transactions_end
+        )
 
         try:
-            # Отправка запроса и получение ответа
             response = stub.GetAddressInfo(address_request)
             return response
-
         except grpc.RpcError as e:
             print(f"Ошибка gRPC: {str(e)}")
+            raise
 
     def info_text(self, address):
         response = self.info(address)

@@ -1,0 +1,14 @@
+port: 9333
+host: 192.168.0.10
+external_host: 95.154.71.53
+is_miner: True
+initial_peers:
+#  - "95.154.71.53:9333"
+    - "5.35.98.126:9333"
+#    - "yglamazdin.fvds.ru:9333"
+    - "95.154.71.53:9333"
+    - "95.154.71.53:9334"
+    - "95.154.71.53:9335"
+#    - "api.robotsimulator.ru:9333"
+#    - "api.robotsimulator.ru:9334"
+address_reward: URRisTVxmH5wwkexcZChHHEaCSrNLJ4bXk2r87ZuYRwVgssfLnQJ

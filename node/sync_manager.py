@@ -72,20 +72,23 @@ class SyncManager:
             for address, info in peer_info.items():
                 if info is None:
                     continue
+
+                """ Берем блоки у максимальной цепи """
+                if address not in max_group:
+                    continue
+                if max_blocks != info.blocks:
+                    continue
+
+                if info.difficulty != max_difficulty:
+                    continue
+
                 if info.synced:
                     count_sync += 1
                     if info.blocks > self.node_manager.chain.blocks_count():
                         drop_sync_signal = True
                         block_number_to_load = self.node_manager.chain.blocks_count()
 
-                        """ Берем блоки у максимальной цепи """
-                        if address not in max_group:
-                            continue
-                        if max_blocks != info.blocks:
-                            continue
 
-                        if info.difficulty != max_difficulty:
-                            continue
 
                         block = self.node_manager.client_handler.get_block_by_number(block_number_to_load,
                                                                                      info.network_info)

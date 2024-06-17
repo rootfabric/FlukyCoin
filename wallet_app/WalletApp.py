@@ -292,6 +292,7 @@ class WalletApp(tk.Tk):
             messagebox.showerror("Ошибка", str(e))
 
 # Инициализация и запуск приложения
-# wallet = Wallet()  # Замените этим ваш объект кошелька
-app = WalletApp(server='192.168.0.26:9334')
+wallet = Wallet()  # Замените этим ваш объект кошелька
+# app = WalletApp(server='192.168.0.26:9334')
+app = WalletApp()
 app.mainloop()

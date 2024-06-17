@@ -207,7 +207,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def BroadcastBlock(self, request, context):
         # Получаем адрес, с которого пришел запрос
-        # client_address = context.peer()
+        client_address = context.peer()
 
         # Логика обработки принятого блока
         if not self.node_manager.is_synced():
@@ -215,7 +215,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             return network_pb2.Ack(success=False)
 
         block = Block.from_json(request.data)  # Десериализация блока
-        # print(f"BroadcastBlock {block.hash_block()} from {client_address}")
+        print(f"BroadcastBlock {block.hash_block()} from {client_address}")
         if self.node_manager.chain.add_block_candidate(block):
             # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
             #       block.signer)
@@ -345,6 +345,10 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def BroadcastBlockHash(self, request, context):
         """Обрабатывает отправку хеша блока от другого пира."""
         block_hash = request.hash
+        client_address = context.peer()
+
+
+        print(f"BroadcastBlockHash {block_hash} from {client_address}")
 
         # Проверяем, есть ли блок с таким хешем
         if block_hash in self.node_manager.chain.history_hash:

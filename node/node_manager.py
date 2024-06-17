@@ -36,7 +36,7 @@ class NodeManager:
         self.timer_drop_synced = None
         self.running = True
         self.system_executor = ThreadPoolExecutor(max_workers=5)
-        self.executor = ThreadPoolExecutor(max_workers=10)
+        self.executor = ThreadPoolExecutor(max_workers=100)
         self.enable_load_info = True
         self.enable_distribute_block = True
         self.shutdown_event = threading.Event()
@@ -177,7 +177,8 @@ class NodeManager:
                 self.log.info(f"Свой Блок кандидат добавлен", new_block.hash,
                               new_block.signer)
                 if self.enable_distribute_block:
-                    self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
+                    # self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
+                    self.client_handler.distribute_block(self.chain.block_candidate)
 
             needClose = self.chain.need_close_block()
             if needClose and self.chain.block_candidate is not None:

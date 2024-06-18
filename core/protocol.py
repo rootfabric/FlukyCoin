@@ -101,11 +101,10 @@ class Protocol:
 
     @staticmethod
     def is_reverse(str1):
-        # Взять ASCII-код первого символа каждой строки и сложить их
-        # sum_of_codes = ord(str1[0]) + ord(str2[0])
-        sum_of_codes = ord(str1[0])
-        # Вернуть True, если сумма четная, и False, если нечетная
-        return sum_of_codes % 2 == 0
+        # Взять ASCII-код первого символа
+        num_one = ord(str1[0])
+        # Вернуть True, если число четное, и False, если нечетное
+        return num_one % 2 == 0
 
     @staticmethod
     def sequence(prevHash):
@@ -215,11 +214,19 @@ class Protocol:
                 best_address = address
                 best_ratio = ratio
                 best_signs = signs
+                continue
+
+            if ratio==best_ratio and signs==best_signs:
+                # при одинаковых данных выбираем первого по сортировке
+                rev = self.is_reverse(sequence)
+                sorted_list = sorted([best_address, address], reverse=rev)
+                best_address = sorted_list[0]
+
 
         if best_address:
             return best_address
 
-        rev = self.is_reverse(sequence)
+
 
         sorted_list = sorted(addresses, reverse=rev)
         winer = sorted_list[0]
@@ -367,39 +374,37 @@ def calculate_total_supply_and_duration(protocol):
     return total_supply_coins, total_time_years
 
 if __name__ == '__main__':
+    # protocol = Protocol()
+    # max_blocks = 10000000  # ограничение на количество блоков для расчетов и графика
+    # rewards, times = calculate_rewards(protocol, max_blocks)
+    # print(sum(rewards))
+    # plot_rewards(times, rewards)
+    #
+    # total_supply, total_time_years = calculate_total_supply_and_duration(protocol)
+    # print(f"Total supply of coins: {total_supply}")
+    # print(f"Total time to distribute all rewards: {total_time_years} years")
+
     protocol = Protocol()
-    max_blocks = 10000000  # ограничение на количество блоков для расчетов и графика
-    rewards, times = calculate_rewards(protocol, max_blocks)
-    print(sum(rewards))
-    plot_rewards(times, rewards)
 
-    total_supply, total_time_years = calculate_total_supply_and_duration(protocol)
-    print(f"Total supply of coins: {total_supply}")
-    print(f"Total time to distribute all rewards: {total_time_years} years")
+    addresses = [
+        "Kx4cWtri8AuF46MfXhn74F5Yj2R9VgjvyRVDYLssDu5rFpxUnytX",
+        "Kx4cWtri8AuF46MfXhn74F5Yj2R9VgjvyRVDYLssDu5rFpxUnyt2",
+        # "bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm",
+        # "XCTcaEyEv8HmQoZRHfWvmPGN86gp79MRA2nGEww4SpnHLtB6BhTW",
+        # "rwAZeiBhTBYQaoHhxMUy4iAKp2VNfuQjW3xfjnj9UgCM41uyJax",
+        # "V1u8k5jDsHmvSkccd4xLsRLxQxzaujnKe4NCghVod5MpsZyae7ym",
+        # "SsuMDKa19x3fX3ZvaXMNjz8m7gqPiwfBzCFeQDJpVU9b6brK7bLE",
+        # "FioZWyWCLsxjS9r7NsVvExdLtYr5DZ4MikVJKaxZESAFM3LWr5tx"
 
-#
-# if __name__ == '__main__':
-#
-#     # protocol = Protocol()
-#     #
-#     # addresses = [
-#     #     "Kx4cWtri8AuF46MfXhn74F5Yj2R9VgjvyRVDYLssDu5rFpxUnytX",
-#     #     "bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm",
-#     #     "XCTcaEyEv8HmQoZRHfWvmPGN86gp79MRA2nGEww4SpnHLtB6BhTW",
-#     #     "rwAZeiBhTBYQaoHhxMUy4iAKp2VNfuQjW3xfjnj9UgCM41uyJax",
-#     #     "V1u8k5jDsHmvSkccd4xLsRLxQxzaujnKe4NCghVod5MpsZyae7ym",
-#     #     "SsuMDKa19x3fX3ZvaXMNjz8m7gqPiwfBzCFeQDJpVU9b6brK7bLE",
-#     #     "FioZWyWCLsxjS9r7NsVvExdLtYr5DZ4MikVJKaxZESAFM3LWr5tx"
-#     #
-#     # ]
-#     #
-#     # previous_hash = "49ea6609e562bef19f9b13677f336107dcbd7d832bbc2f9a0cfa46ecdc8562eb"
-#     # sequence = protocol.sequence(previous_hash)
-#     #
-#     # winner_address = protocol.winner(addresses, sequence)
-#     # print(f"The winning address is: {winner_address}")
-#     #
-#     # exit(0)
+    ]
+
+    previous_hash = "5ea6609e562bef19f9b13677f336107dcbd7d832bbc2f9a0cfa46ecdc8562eb"
+    sequence = protocol.sequence(previous_hash)
+
+    winner_address = protocol.winner(addresses, sequence)
+    print(f"The winning address is: {winner_address}")
+
+    exit(0)
 #
 #     r= Protocol.reward(10000000)
 #     print(r / 10000000)

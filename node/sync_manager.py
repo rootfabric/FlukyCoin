@@ -61,6 +61,37 @@ class SyncManager:
 
         return max_group, max_blocks, max_difficulty
 
+    def check_info_for_candidate(self, peer_info):
+        """ Проверяем ноды, информацию о кандидатах """
+
+        if self.node_manager.chain.block_candidate is None:
+            return
+
+
+        max_group, max_blocks, max_difficulty = self.take_max_chain(peer_info)
+
+
+        if self._synced:
+            for address, info in peer_info.items():
+                if info is None:
+                    continue
+
+                """ Берем блоки у максимальной цепи """
+                if address not in max_group:
+                    continue
+                if max_blocks != info.blocks:
+                    continue
+
+                if info.difficulty != max_difficulty:
+                    continue
+
+
+                if info.block_candidate!=self.node_manager.chain.block_candidate.hash_block():
+                    """ Отличие блока, берем с ноды для проверки """
+                    self.log.info(f"Get candidate {info.block_candidate} from {address}  ")
+                    self.node_manager.client_handler.request_block_candidate_from_peer(address)
+
+
     def check_sync(self, peer_info):
         """ Проверка синхронности ноды """
         drop_sync_signal = False
@@ -91,7 +122,7 @@ class SyncManager:
 
 
                         block = self.node_manager.client_handler.get_block_by_number(block_number_to_load,
-                                                                                     info.network_info)
+                                                                                            info.network_info)
                         if self.node_manager.chain.validate_and_add_block(block):
                             self.log.info(
                                 f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
@@ -196,6 +227,9 @@ class SyncManager:
             try:
                 if self.node_manager.enable_load_info:
                     self.check_sync(self.node_manager.peer_info)
+
+                    self.check_info_for_candidate(self.node_manager.peer_info)
+
                 if self.is_synced():
                     time.sleep(1)
             except Exception as e:

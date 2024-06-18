@@ -47,7 +47,7 @@ class Chain():
 
 
 
-    def get_block_by_number(self, num):
+    def block_by_number_from_chain(self, num):
         if num < len(self.blocks):
             return self.blocks[num]
 

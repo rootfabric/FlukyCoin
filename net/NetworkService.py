@@ -228,7 +228,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
     def GetBlockByNumber(self, request, context):
         try:
             block_number = request.block_number
-            block = self.node_manager.chain.get_block_by_number(block_number)
+            block = self.node_manager.chain.block_by_number_from_chain(block_number)
             if block:
                 block_json = block.to_json()
                 return network_pb2.BlockResponse(block_data=block_json)
@@ -243,32 +243,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             context.set_details(f"Error fetching block: {str(e)}")
             return network_pb2.BlockResponse()
 
-    def get_block_by_number(self, block_number, address):
-        attempt = 0
-        max_attempts = 3
-        while attempt < max_attempts:
-            try:
-                with grpc.insecure_channel(address) as channel:
-                    stub = network_pb2_grpc.NetworkServiceStub(channel)
-                    request = network_pb2.BlockRequest(block_number=block_number)
-                    self.log.info(f"Requesting block {block_number} from {address}, attempt {attempt + 1}")
-                    response = stub.GetBlockByNumber(request, timeout=5)
-                    if response.block_data:
-                        block = Block.from_json(response.block_data)
-                        self.log.info(f"Successfully received block {block_number} from {address}")
-                        return block
-                    else:
-                        self.log.error(f"Block data not found for block number {block_number}")
-                        raise Exception("Block not found or error occurred")
-            except grpc.RpcError as e:
-                attempt += 1
-                self.log.error(f"Attempt {attempt} failed: {str(e)}")
-                if attempt == max_attempts:
-                    self.log.error(f"Max attempts reached. Unable to connect to {address}")
-            except Exception as e:
-                self.log.error(f"Unexpected error on attempt {attempt}: {str(e)}")
-            time.sleep(0.1)
-        return None
 
     def GetBlockCandidate(self, request, context):
         try:

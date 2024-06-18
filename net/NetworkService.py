@@ -55,7 +55,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         server_address = request.address
         self.known_peers.add(server_address)
         self.peer_addresses[client_address] = server_address
-        if self.check_active(server_address):
+        if self.node_manager.client_handler.check_active(server_address):
             self.active_peers.add(server_address)
 
         self.save_known_peers()

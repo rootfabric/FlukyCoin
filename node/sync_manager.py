@@ -85,6 +85,8 @@ class SyncManager:
                 if info.difficulty != max_difficulty:
                     continue
 
+                if info.blocks!=self.node_manager.chain.blocks_count():
+                    continue
 
                 if info.block_candidate!=self.node_manager.chain.block_candidate.hash_block():
                     """ Отличие блока, берем с ноды для проверки """

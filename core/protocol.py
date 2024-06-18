@@ -99,13 +99,20 @@ class Protocol:
         for i in range(1, 12):
             print(i, 2 ** i)
 
+    # @staticmethod
+    # def is_reverse(str1):
+    #     # Взять ASCII-код первого символа
+    #     num_one = ord(str1[0])
+    #     # Вернуть True, если число четное, и False, если нечетное
+    #     return num_one % 2 == 0
     @staticmethod
     def is_reverse(str1):
-        # Взять ASCII-код первого символа
-        num_one = ord(str1[0])
-        # Вернуть True, если число четное, и False, если нечетное
-        return num_one % 2 == 0
-
+        # Получаем SHA-256 хэш строки
+        hash_bytes = hashlib.sha256(str1.encode('utf-8')).digest()
+        # Суммируем все байты хэша
+        total = sum(hash_bytes)
+        # Возвращаем True, если сумма чётная, и False, если нечётная
+        return total % 2 == 0
     @staticmethod
     def sequence(prevHash):
         return base58.b58encode(prevHash).decode('utf-8').lower()
@@ -200,38 +207,72 @@ class Protocol:
         halving_factor = Protocol.calculate_halving_factor(halvings_passed)
         current_reward = initial_reward / (halving_factor ** halvings_passed)
         return current_reward
+    # def winner(self, addresses, sequence):
+    #     sequence = sequence.lower()
+    #     best_address = None
+    #     best_ratio = -1
+    #     best_signs = -1
+    #
+    #     for address in addresses:
+    #         ratio, lcs = self.find_longest_common_substring(sequence, address.lower())
+    #         signs = self.address_max_sign(address)
+    #
+    #         if ratio > best_ratio or (ratio == best_ratio and signs > best_signs):
+    #             best_address = address
+    #             best_ratio = ratio
+    #             best_signs = signs
+    #             continue
+    #
+    #         if ratio==best_ratio and signs==best_signs:
+    #             # при одинаковых данных выбираем первого по сортировке
+    #             rev = self.is_reverse(sequence)
+    #             sorted_list = sorted([best_address, address], reverse=rev)
+    #             best_address = sorted_list[0]
+    #
+    #
+    #     if best_address:
+    #         return best_address
+    #
+    #
+    #
+    #     sorted_list = sorted(addresses, reverse=rev)
+    #     winer = sorted_list[0]
+    #     return winer
+
     def winner(self, addresses, sequence):
         sequence = sequence.lower()
         best_address = None
         best_ratio = -1
-        best_signs = -1
+        best_score = -1
+
+        # Добавление детального логирования
+        detailed_scores = {}
 
         for address in addresses:
             ratio, lcs = self.find_longest_common_substring(sequence, address.lower())
             signs = self.address_max_sign(address)
+            score = ratio * signs  # Комбинированный скор с учетом подписей
 
-            if ratio > best_ratio or (ratio == best_ratio and signs > best_signs):
+            # Логирование результатов для каждого адреса
+            detailed_scores[address] = {'ratio': ratio, 'lcs': lcs, 'score': score}
+
+            if score > best_score:
                 best_address = address
                 best_ratio = ratio
-                best_signs = signs
+                best_score = score
                 continue
 
-            if ratio==best_ratio and signs==best_signs:
-                # при одинаковых данных выбираем первого по сортировке
+            if score == best_score:
                 rev = self.is_reverse(sequence)
                 sorted_list = sorted([best_address, address], reverse=rev)
                 best_address = sorted_list[0]
 
+        # Вывод логирования для анализа
+        print("Detailed scores for each address:")
+        for addr, details in detailed_scores.items():
+            print(f"Address: {addr}, Score: {details['score']}, Ratio: {details['ratio']}, LCS: {details['lcs']}")
 
-        if best_address:
-            return best_address
-
-
-
-        sorted_list = sorted(addresses, reverse=rev)
-        winer = sorted_list[0]
-        return winer
-
+        return best_address
     @staticmethod
     def address_info(address):
 
@@ -384,65 +425,79 @@ if __name__ == '__main__':
     # print(f"Total supply of coins: {total_supply}")
     # print(f"Total time to distribute all rewards: {total_time_years} years")
 
+    # Инициализация протокола и адресов
+    import secrets
+    import time
+
+
+    # Функция для генерации случайного previous_hash с большей энтропией
+    def generate_random_hash():
+        random_data = secrets.token_hex(32)
+        current_time = str(time.time())
+        extra_random_data = secrets.token_hex(32)
+        combined_data = random_data + current_time + extra_random_data
+        return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
+
+
+    # Инициализация протокола и адресов
     protocol = Protocol()
 
     addresses = [
-        "Kx4cWtri8AuF46MfXhn74F5Yj2R9VgjvyRVDYLssDu5rFpxUnytX",
-        "Kx4cWtri8AuF46MfXhn74F5Yj2R9VgjvyRVDYLssDu5rFpxUnyt2",
-        # "bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm",
-        # "XCTcaEyEv8HmQoZRHfWvmPGN86gp79MRA2nGEww4SpnHLtB6BhTW",
-        # "rwAZeiBhTBYQaoHhxMUy4iAKp2VNfuQjW3xfjnj9UgCM41uyJax",
-        # "V1u8k5jDsHmvSkccd4xLsRLxQxzaujnKe4NCghVod5MpsZyae7ym",
-        # "SsuMDKa19x3fX3ZvaXMNjz8m7gqPiwfBzCFeQDJpVU9b6brK7bLE",
-        # "FioZWyWCLsxjS9r7NsVvExdLtYr5DZ4MikVJKaxZESAFM3LWr5tx"
-
+        "bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm",
+        "Runsb7FX8Qzr3SBxzWmBpNJD3sG2HCSxLHgbXEfiUTPiGLEfbQsZ",
+        "YGPieNA3cqvCKSKm8NkR2oE6gCLf4pkNaie3g1Kmc2Siiprh3cjA",
+        "URRisTVxmH5wwkexcZChHHEaCSrNLJ4bXk2r87ZuYRwVgssfLnQJ",
+        "V1Pp6Hd4uUs8iwT7LWEEzFFUEiGfLwBXZUKuAP4a8MP78axPTVsK",
+        "AKMxvU7oJPWraHpaMxiYebN6eZn92DJNSqmQEGxzkB7m2b25okMh"
     ]
 
-    previous_hash = "5ea6609e562bef19f9b13677f336107dcbd7d832bbc2f9a0cfa46ecdc8562eb"
-    sequence = protocol.sequence(previous_hash)
+    # Инициализация предыдущего хэша и счётчиков очков для адресов
+    previous_hash = generate_random_hash()
+    scores = {address: 0 for address in addresses}
+    match_lengths = {address: [] for address in addresses}
+    substring_freq = {address: {i: 0 for i in range(1, 11)} for address in
+                      addresses}  # Частоты длин совпадающих подстрок
 
-    winner_address = protocol.winner(addresses, sequence)
-    print(f"The winning address is: {winner_address}")
+    # Количество тестов
+    num_tests = 10000
 
-    exit(0)
-#
-#     r= Protocol.reward(10000000)
-#     print(r / 10000000)
-#     r= Protocol.reward(0)
-#
-#     print(r/10000000)
-#     exit()
-#     # Пример: Расчет за 4 года
-#     min_coins, max_coins = calculate_mined_coins(1)
-#     print(f"Минимальное количество монет, намайненных: {min_coins}")
-#     print(f"Максимальное количество монет, намайненных: {max_coins}")
-#
-#
-#
-#     r = calculate_total_supply(initial_reward=4, block_time=1, halving_interval=2600000)
-#     print(r)
-#     exit()
-#
-#
-#     p = Protocol()
-#     # p.reward_matrix()
-#
-#     # вероятности ключевого блока
-#     res = {}
-#     b = 0
-#     max_try = 14400
-#     for i in range(max_try):
-#         h = hashlib.sha256(str(random.random()).encode('utf-8'))
-#         sec = h.hexdigest()
-#
-#         c = sec.count("0")
-#
-#         if c >= 11:
-#             b += 1
-#         res[c] = res.get(c, 0) + 1
-#
-#     res = sorted(res.items(), key=lambda x: x[1])
-#     # for x, y in res:
-#     #     print(x, y)
-#     print(b / 10, b / max_try)
-#     # print(res)
+    # Выполнение тестов
+    for _ in range(num_tests):
+
+        random.shuffle(addresses)
+
+        sequence = protocol.sequence(previous_hash)
+        winner_address = protocol.winner(addresses, sequence)
+        scores[winner_address] += 1
+        previous_hash = generate_random_hash()  # обновляем предыдущий хэш для следующего цикла
+
+        # Запись длины совпадающей подстроки
+        for address in addresses:
+            ratio, lcs = protocol.find_longest_common_substring(sequence, address.lower())
+            match_lengths[address].append(ratio)
+            substring_freq[address][ratio] += 1
+
+    # Вывод результатов
+    print("Результаты тестирования:")
+    for address, score in scores.items():
+        print(f"Адрес: {address}, Очки: {score}")
+
+    # Анализ длины совпадающих подстрок
+    print("\nДлина совпадающих подстрок:")
+    for address, lengths in match_lengths.items():
+        avg_length = sum(lengths) / len(lengths)
+        print(f"Адрес: {address}, Средняя длина совпадающей подстроки: {avg_length:.2f}")
+
+    # Вывод информации о каждом адресе
+    print("\nИнформация о каждом адресе:")
+    for address in addresses:
+        info = protocol.address_info(address)
+        if info:
+            print(f"Адрес: {address}, Информация: {info}")
+
+    # Вывод частот длин совпадающих подстрок
+    print("\nЧастоты длин совпадающих подстрок:")
+    for address, freqs in substring_freq.items():
+        print(f"\nАдрес: {address}")
+        for length, count in freqs.items():
+            print(f"Длина: {length}, Частота: {count}")

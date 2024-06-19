@@ -2,6 +2,7 @@ import difflib
 import random
 import hashlib
 import base58
+import base64
 import math
 import uuid
 
@@ -77,6 +78,25 @@ class Protocol:
             return match.size, s1[match.a: match.a + match.size]
         return 0, ""
 
+    # @staticmethod
+    # def find_longest_common_substring(str1, str2):
+    #     len1, len2 = len(str1), len(str2)
+    #     longest, start1, start2 = 0, 0, 0
+    #
+    #     # Таблица для хранения длин общих подстрок
+    #     table = [[0] * (len2 + 1) for _ in range(len1 + 1)]
+    #
+    #     # Заполнение таблицы
+    #     for i in range(1, len1 + 1):
+    #         for j in range(1, len2 + 1):
+    #             if str1[i - 1] == str2[j - 1]:
+    #                 table[i][j] = table[i - 1][j - 1] + 1
+    #                 if table[i][j] > longest:
+    #                     longest = table[i][j]
+    #                     start1, start2 = i - longest, j - longest
+    #
+    #     return longest, str1[start1:start1 + longest]
+
     @staticmethod
     def hash_to_uuid(address):
         hash_object = hashlib.sha256(address.encode())
@@ -113,10 +133,15 @@ class Protocol:
         total = sum(hash_bytes)
         # Возвращаем True, если сумма чётная, и False, если нечётная
         return total % 2 == 0
+    # @staticmethod
+    # def sequence(prevHash):
+    #     return base58.b58encode(prevHash).decode('utf-8').lower()
     @staticmethod
-    def sequence(prevHash):
-        return base58.b58encode(prevHash).decode('utf-8').lower()
-
+    def sequence(hash):
+        # Преобразование строки в байты и кодирование с использованием Base64
+        # return base64.b64encode(hash.encode('utf-8')).decode('utf-8')
+        # return hash.encode('utf-8').decode('utf-8')
+        return hash
     # def reward(self, addrr, sequence):
     #     ratio1, lcs = self.find_longest_common_substring(sequence, addrr.lower())
     #
@@ -250,6 +275,7 @@ class Protocol:
 
         for address in addresses:
             ratio, lcs = self.find_longest_common_substring(sequence, address.lower())
+            # ratio, lcs = self.find_longest_common_substring(sequence, hashlib.sha256(address.encode()).hexdigest())
             signs = self.address_max_sign(address)
             score = ratio * signs  # Комбинированный скор с учетом подписей
 
@@ -268,9 +294,9 @@ class Protocol:
                 best_address = sorted_list[0]
 
         # Вывод логирования для анализа
-        print("Detailed scores for each address:")
-        for addr, details in detailed_scores.items():
-            print(f"Address: {addr}, Score: {details['score']}, Ratio: {details['ratio']}, LCS: {details['lcs']}")
+        # print("Detailed scores for each address:")
+        # for addr, details in detailed_scores.items():
+        #     print(f"Address: {addr}, Score: {details['score']}, Ratio: {details['ratio']}, LCS: {details['lcs']}")
 
         return best_address
     @staticmethod
@@ -431,16 +457,86 @@ if __name__ == '__main__':
 
 
     # Функция для генерации случайного previous_hash с большей энтропией
-    def generate_random_hash():
-        random_data = secrets.token_hex(32)
-        current_time = str(time.time())
-        extra_random_data = secrets.token_hex(32)
-        combined_data = random_data + current_time + extra_random_data
-        return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
+    # def generate_random_hash():
+    #     random_data = secrets.token_hex(32)
+    #     current_time = str(time.time())
+    #     extra_random_data = secrets.token_hex(32)
+    #     combined_data = random_data + current_time + extra_random_data
+    #     return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
+    # def generate_random_hash():
+    #     # Генерация случайных данных с использованием более высокой энтропии
+    #     random_data = secrets.token_hex(32)
+    #
+    #     # Получение текущего времени в миллисекундах для увеличения чувствительности к времени
+    #     current_time = str(int(time.time() * 1000))
+    #
+    #     # Дополнительная случайная порция данных
+    #     extra_random_data = secrets.token_hex(32)
+    #
+    #     # Включение других изменяющихся во времени параметров, таких как показания процессорного времени
+    #     cpu_time = str(time.process_time())
+    #
+    #     # Комбинирование всех данных в одну строку
+    #     combined_data = random_data + current_time + extra_random_data + cpu_time
+    #
+    #     # Генерация хеша с использованием SHA-256
+    #     return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
+    import hashlib
+    import secrets
+    import time
 
+
+    # def generate_random_hash():
+    #     random_data = secrets.token_hex(32)
+    #     current_time = str(int(time.time() * 1000))
+    #     extra_random_data = secrets.token_hex(32)
+    #     cpu_time = str(time.process_time())
+    #
+    #     combined_data = random_data + current_time + extra_random_data + cpu_time
+    #
+    #     # Использование BLAKE2b вместо SHA-256
+    #     hash_object = hashlib.blake2b()
+    #     hash_object.update(combined_data.encode('utf-8'))
+    #     return hash_object.hexdigest()
+    def generate_random_hash():
+        import os
+        secret_key = os.urandom(35)
+        return secret_key.hex()
+
+
+    # # Проверка распределения длин подстрок
+    # d = {}
+    # import os
+    #
+    # # a = hashlib.sha256("bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm".encode()).hexdigest()
+    # # a = hashlib.sha256(os.urandom(35)).hexdigest()
+    # random_data = os.urandom(35)
+    # a = random_data.hex()
+    #
+    # for i in range(100000):
+    #     random_data = os.urandom(35)
+    #     sequence = random_data.hex()
+    #     # sequence = hashlib.sha256(random_data).hexdigest()
+    #     # print(sequence, a)
+    #
+    #     r = Protocol.find_longest_common_substring(sequence, a)
+    #     d[r[0]] = d.get(r[0], 0) + 1
+    #
+    # print(d)
 
     # Инициализация протокола и адресов
     protocol = Protocol()
+
+
+    def load_addresses_from_file(file_path):
+        addresses = []
+        with open(file_path, 'r') as file:
+            for line in file:
+                parts = line.strip().split('::')
+                if len(parts) > 5:
+                    address = parts[5]
+                    addresses.append(address)
+        return addresses
 
     addresses = [
         "bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm",
@@ -451,6 +547,8 @@ if __name__ == '__main__':
         "AKMxvU7oJPWraHpaMxiYebN6eZn92DJNSqmQEGxzkB7m2b25okMh"
     ]
 
+    addresses = load_addresses_from_file(r"C:\projects\FlukyCoin\tests\logs\KEYS_2024-06-19.log")
+    addresses = addresses[:100]
     # Инициализация предыдущего хэша и счётчиков очков для адресов
     previous_hash = generate_random_hash()
     scores = {address: 0 for address in addresses}
@@ -465,7 +563,7 @@ if __name__ == '__main__':
     for _ in range(num_tests):
 
         random.shuffle(addresses)
-
+        # addresses = [hashlib.sha256(a.encode()).hexdigest() for a in addresses]
         sequence = protocol.sequence(previous_hash)
         winner_address = protocol.winner(addresses, sequence)
         scores[winner_address] += 1
@@ -474,12 +572,14 @@ if __name__ == '__main__':
         # Запись длины совпадающей подстроки
         for address in addresses:
             ratio, lcs = protocol.find_longest_common_substring(sequence, address.lower())
+            # ratio, lcs = protocol.find_longest_common_substring(sequence, address.lower())
             match_lengths[address].append(ratio)
             substring_freq[address][ratio] += 1
 
-    # Вывод результатов
+    # Вывод результатов по убыванию
     print("Результаты тестирования:")
-    for address, score in scores.items():
+    sorted_scores = sorted(scores.items(), key=lambda item: item[1], reverse=True)
+    for address, score in sorted_scores:
         print(f"Адрес: {address}, Очки: {score}")
 
     # Анализ длины совпадающих подстрок
@@ -495,9 +595,27 @@ if __name__ == '__main__':
         if info:
             print(f"Адрес: {address}, Информация: {info}")
 
-    # Вывод частот длин совпадающих подстрок
-    print("\nЧастоты длин совпадающих подстрок:")
-    for address, freqs in substring_freq.items():
-        print(f"\nАдрес: {address}")
-        for length, count in freqs.items():
-            print(f"Длина: {length}, Частота: {count}")
+    # # Вывод частот длин совпадающих подстрок
+    # print("\nЧастоты длин совпадающих подстрок:")
+    # for address, freqs in substring_freq.items():
+    #     print(f"\nАдрес: {address}")
+    #     for length, count in freqs.items():
+    #         print(f"Длина: {length}, Частота: {count}")
+
+    # Адрес: 2CS4YrsCX2tgzTGcWkKXg4vTR5RcokQQMn7KYoYnAgaRN8yTh42Y, Очки: 234
+    # Адрес: 2f2tqPvxFHxLTTBVKVUaSXpwa8bZHvSqR3CtkdcCKbDKi7azCeVw, Очки: 220
+    # Адрес: erBD1YZ8qwTvyUAPiFf588AFDGCmDbFVC34nQcne2mgEhHQyZxJ2, Очки: 208
+    # Адрес: kLnmtpvpviP9NRL8ezcz2giVxXizt2qXbqKCLvj8PyvU4vh1WQ1, Очки: 202
+    # Адрес: cRws4mvphK6485WhiXiqbKRYax1RzPh1vjhyRYxkS2YA37okwSy3, Очки: 196
+    # Адрес: 2bCKymZS9aotUsEtmA3K677TVTCxRur21wnkKA3toHBMN4DWy2rh, Очки: 196
+    # Адрес: eeZcmaThLHwAPgysa9x4ihtHpjcfUFCc9oo2HojwQTFhy7dnByKW, Очки: 194
+    # Адрес: duy6RpqSqf9DD4xfE9nw6nYaLZkyfTwwscYuHiyh2xMwVDQnwoeW, Очки: 190
+    #
+    # Адрес: erBD1YZ8qwTvyUAPiFf588AFDGCmDbFVC34nQcne2mgEhHQyZxJ2, Очки: 820
+    # Адрес: VpZ8gLuZGckW6VcAPfp5sHr8kC7CiveDNVqHCV63d1VLga8c6cEB, Очки: 380
+    # Адрес: 35RSonwLaptQ2c8B3sDnEPYVErjZ8oPF7bvATfuvL6q9p9gvfaV, Очки: 312
+    # Адрес: 7zvbYGwz9FEa9SsWJB3my9jzRUU6nBLy5oAmmbdE1MPAcDY8c6Zb, Очки: 302
+    # Адрес: 995sYFXkoyku43r5PmffZ3iLEJdJh9B8szTSDQ8rpW885c4CEYKp, Очки: 294
+    # Адрес: 454rZp4Fvz9mJLsCTb3CHuTuYGp1mjfCRjuvjoH9B2BLoRvZNp8h, Очки: 262
+    # Адрес: 2bCKymZS9aotUsEtmA3K677TVTCxRur21wnkKA3toHBMN4DWy2rh, Очки: 252
+    # Адрес: duy6RpqSqf9DD4xfE9nw6nYaLZkyfTwwscYuHiyh2xMwVDQnwoeW, Очки: 244

@@ -13,6 +13,7 @@ from tools.time_sync import NTPTimeSynchronizer
 from tools.logger import Log
 from concurrent.futures import ThreadPoolExecutor
 from net.GrpcServer import GrpcServer
+from net.ConnectManager import ConnectManager
 from net.ClientHandler import ClientHandler
 from node.sync_manager import SyncManager
 
@@ -43,6 +44,7 @@ class NodeManager:
         self.unsync_count = 0
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
+        self.connect_manager = ConnectManager(self.server.get_external_host_ip())
         self.sync_manager = SyncManager(self,  log)
 
     def signal_handler(self, signum, frame):

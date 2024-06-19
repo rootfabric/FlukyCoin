@@ -3,20 +3,29 @@ from tkinter import ttk, simpledialog, messagebox, filedialog
 from wallet_app.Wallet import Wallet
 import pyperclip
 from core.protocol import Protocol
+
+from net.ConnectManager import ConnectManager
 import os
 import json
 
 class WalletApp(tk.Tk):
     def __init__(self, server='5.35.98.126:9333'):
         super().__init__()
+
+        self.connect_manager = ConnectManager()
+        self.connect_manager.start_ping_thread()
+
+
         self.server = server
-        self.wallet = Wallet(server=self.server)
+        self.wallet = Wallet(servers=self.server, connect_manager = self.connect_manager)
         self.title("Кошелек")
         self.geometry("800x450")  # Увеличил размер для лучшего отображения вкладок
         self.password = None
         self.create_widgets()
         self.current_page = 0
         self.transactions_per_page = 10
+
+
         # self.request_password_and_load_wallet()
 
     def request_password_and_load_wallet(self, filename=None):
@@ -33,7 +42,7 @@ class WalletApp(tk.Tk):
         self.password = simpledialog.askstring("Пароль", "Введите пароль кошелька:", show='*')
         if self.password:
             try:
-                self.wallet = Wallet(filename=filename, server=self.server)  # Создаем экземпляр кошелька с указанием файла
+                self.wallet = Wallet(filename=filename, servers=self.server)  # Создаем экземпляр кошелька с указанием файла
                 self.wallet.load_from_file(self.password)
                 self.populate_first_address()
                 self.update_balance_info()

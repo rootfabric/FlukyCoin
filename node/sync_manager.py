@@ -5,6 +5,7 @@ from tools.logger import Log
 from core.Block import Block
 from core.protocol import Protocol
 from collections import defaultdict
+from net.ConnectManager import ConnectManager
 
 
 class SyncManager:
@@ -18,7 +19,7 @@ class SyncManager:
         self.shutdown_event = threading.Event()
 
         # количество блоков в которых нода находится в рассинхроне с основной группой
-        self.count_unsync_block=0
+        self.count_unsync_block = 0
 
     def signal_handler(self, signum, frame):
         self.log.info("Signal received, shutting down...")
@@ -67,9 +68,7 @@ class SyncManager:
         if self.node_manager.chain.block_candidate is None:
             return
 
-
         max_group, max_blocks, max_difficulty = self.take_max_chain(peer_info)
-
 
         if self._synced:
             for address, info in peer_info.items():
@@ -85,14 +84,13 @@ class SyncManager:
                 if info.difficulty != max_difficulty:
                     continue
 
-                if info.blocks!=self.node_manager.chain.blocks_count():
+                if info.blocks != self.node_manager.chain.blocks_count():
                     continue
 
-                if info.block_candidate!=self.node_manager.chain.block_candidate.hash_block():
+                if info.block_candidate != self.node_manager.chain.block_candidate.hash_block():
                     """ Отличие блока, берем с ноды для проверки """
                     self.log.info(f"Get candidate {info.block_candidate} from {address}  ")
                     self.node_manager.client_handler.request_block_candidate_from_peer(address)
-
 
     def check_sync(self, peer_info):
         """ Проверка синхронности ноды """
@@ -121,10 +119,8 @@ class SyncManager:
                         drop_sync_signal = True
                         block_number_to_load = self.node_manager.chain.blocks_count()
 
-
-
                         block = self.node_manager.client_handler.get_block_by_number(block_number_to_load,
-                                                                                            info.network_info)
+                                                                                     info.network_info)
                         if self.node_manager.chain.validate_and_add_block(block):
                             self.log.info(
                                 f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
@@ -169,19 +165,19 @@ class SyncManager:
                     if self.is_block_candidate_new(info):
                         self.node_manager.client_handler.request_block_candidate_from_peer(info.network_info)
 
-            if self.unsync_count>0:
+            if self.unsync_count > 0:
 
                 """ Требуется выяснить, текущая нода принадлежит главной цепи или нет """
-                if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_TIME_SECONDS/2:
+                if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_TIME_SECONDS / 2:
                     print(""" в сети есть рассинхрон""", max_group, max_blocks, max_difficulty)
 
                 flag_unsing = False
-                if self.node_manager.chain.difficulty<max_difficulty :
+                if self.node_manager.chain.difficulty < max_difficulty:
                     if self.count_unsync_block is not None:
                         print("Сложность текущей цепи ниже чем в сети")
-                    flag_unsing=True
+                    flag_unsing = True
 
-                if self.node_manager.server.get_external_host_ip() not in max_group :
+                if self.node_manager.servers.get_external_host_ip() not in max_group:
                     if self.count_unsync_block is not None:
                         print("Нода вне большинства")
                     flag_unsing = True
@@ -190,11 +186,12 @@ class SyncManager:
                     if self.count_unsync_block is None:
                         self.count_unsync_block = self.node_manager.chain.blocks_count()
 
-                    print(f"Нода в рассинхроне {self.node_manager.chain.blocks_count() - self.count_unsync_block} блоков")
+                    print(
+                        f"Нода в рассинхроне {self.node_manager.chain.blocks_count() - self.count_unsync_block} блоков")
                 else:
                     self.count_unsync_block = None
 
-                if self.count_unsync_block is not None and self.count_unsync_block + 3 <self.node_manager.chain.blocks_count():
+                if self.count_unsync_block is not None and self.count_unsync_block + 3 < self.node_manager.chain.blocks_count():
                     print("Потеря синхронизации")
                     self.set_node_synced(False)
 
@@ -241,16 +238,25 @@ class SyncManager:
         timer_get_nodes = 0
         timer_ping_peers = 0
 
+
         while self.running:
             try:
                 pause_ping = Protocol.TIME_PAUSE_PING_PEERS_SYNCED if self.is_synced() else Protocol.TIME_PAUSE_PING_PEERS_NOT_SYNCED
                 if timer_ping_peers + pause_ping < time.time():
                     timer_ping_peers = time.time()
-                    self.node_manager.client_handler.ping_peers()
-                    try:
-                        self.node_manager.client_handler.connect_to_peers()
-                    except Exception as e:
-                        self.log.error("error connect_to_peers", e)
+                    # self.node_manager.client_handler.servicer.ping_peers()
+
+                    self.node_manager.client_handler.servicer.active_peers = self.node_manager.connect_manager.ping_peers()
+
+                    self.node_manager.connect_manager.connect_to_peers()
+
+                    self.node_manager.servers.servicer.active_peers.update(self.node_manager.connect_manager.active_peers)
+
+
+                    # try:
+                    #     self.node_manager.client_handler.connect_to_peers()
+                    # except Exception as e:
+                    #     self.log.error("error connect_to_peers", e)
 
                     if self.node_manager.enable_load_info:
                         self.node_manager.peer_info = self.node_manager.client_handler.fetch_info_from_peers()

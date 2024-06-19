@@ -7,13 +7,14 @@ from crypto.file_crypto import FileEncryptor
 
 
 class Wallet:
-    def __init__(self,  filename = "keys.dat", server='5.35.98.126:9333'):
+    def __init__(self, filename = "keys.dat", servers=['5.35.98.126:9333'], connect_manager = None):
         """ """
         self.filename = filename
         # self.server = server = '95.154.71.53:9333'
         # self.server = server = 'yglamazdin.fvds.ru:9333'
         # self.server = server = 'yglamazdin.fvds.ru:9333'
-        self.server = server
+        self.servers = servers
+        self.connect_manager = connect_manager
         self.keys: {str: XMSS} = dict()
 
 
@@ -54,7 +55,7 @@ class Wallet:
 
     def info(self, address, transactions_start=0, transactions_end=10):
         """ Информация по адресу кошелька из ноды """
-        channel = grpc.insecure_channel(self.server)
+        channel = grpc.insecure_channel(self.servers if self.connect_manager is None else self.connect_manager.get_peer())
         stub = network_pb2_grpc.NetworkServiceStub(channel)
 
         address_request = network_pb2.AddressRequest(
@@ -92,7 +93,7 @@ class Wallet:
 
     def send_transaction(self, transaction: Transaction):
         # Создание gRPC канала
-        channel = grpc.insecure_channel(self.server)
+        channel = grpc.insecure_channel(self.servers if self.connect_manager is None else self.connect_manager.get_peer())
         stub = network_pb2_grpc.NetworkServiceStub(channel)
 
         json_data = transaction.to_json()
@@ -126,7 +127,7 @@ class Wallet:
 
 if __name__ == '__main__':
 
-    wallet = Wallet(filename ="keys.dat", server='192.168.0.26:9334')
+    wallet = Wallet(filename ="keys.dat", servers='192.168.0.26:9334')
 
     # password = input("пароль:")
     # wallet.load_from_file(password)

@@ -36,9 +36,9 @@ class ClientHandler:
                 del self.peer_channels[address]
             return False
 
-    def register_with_peers(self, stub, local_address):
-        response = stub.RegisterPeer(network_pb2.PeerRequest(address=local_address), timeout=5)
-        return response.peers
+    # def register_with_peers(self, stub, local_address):
+    #     response = stub.RegisterPeer(network_pb2.PeerRequest(address=local_address), timeout=5)
+    #     return response.peers
     def register_with_peers(self, stub, local_address):
         r = network_pb2.PeerRequest(address=local_address)
         response = stub.RegisterPeer(r, timeout=5)

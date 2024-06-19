@@ -91,8 +91,10 @@ class SyncManager:
 
                 if info.block_candidate != self.node_manager.chain.block_candidate.hash_block():
                     """ Отличие блока, берем с ноды для проверки """
-                    self.log.info(f"Get candidate {info.block_candidate} from {address}  ")
-                    self.node_manager.client_handler.request_block_candidate_from_peer(address)
+                    # если блок не хранится в кеше, то делаем запрос
+                    if self.node_manager.chain.check_hash(info.block_candidate) is None:
+                        self.log.info(f"Get candidate {info.block_candidate} from {address}  ")
+                        self.node_manager.client_handler.request_block_candidate_from_peer(address)
 
     def check_sync(self, peer_info):
         """ Проверка синхронности ноды """
@@ -240,7 +242,6 @@ class SyncManager:
         timer_get_nodes = 0
         timer_ping_peers = 0
 
-
         while self.running:
             try:
                 pause_ping = Protocol.TIME_PAUSE_PING_PEERS_SYNCED if self.is_synced() else Protocol.TIME_PAUSE_PING_PEERS_NOT_SYNCED
@@ -252,8 +253,8 @@ class SyncManager:
 
                     self.node_manager.connect_manager.connect_to_peers()
 
-                    self.node_manager.server.servicer.active_peers.update(self.node_manager.connect_manager.active_peers)
-
+                    self.node_manager.server.servicer.active_peers.update(
+                        self.node_manager.connect_manager.active_peers)
 
                     # try:
                     #     self.node_manager.client_handler.connect_to_peers()

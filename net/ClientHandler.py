@@ -287,8 +287,10 @@ class ClientHandler:
 
             if response.block_data:
                 candidate_block = Block.from_json(response.block_data)
-                # self.log.info(f"Received block candidate from peer {peer} {candidate_block.hash_block()}")
-                # Можно добавить обработку кандидата блока, например, валидацию и добавление в цепь
+
+                # Добавляем в кеш, чтобы в последствии его не запрашивать
+                self.node_manager.chain.add_history_hash(candidate_block)
+
                 if self.node_manager.chain.validate_block(candidate_block):
                     if self.node_manager.chain.add_block_candidate(candidate_block):
                         self.log.info(f"Block candidate from peer {peer} added to chain.  {candidate_block.hash_block()}")

@@ -74,6 +74,10 @@ class Chain():
         #     return True
         return None
 
+    def add_history_hash(self, block):
+        self.history_hash[block.hash_block()] = block
+
+
     def save_chain_to_disk(self, filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
         dir = self.dir.replace(":", "_")
@@ -315,7 +319,8 @@ class Chain():
         # Увеличиваем сложность цепи
         self.difficulty += self.block_difficulty(block)
 
-        self.history_hash[block.hash_block()] = block
+        self.add_history_hash(block)
+
         # self.save_to_disk()
 
         self.mempool.remove_transactions_in_block(block)

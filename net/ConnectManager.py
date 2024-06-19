@@ -13,7 +13,7 @@ from tools.logger import Log
 import threading
 import time
 class ConnectManager():
-    def __init__(self, local_address='127.0.0.1', log=Log()):
+    def __init__(self, local_address='127.0.0.1', log=Log(), known_peers = set({"95.154.71.53:9334", "95.154.71.53:9333", "5.35.98.126:9333"})):
         """ """
         """ """
         self.log = log
@@ -25,7 +25,7 @@ class ConnectManager():
         self.peer_channels = {}
 
         self.active_peers = {}
-        self.known_peers = set({"95.154.71.53:9334", "95.154.71.53:9333", "5.35.98.126:9333"})
+        self.known_peers = known_peers
 
         self.load_known_peers()
 

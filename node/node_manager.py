@@ -25,27 +25,40 @@ class NodeManager:
         self.start_time = time.time()
         self.initial_peers = config.get("initial_peers", ["localhost:5555"])
         self.version = Protocol.VERSION
-        self.peer_info = {}
+
         self.time_ntpt = NTPTimeSynchronizer(log=log)
+
+        # хранилища
         self.mempool = Mempool(config, self)
-        self.chain = Chain(config=self.config, mempool=self.mempool, log=self.log)
         self.miners_storage = MinerStorage(config)
+
+        self.chain = Chain(config=self.config, mempool=self.mempool, log=self.log)
+
+        # связь
         self.server = GrpcServer(self.config, self)
         self.client_handler = ClientHandler(self.server.servicer, self)
         self.server.start()
-        # self._synced = False
+
+        self.connect_manager = ConnectManager(self.server.get_external_host_ip(), known_peers=set(self.initial_peers))
+
+        # синхронизация нод
+        self.sync_manager = SyncManager(self,  log)
+
+
         self.timer_drop_synced = None
         self.running = True
+
         self.system_executor = ThreadPoolExecutor(max_workers=5)
         self.executor = ThreadPoolExecutor(max_workers=100)
+
+        # переменные для дебага
         self.enable_load_info = True
         self.enable_distribute_block = True
+
+        # для отключения
         self.shutdown_event = threading.Event()
-        self.unsync_count = 0
         signal.signal(signal.SIGINT, self.signal_handler)
         signal.signal(signal.SIGTERM, self.signal_handler)
-        self.connect_manager = ConnectManager(self.server.get_external_host_ip())
-        self.sync_manager = SyncManager(self,  log)
 
     def signal_handler(self, signum, frame):
         self.log.info("Signal received, shutting down...")

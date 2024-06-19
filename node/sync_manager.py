@@ -18,6 +18,8 @@ class SyncManager:
         self.unsync_count = 0
         self.shutdown_event = threading.Event()
 
+        self.peer_info = {}
+
         # количество блоков в которых нода находится в рассинхроне с основной группой
         self.count_unsync_block = 0
 
@@ -177,7 +179,7 @@ class SyncManager:
                         print("Сложность текущей цепи ниже чем в сети")
                     flag_unsing = True
 
-                if self.node_manager.servers.get_external_host_ip() not in max_group:
+                if self.node_manager.server.get_external_host_ip() not in max_group:
                     if self.count_unsync_block is not None:
                         print("Нода вне большинства")
                     flag_unsing = True
@@ -225,9 +227,9 @@ class SyncManager:
         while self.running:
             try:
                 if self.node_manager.enable_load_info:
-                    self.check_sync(self.node_manager.peer_info)
+                    self.check_sync(self.peer_info)
 
-                    self.check_info_for_candidate(self.node_manager.peer_info)
+                    self.check_info_for_candidate(self.peer_info)
 
                 if self.is_synced():
                     time.sleep(1)
@@ -250,7 +252,7 @@ class SyncManager:
 
                     self.node_manager.connect_manager.connect_to_peers()
 
-                    self.node_manager.servers.servicer.active_peers.update(self.node_manager.connect_manager.active_peers)
+                    self.node_manager.server.servicer.active_peers.update(self.node_manager.connect_manager.active_peers)
 
 
                     # try:
@@ -259,11 +261,11 @@ class SyncManager:
                     #     self.log.error("error connect_to_peers", e)
 
                     if self.node_manager.enable_load_info:
-                        self.node_manager.peer_info = self.node_manager.client_handler.fetch_info_from_peers()
+                        self.peer_info = self.node_manager.client_handler.fetch_info_from_peers()
 
                 if self.node_manager.chain.time() > self.last_block_time() + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() > self.last_block_time() + Protocol.BLOCK_START_CHECK_PAUSE + 1:
                     # как только сформировался блок, делаем опрос пиров
-                    self.node_manager.peer_info = self.node_manager.client_handler.fetch_info_from_peers()
+                    self.peer_info = self.node_manager.client_handler.fetch_info_from_peers()
 
                 if self.is_synced() and timer_get_nodes + pause_ping < time.time():
                     timer_get_nodes = time.time()

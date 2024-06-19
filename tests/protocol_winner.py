@@ -39,10 +39,21 @@ address_list = [
     "Qggwc2mpEbrEKJN5umEPXNZxPo8CsbiwhpgfjMUJn4MAxg7PoyfE",
 
 ]
-previousHash = "f9b280306751658bfe3b4cf18baebea1bcec46ab2f5205a559f690249e4c4f4c"
-winner = address_list[0]
 
-winner = protocol.winner(address_list, protocol.sequence(previousHash))
+previousHash = "f9b280306751658bfe3b4cf18baebea1bcec46ab2f5205a559f690249e4c4f4c"
+
+winner = protocol.winner(address_list, previousHash)
+print("List winner", winner)
+
+address_list = [
+
+    # "HT79Z8TaFqMe8PH1YHhYNxiYCrJEKUKykMVZ7LkXwebrLmcantbp",
+    # "SsuMDKa19x3fX3ZvaXMNjz8m7gqPiwfBzCFeQDJpVU9b6brK7bLE",
+    "Qggwc2mpEbrEKJN5umEPXNZxPo8CsbiwhpgfjMUJn4MAxg7PoyfE",
+    "bRiZZHstieg3BEYEPsTFzhMsm7CSj3x8TyFqeJj2x9UutTmGp2EB",
+]
+
+winner = Protocol.winner(address_list, previousHash)
 
 print("List winner", winner)
 

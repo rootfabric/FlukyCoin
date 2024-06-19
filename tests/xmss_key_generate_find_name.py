@@ -8,7 +8,7 @@ if __name__ == '__main__':
     log2 = Log("KEYS")
 
     for i in range(1000):
-        keys = XMSS.create(5)
+        keys = XMSS.create(3)
         log.info(i, keys.address, keys.private_key.hex())
         log2.info(keys.address)
 

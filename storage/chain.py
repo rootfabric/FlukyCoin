@@ -136,7 +136,7 @@ class Chain():
     def block_difficulty(self, block: Block):
         """ Сложность блока """
 
-        ratio, _ = Protocol.find_longest_common_substring(block.signer.lower(), Protocol.sequence(block.previousHash))
+        ratio, _ = Protocol.find_longest_common_substring(block.signer, block.previousHash, convert_to_sha256 = True)
 
         address_height = Protocol.address_height(block.signer)
 
@@ -417,8 +417,7 @@ class Chain():
         #         self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
         #         return True
 
-        win_address = self.protocol.winner([self.block_candidate.signer, block.signer],
-                                           self.protocol.sequence(self._previousHash))
+        win_address = self.protocol.winner([self.block_candidate.signer, block.signer], self._previousHash)
         # print("---------------------------------------------", self.protocol.sequence(self.previousHash))
         # print(self.block_candidate.signer)
         # print(block.signer)
@@ -466,8 +465,7 @@ class Chain():
         #         """ кандидат в списках майнеров, а текущий нет """
         #         return True
 
-        win_address = self.protocol.winner([candidate_signer, address_candidate],
-                                           self.protocol.sequence(self._previousHash))
+        win_address = self.protocol.winner([candidate_signer, address_candidate], self._previousHash)
 
         if win_address == candidate_signer:
             return False

@@ -1,3 +1,4 @@
+import datetime
 import os
 import pickle
 from crypto.xmss import XMSS, keypair_from_json, keypair_to_json, XMSSPublicKey
@@ -5,7 +6,7 @@ from tools.logger import Log
 
 
 class MinerStorage:
-    def __init__(self, config):
+    def __init__(self, config, start_generate = True):
         """ """
         self.config = config
         self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
@@ -15,13 +16,14 @@ class MinerStorage:
 
         self.load_from_disk(dir=self.dir)
 
-        if len(self.keys) == 0:
+        if len(self.keys) == 0 and start_generate:
             self.generate_keys(100, height=6)
             self.save_storage_to_disk(dir=self.dir)
 
     def generate_keys(self, size=10, height=1):
         """ Генерация заданного количества ключей для майнинга"""
         self.log.info("Генерация ключей")
+        start_time = datetime.datetime.now()
         count_sign = 0
         for i in range(size):
             xmss = XMSS.create(height)
@@ -29,7 +31,7 @@ class MinerStorage:
             self.keys[xmss.address] = xmss
             self.log.info(f"[{i + 1}/{size}]  {xmss.address} signs:{xmss.keyPair.PK.max_height()}")
 
-        self.log.info(f"Ключей создано: {size}, подписей:  {count_sign}")
+        self.log.info(f"Ключей создано: {size}, подписей:  {count_sign}  время{datetime.datetime.now()-start_time}")
         self.save_storage_to_disk(dir=self.dir)
 
     def close_key(self, key: XMSS):
@@ -93,15 +95,15 @@ class MinerStorage:
 
 if __name__ == '__main__':
     """ """
-    mining_storage = MinerStorage()
+    mining_storage = MinerStorage({}, start_generate=False)
 
-    # mining_storage.generate_keys(100)
-    # mining_storage.save_storage_to_disk()
+    mining_storage.generate_keys(1, 14)
+    mining_storage.save_storage_to_disk()
 
     # mining_storage.load_from_disk()
 
-    for k in mining_storage.keys.keys():
-        print(k, XMSSPublicKey().is_valid_address(k))
+    # for k in mining_storage.keys.keys():
+    #     print(k, XMSSPublicKey().is_valid_address(k))
     # print(mining_storage.keys)
     # mining_storage.generate_keys(size=20, height=7)
     # mining_storage.save_storage_to_disk()

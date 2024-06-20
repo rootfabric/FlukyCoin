@@ -33,7 +33,7 @@ class Protocol:
 
     # HALVING_INTERVAL = 1500000
     INITIAL_HALVING_INTERVAL = 1500000
-    INITIAL_REWARD = 100000000
+    INITIAL_REWARD = 50000000
     HALVING_FACTOR = 3
 
     # сколько вермени ищем новые ноды перед тем как начать свою цепь если первые
@@ -69,15 +69,15 @@ class Protocol:
     DEFAULT_PORT = 9333
 
     @staticmethod
-    def find_longest_common_substring(s1, s2, convert_to_sha256=False):
+    def find_longest_common_substring(address, block_hash, convert_to_sha256=False):
 
         if convert_to_sha256:
-            s1 = hashlib.sha256(s1.encode()).hexdigest()
-            s2 = hashlib.sha256(s2.encode()).hexdigest()
+            address = hashlib.sha256(address.encode()).hexdigest()
+            # s2 = hashlib.sha256(s2.encode()).hexdigest()
 
-        match = difflib.SequenceMatcher(None, s1, s2).find_longest_match(0, len(s1), 0, len(s2))
+        match = difflib.SequenceMatcher(None, address, block_hash).find_longest_match(0, len(address), 0, len(block_hash))
         if match.size > 0:
-            return match.size, s1[match.a: match.a + match.size]
+            return match.size, address[match.a: match.a + match.size]
         return 0, ""
 
     # @staticmethod
@@ -178,22 +178,25 @@ class Protocol:
         """ Алгоритм проверки победителя адреса в хеше """
         best_address = None
         best_score = -1
+        best_ratio = -1
 
         for address in addresses:
 
-            hash_sha256 = hashlib.sha256(hash.encode()).hexdigest()
+            # hash_sha256 = hashlib.sha256(hash.encode()).hexdigest()
+            # хеш блока без изменений
+            hash_sha256 = hash
             address_sha256 = hashlib.sha256(address.encode()).hexdigest()
-            ratio, lcs = Protocol.find_longest_common_substring(hash_sha256, address_sha256)
+            ratio, lcs = Protocol.find_longest_common_substring(address_sha256, hash_sha256)
             signs = Protocol.address_max_sign(address)
-            score = ratio * signs
 
-            if score > best_score:
+            if ratio > best_ratio or (ratio == best_ratio and signs > best_signs):
                 best_address = address
-                # best_ratio = ratio
-                best_score = score
+                best_ratio = ratio
+                best_signs = signs
                 continue
 
-            if score == best_score:
+            if ratio==best_ratio and signs==best_signs:
+                # при одинаковых данных выбираем первого по сортировке
                 rev = Protocol.is_reverse(hash)
                 sorted_list = sorted([best_address, address], reverse=rev)
                 best_address = sorted_list[0]
@@ -449,7 +452,13 @@ if __name__ == '__main__':
         # "URRisTVxmH5wwkexcZChHHEaCSrNLJ4bXk2r87ZuYRwVgssfLnQJ",
         # "V1Pp6Hd4uUs8iwT7LWEEzFFUEiGfLwBXZUKuAP4a8MP78axPTVsK",
         # "AKMxvU7oJPWraHpaMxiYebN6eZn92DJNSqmQEGxzkB7m2b25okMh"
-        "eY2CA5THMANYswNykf1bfr1K4Jp5XeTq84c7LzWnFadD7VBmLAtG",
+        "RENHq1hm695mcctifs9qVbFDbkRkzryoqKpbE6jcCXv7aeruUwCo",
+        "SqCVtJsaTCRR2mJkotGPJB99F3afn3X3CMEaAg8QiPZ43vChnZ9u",
+        "R6mXsMvCTwbtyrL6gHVLYB1sVJv4hZacpYNWQ5w7JBYJwqVCPsSM",
+        "WasCYmasYuEuU5s3qUxWhwvAUKyAUasTuuap9BLSYWVn9ry2E4x1",
+        "BdbFzyqqZwbUFaFLnqmo97whqYnxPZ4RVZevDRJ33F7gN3WZJsMX",
+
+        "4iPEsZKhmX9rNYXJYnRdUYyRNidVaj2WFs4zLMZnbzmZfskJfYLr",
         "2A1XVJgNT53C9c7JKUfHjbZtEQDk89fWd2cL3Ro3BNX2QG7crX2b",
         "aJPVhagraL3uUwWyACkFzhHkPPDTGWyDJ7MUJKxQwfZqEkQXqvUW",
         # "3ebP9Wnm6RykLYoxJe57m2mGccGx9KWc2AZMHEmauWp8iFWBf5DG",
@@ -460,9 +469,9 @@ if __name__ == '__main__':
         # "Kche7UTznvL5xX1pav9kVUG4Tac5zzP2H2tibWozWjDKSGgqgP37",
     ]
 
-    addresses = load_addresses_from_file(r"C:\FlukyCoin\tests\logs\KEYS_2024-06-19.log")
+    addresses_load = load_addresses_from_file(r"C:\FlukyCoin\tests\logs\KEYS_2024-06-19.log")
 
-    # addresses = addresses[:100]
+    addresses = addresses+addresses_load[:100]
     # Инициализация предыдущего хэша и счётчиков очков для адресов
 
     scores = {address: 0 for address in addresses}
@@ -471,7 +480,7 @@ if __name__ == '__main__':
                       addresses}  # Частоты длин совпадающих подстрок
 
     # Количество тестов
-    num_tests = 100
+    num_tests = 100000
 
     # previous_hash = Protocol.generate_random_hash()  # обновляем предыдущий хэш для следующего цикла
 

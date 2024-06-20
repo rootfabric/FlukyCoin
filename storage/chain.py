@@ -45,8 +45,6 @@ class Chain():
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
 
-
-
     def block_by_number_from_chain(self, num):
         if num < len(self.blocks):
             return self.blocks[num]
@@ -76,7 +74,6 @@ class Chain():
 
     def add_history_hash(self, block):
         self.history_hash[block.hash_block()] = block
-
 
     def save_chain_to_disk(self, filename='blockchain.db'):
         # Нормализация имени директории и формирование пути
@@ -140,7 +137,7 @@ class Chain():
     def block_difficulty(self, block: Block):
         """ Сложность блока """
 
-        ratio, _ = Protocol.find_longest_common_substring(block.signer, block.previousHash, convert_to_sha256 = True)
+        ratio, _ = Protocol.find_longest_common_substring(block.signer, block.previousHash, convert_to_sha256=True)
 
         address_height = Protocol.address_height(block.signer)
 
@@ -246,7 +243,7 @@ class Chain():
             return False
 
         # sec = Protocol.sequence(block.previousHash)
-        block_reward= Protocol.reward(block_number=block_num)
+        block_reward = Protocol.reward(block_number=block_num)
         amount = coinbase_transaction.all_amounts()
 
         if amount != block_reward:
@@ -325,8 +322,6 @@ class Chain():
 
         self.mempool.remove_transactions_in_block(block)
 
-
-
     def blocks_count(self):
         return len(self.blocks)
 
@@ -340,6 +335,7 @@ class Chain():
     def last_block_hash(self) -> Block:
         return self.blocks[-1].hash_block() if len(
             self.blocks) > 0 else Protocol.prev_hash_genesis_block.hex()
+
     def last_block_time(self) -> float:
         return self.blocks[-1].timestamp_seconds if len(
             self.blocks) > 0 else 0
@@ -530,6 +526,7 @@ class Chain():
             self.history_hash.pop(last_block.hash_block())
 
         self.difficulty -= self.block_difficulty(last_block)
+
 
 if __name__ == '__main__':
     """ """

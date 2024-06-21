@@ -128,9 +128,9 @@ class SyncManager:
                         if self.node_manager.chain.validate_and_add_block(block):
                             self.log.info(
                                 f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
-                            if self.node_manager.chain.blocks_count() % 100 == 0:
-                                self.log.info("Save chain")
-                                self.node_manager.chain.save_chain_to_disk()
+                            # if self.node_manager.chain.blocks_count() % 100 == 0:
+                            #     self.log.info("Save chain")
+                            #     self.node_manager.chain.save_chain_to_disk()
                         else:
                             self.log.info(f"{block_number_to_load + 1} reset")
                             self.node_manager.chain.drop_last_block()
@@ -282,4 +282,4 @@ class SyncManager:
                 exit()
             except Exception as e:
                 self.log.error("Ошибка технического блока ", e)
-                # self.running = False
+                self.running = False

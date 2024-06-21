@@ -81,7 +81,7 @@ class Block:
 
         coinbase_tx = CoinbaseTransaction(toAddress=[address_reward], amounts=[block_reward], nonce=coinbase_nonce)
         # количество выплат с генезис адреса
-        coinbase_tx.nonce = block_number + 1
+        coinbase_tx.nonce = coinbase_nonce
 
         h = coinbase_tx.txhash
         hashedtransactions.append(h)

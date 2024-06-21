@@ -14,12 +14,19 @@ from tools.time_sync import NTPTimeSynchronizer
 import os
 import pickle
 from tools.logger import Log
+import dbm
 
 
 class Chain():
-    def __init__(self, config=None, time_ntpt=None, mempool=None, log=Log()):
-        self.blocks: Block = []
-        self.transaction_storage = TransactionStorage()
+    def __init__(self, config=None, time_ntpt=None, mempool=None, log=Log(), node_dir_base = None):
+
+        self.config = config if config is not None else {}
+        if node_dir_base is None:
+            self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
+        else:
+            self.dir = node_dir_base
+
+        self.transaction_storage = TransactionStorage(dir=self.dir)
         self.mempool: Mempool = mempool
         self.protocol = Protocol()
         self.log = log
@@ -29,25 +36,151 @@ class Chain():
 
         self.time_ntpt = NTPTimeSynchronizer(log=self.log) if time_ntpt is None else time_ntpt
 
-        # self.miners = set()
-
-        self.config = config
-
-        if config is not None:
-            self.dir = str(f'{self.config.get("host", "localhost")}:{self.config.get("port", "5555")}')
-
-            host = config.get("host", "localhost")
-            port = config.get("port", "5555")
-
-            self.load_from_disk()
-
         self.history_hash = {}
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
 
+    def clear_db(self):
+        with self._open_db() as db:
+            db.clear()
+
+    def _open_db(self, mode='c'):
+        dir = self.dir.replace(":", "_")
+        base_dir = "node_data"
+        dir_path = os.path.join(base_dir, dir)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        db_path = os.path.join(dir_path, 'blocks.db')
+
+        if mode == 'r':
+            # Если пытаемся открыть для чтения, но файл не существует
+            if not os.path.exists(db_path):
+                # Создаем пустую базу данных
+                with dbm.open(db_path, 'c'):
+                    pass
+                # И сразу же открываем ее для чтения
+                return dbm.open(db_path, 'r')
+
+        try:
+            return dbm.open(db_path, mode)
+        except dbm.error as e:
+            if 'db file doesn\'t exist' in str(e):
+                # Если файл не существует, создаем его
+                return dbm.open(db_path, 'c')
+            else:
+                # Если возникла другая ошибка, пробрасываем ее дальше
+                raise
+
     def block_by_number_from_chain(self, num):
-        if num < len(self.blocks):
-            return self.blocks[num]
+        with self._open_db('r') as db:
+            if str(num) in db:
+                return Block.from_json(db[str(num)].decode())
+        return None
+
+    def blocks_count(self):
+        with self._open_db('r') as db:
+            return len(db)
+
+    def last_block(self):
+        count = self.blocks_count()
+        return self.block_by_number_from_chain(count - 1) if count > 0 else None
+
+    def last_block_hash(self):
+        last_block = self.last_block()
+        return last_block.hash_block() if last_block else Protocol.prev_hash_genesis_block.hex()
+
+    def last_block_time(self):
+        last_block = self.last_block()
+        return last_block.timestamp_seconds if last_block else 0
+
+    def save_chain_to_disk(self, filename='blockchain.db'):
+
+        return
+        # Сохранение данных транзакций
+        self.transaction_storage.save_to_disk(self.dir)
+
+        # Сохранение блок-кандидата
+        dir = self.dir.replace(":", "_")
+        base_dir = "node_data"
+        dir_path = os.path.join(base_dir, dir)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        full_path = os.path.join(dir_path, 'block_candidate.pickle')
+        with open(full_path, 'wb') as file:
+            pickle.dump(None if self.block_candidate is None else self.block_candidate.to_json(), file)
+
+    def calculate_difficulty(self):
+        self.difficulty = 0
+        with self._open_db('r') as db:
+            for key in db.keys():
+                block = Block.from_json(db[key].decode())
+                self.difficulty += self.block_difficulty(block)
+
+    def load_from_disk(self, filename='blockchain.db'):
+        # Загрузка данных транзакций
+        # self.transaction_storage.load_from_disk(self.dir)
+
+        # Загрузка блок-кандидата
+        dir = self.dir.replace(":", "_")
+        base_dir = "node_data"
+        dir_path = os.path.join(base_dir, dir)
+        full_path = os.path.join(dir_path, 'block_candidate.pickle')
+        try:
+            with open(full_path, 'rb') as file:
+                block_candidate_json = pickle.load(file)
+                if block_candidate_json is not None:
+                    self.block_candidate = Block.from_json(block_candidate_json)
+        except FileNotFoundError:
+            self.log.error("No block candidate file found.")
+        except Exception as e:
+            self.log.error(f"Failed to load block candidate: {e}")
+
+        self.calculate_difficulty()
+
+        self.log.info(
+            f"Blockchain loaded from disk. {self.blocks_count()} blocks, miners: {len(self.transaction_storage.miners)} all_ratio: {self.difficulty}")
+
+    def _open_db(self, mode='c'):
+        dir = self.dir.replace(":", "_")
+        base_dir = "node_data"
+        dir_path = os.path.join(base_dir, dir)
+        if not os.path.exists(dir_path):
+            os.makedirs(dir_path)
+        db_path = os.path.join(dir_path, 'blocks.db')
+
+        if mode == 'r' and not os.path.exists(db_path):
+            # Если файл не существует и мы пытаемся открыть его для чтения,
+            # создадим пустую базу данных
+            with dbm.open(db_path, 'c'):
+                pass
+
+        return dbm.open(db_path, mode)
+
+    def _add_block(self, block: Block):
+        with self._open_db('c') as db:
+            db[str(block.block_number)] = block.to_json().encode()
+
+        self.transaction_storage.add_block(block)
+        self.difficulty += self.block_difficulty(block)
+        self.add_history_hash(block)
+        if self.mempool is not None:
+            self.mempool.remove_transactions_in_block(block)
+
+    def drop_last_block(self):
+        last_block = self.last_block()
+        if last_block is None:
+            return False
+
+        self.transaction_storage.rollback_block(last_block)
+
+        with self._open_db('c') as db:
+            del db[str(last_block.block_number)]
+
+        if last_block.hash_block() in self.history_hash:
+            self.history_hash.pop(last_block.hash_block())
+
+        self.difficulty -= self.block_difficulty(last_block)
+        return True
 
     def time(self):
         return self.time_ntpt.get_corrected_time()
@@ -74,65 +207,6 @@ class Chain():
 
     def add_history_hash(self, block):
         self.history_hash[block.hash_block()] = block
-
-    def save_chain_to_disk(self, filename='blockchain.db'):
-        # Нормализация имени директории и формирование пути
-        dir = self.dir.replace(":", "_")
-        base_dir = "node_data"
-        dir_path = os.path.join(base_dir, dir)
-
-        # Создание пути, если необходимо
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-
-        # Полный путь к файлу
-        full_path = os.path.join(dir_path, filename)
-
-        # Сохранение данных
-        with open(full_path, 'wb') as file:
-            # pickle.dump([[b.to_json() for b in self.blocks], self.transaction_storage, None if self.block_candidate is None else self.block_candidate.to_json()], file)
-            pickle.dump([[b.to_json() for b in self.blocks], self.transaction_storage.to_json(),
-                         None if self.block_candidate is None else self.block_candidate.to_json()], file)
-
-            # pickle.dump([[b.to_json() for b in self.blocks],  None if self.block_candidate is None else self.block_candidate.to_json()], file)
-
-        # print(f"Blockchain saved to disk at {full_path}.")
-
-    def load_from_disk(self, filename='blockchain.db'):
-        # Нормализация имени директории и формирование пути
-        dir = self.dir.replace(":", "_")
-        base_dir = "node_data"
-        dir_path = os.path.join(base_dir, dir)
-
-        # Полный путь к файлу
-        full_path = os.path.join(dir_path, filename)
-
-        try:
-            with open(full_path, 'rb') as file:
-                blocks_json, transaction_storage_json, block_candidate_json = pickle.load(file)
-                if block_candidate_json is not None:
-                    self.block_candidate.from_json(block_candidate_json)
-
-                self.transaction_storage = TransactionStorage.from_json(transaction_storage_json)
-
-                self.blocks = [Block.from_json(j) for j in blocks_json]
-
-            self.calculate_difficulty()
-
-            self.log.info(
-                f"Blockchain loaded from disk. {self.blocks_count()} miners: {len(self.transaction_storage.miners)} all_ratio: {self.difficulty}")
-        except FileNotFoundError:
-            self.log.error("No blockchain file found.")
-        except Exception as e:
-            self.log.error(f"Failed to load blockchain: {e}")
-
-    def calculate_difficulty(self):
-        """ Сложность цепи """
-
-        # при больших объемах, нужно хранить отдельно
-        self.difficulty = 0
-        for block in self.blocks:
-            self.difficulty += self.block_difficulty(block)
 
     def block_difficulty(self, block: Block):
         """ Сложность блока """
@@ -216,6 +290,8 @@ class Chain():
 
         PK = block.XMSSPublicKey()
         address = PK.generate_address()
+
+        n = self.next_address_nonce(address)
 
         if PK.max_height() < self.next_address_nonce(address):
             self.log.warning(
@@ -307,42 +383,12 @@ class Chain():
         self._add_block(block)
         return True
 
-    def _add_block(self, block: Block):
-        """  """
-        self.blocks.append(block)
-
-        self.transaction_storage.add_block(block)
-
-        # Увеличиваем сложность цепи
-        self.difficulty += self.block_difficulty(block)
-
-        self.add_history_hash(block)
-
-        # self.save_to_disk()
-
-        self.mempool.remove_transactions_in_block(block)
-
-    def blocks_count(self):
-        return len(self.blocks)
-
     def get_nodes(self):
         # for block in self.blocks:
         #     for new_node in block.new_nodes:
         #         self.nodes_rating[new_node] = 0
 
         return self.nodes_rating
-
-    def last_block_hash(self) -> Block:
-        return self.blocks[-1].hash_block() if len(
-            self.blocks) > 0 else Protocol.prev_hash_genesis_block.hex()
-
-    def last_block_time(self) -> float:
-        return self.blocks[-1].timestamp_seconds if len(
-            self.blocks) > 0 else 0
-
-    def last_block(self) -> Block:
-
-        return self.blocks[-1] if len(self.blocks) > 0 else None
 
     def check_miners(self, addr):
         return addr in self.transaction_storage.miners
@@ -503,29 +549,6 @@ class Chain():
             return False
 
         return True
-
-    def drop_last_block(self):
-        """ При рассинхронах, откатываемся назад """
-
-        print("drop_last_block")
-        last_block = self.last_block()
-
-        if last_block is None:
-            return False
-
-        "Возникает ситуация, когда своя цепочка не сопадает с присылаемой"
-        "Тут надо делать более сложный форк"
-        "Пока просто откатываемся на несколько блоков назад"
-        "Нужна правильная отработка отката транзакций"
-
-        self.transaction_storage.rollback_block(last_block)
-
-        self.blocks = self.blocks[:-1]
-
-        if last_block.hash_block() in self.history_hash:
-            self.history_hash.pop(last_block.hash_block())
-
-        self.difficulty -= self.block_difficulty(last_block)
 
 
 if __name__ == '__main__':

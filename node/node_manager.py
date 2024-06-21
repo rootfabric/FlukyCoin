@@ -206,7 +206,7 @@ class NodeManager:
                     continue
                 last_block = self.chain.last_block()
                 if last_block is not None:
-                    self.log.info(f"Chain {len(self.chain.blocks)} blocks , последний: ", last_block.hash_block(),
+                    self.log.info(f"Chain {self.chain.blocks_count()} blocks , последний: ", last_block.hash_block(),
                                   last_block.signer, self.chain.next_address_nonce(last_block.signer))
 
                 self.chain.save_chain_to_disk()

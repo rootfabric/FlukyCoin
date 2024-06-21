@@ -1,4 +1,5 @@
 # sync_manager.py
+import datetime
 import time
 import threading
 from tools.logger import Log
@@ -125,9 +126,10 @@ class SyncManager:
 
                         block = self.node_manager.client_handler.get_block_by_number(block_number_to_load,
                                                                                      info.network_info)
+                        t = datetime.datetime.now()
                         if self.node_manager.chain.validate_and_add_block(block):
                             self.log.info(
-                                f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()}")
+                                f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()} {datetime.datetime.now()-t}")
                             # if self.node_manager.chain.blocks_count() % 100 == 0:
                             #     self.log.info("Save chain")
                             #     self.node_manager.chain.save_chain_to_disk()
@@ -282,4 +284,4 @@ class SyncManager:
                 exit()
             except Exception as e:
                 self.log.error("Ошибка технического блока ", e)
-                self.running = False
+                # self.running = False

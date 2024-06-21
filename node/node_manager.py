@@ -209,7 +209,7 @@ class NodeManager:
                     self.log.info(f"Chain {self.chain.blocks_count()} blocks , последний: ", last_block.hash_block(),
                                   last_block.signer, self.chain.next_address_nonce(last_block.signer))
 
-                self.chain.save_chain_to_disk()
+                # self.chain.save_chain_to_disk()
                 self.miners_storage.save_storage_to_disk()
                 self.mempool.save_mempool()
 

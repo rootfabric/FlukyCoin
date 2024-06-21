@@ -1,3 +1,4 @@
+import threading
 import datetime
 from core.Block import Block
 import base64
@@ -11,7 +12,7 @@ from tools.time_sync import NTPTimeSynchronizer
 import os
 import pickle
 from tools.logger import Log
-import dbm
+import sqlite3
 import zlib
 
 class Chain():
@@ -26,6 +27,11 @@ class Chain():
         self.mempool: Mempool = mempool
         self.protocol = Protocol()
         self.log = log
+
+        self.local = threading.local()  # Initialize thread-local storage
+
+        self._init_db()  # Initialize the database connection and tables
+
         self.difficulty = self._load_difficulty()
 
         self.block_candidate: Block = None
@@ -36,51 +42,53 @@ class Chain():
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
 
-    def clear_db(self):
-        with self._open_db() as db:
-            db.clear()
-        self._save_difficulty(0)
-
-    def _open_db(self, mode='c'):
+    def _init_db(self):
         dir = self.dir.replace(":", "_")
         base_dir = "node_data"
         dir_path = os.path.join(base_dir, dir)
         if not os.path.exists(dir_path):
             os.makedirs(dir_path)
-        db_path = os.path.join(dir_path, 'blocks.db')
+        self.db_path = os.path.join(dir_path, 'blocks.db')
 
-        if mode == 'r':
-            # Если пытаемся открыть для чтения, но файл не существует
-            if not os.path.exists(db_path):
-                # Создаем пустую базу данных
-                with dbm.open(db_path, 'c'):
-                    pass
-                # И сразу же открываем ее для чтения
-                return dbm.open(db_path, 'r')
+    def _get_conn(self):
+        if not hasattr(self.local, 'conn'):
+            self.local.conn = sqlite3.connect(self.db_path)
+            self._create_tables()
+        return self.local.conn
 
-        try:
-            return dbm.open(db_path, mode)
-        except dbm.error as e:
-            if 'db file doesn\'t exist' in str(e):
-                # Если файл не существует, создаем его
-                return dbm.open(db_path, 'c')
-            else:
-                # Если возникла другая ошибка, пробрасываем ее дальше
-                raise
+    def _create_tables(self):
+        with self._get_conn() as conn:
+            conn.execute('''CREATE TABLE IF NOT EXISTS kv_store
+                            (key TEXT PRIMARY KEY, value BLOB)''')
+
+    def clear_db(self):
+        with self._get_conn() as conn:
+            conn.execute('DELETE FROM kv_store')
+        self._save_difficulty(0)
 
     def block_by_number_from_chain(self, num):
-        with self._open_db('r') as db:
-            if str(num) in db:
-                return Block.from_json(zlib.decompress(db[str(num)]).decode())
+        with self._get_conn() as conn:
+            cursor = conn.execute('SELECT value FROM kv_store WHERE key=?', (f'block_{num}',))
+            row = cursor.fetchone()
+            if row:
+                return Block.from_json(zlib.decompress(row[0]).decode())
         return None
 
     def blocks_count(self):
-        with self._open_db('r') as db:
-            return len([key for key in db.keys() if key.isdigit()])
+        with self._get_conn() as conn:
+            cursor = conn.execute('SELECT COUNT(*) FROM kv_store WHERE key LIKE "block_%"')
+            return cursor.fetchone()[0]
 
     def last_block(self):
-        count = self.blocks_count()
-        return self.block_by_number_from_chain(count - 1) if count > 0 else None
+        with self._get_conn() as conn:
+            cursor = conn.execute('SELECT key, value FROM kv_store WHERE key LIKE "block_%" ORDER BY CAST(SUBSTR(key, 7) AS INTEGER) DESC LIMIT 1')
+            row = cursor.fetchone()
+            if row:
+                try:
+                    return Block.from_json(zlib.decompress(row[1]).decode())
+                except zlib.error as e:
+                    self.log.error(f"Failed to decompress data for last block: {e}")
+        return None
 
     def last_block_hash(self):
         last_block = self.last_block()
@@ -104,20 +112,23 @@ class Chain():
             pickle.dump(None if self.block_candidate is None else self.block_candidate.to_json(), file)
 
     def _load_difficulty(self):
-        with self._open_db('r') as db:
-            return int(db.get(b'difficulty', b'0'))
+        with self._get_conn() as conn:
+            cursor = conn.execute('SELECT value FROM kv_store WHERE key=?', (b'difficulty',))
+            row = cursor.fetchone()
+            return int(row[0]) if row else 0
 
     def _save_difficulty(self, difficulty):
-        with self._open_db('c') as db:
-            db[b'difficulty'] = str(difficulty).encode()
+        with self._get_conn() as conn:
+            conn.execute('INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)',
+                         (b'difficulty', str(difficulty).encode()))
 
     def calculate_difficulty(self):
         self.difficulty = 0
-        with self._open_db('r') as db:
-            for key in db.keys():
-                if key.isdigit():
-                    block = Block.from_json(db[key].decode())
-                    self.difficulty += self.block_difficulty(block)
+        with self._get_conn() as conn:
+            cursor = conn.execute('SELECT value FROM kv_store WHERE key LIKE "block_%"')
+            for row in cursor:
+                block = Block.from_json(zlib.decompress(row[0]).decode())
+                self.difficulty += self.block_difficulty(block)
 
     def load_from_disk(self, filename='blockchain.db'):
         dir = self.dir.replace(":", "_")
@@ -140,9 +151,9 @@ class Chain():
             f"Blockchain loaded from disk. {self.blocks_count()} blocks, miners: {len(self.transaction_storage.miners)} all_ratio: {self.difficulty}")
 
     def _add_block(self, block: Block):
-        with self._open_db('c') as db:
-            db[str(block.block_number)] = zlib.compress(block.to_json().encode())
-
+        with self._get_conn() as conn:
+            conn.execute('INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)',
+                         (f'block_{block.block_number}', zlib.compress(block.to_json().encode())))
 
         self.transaction_storage.add_block(block)
 
@@ -162,8 +173,8 @@ class Chain():
 
         self.transaction_storage.rollback_block(last_block)
 
-        with self._open_db('c') as db:
-            del db[str(last_block.block_number)]
+        with self._get_conn() as conn:
+            conn.execute('DELETE FROM kv_store WHERE key=?', (f'block_{last_block.block_number}',))
 
         if last_block.hash_block() in self.history_hash:
             self.history_hash.pop(last_block.hash_block())
@@ -307,7 +318,8 @@ class Chain():
 
             if not self.validate_transaction(transaction):
                 self.log.warning(f"Транзакция {transaction.txhash} не валидна")
-                self.mempool.remove_transaction(transaction.txhash)
+                if self.mempool is not None:
+                    self.mempool.remove_transaction(transaction.txhash)
                 return False
 
         if not self.validate_rewards(block):

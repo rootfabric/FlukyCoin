@@ -28,6 +28,7 @@ if __name__ == '__main__':
 
     # пользователи создают блоки
     t = 1716710000
+    с = c1.blocks_count()
     xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.address, address_reward=xmss1.address)
     xmss1_b0.make_sign(xmss1)
 

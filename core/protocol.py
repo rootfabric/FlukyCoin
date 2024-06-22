@@ -354,16 +354,16 @@ def calculate_total_supply_and_duration(protocol):
 
 
 if __name__ == '__main__':
-    # protocol = Protocol()
-    # max_blocks = 10000000  # ограничение на количество блоков для расчетов и графика
-    # rewards, times = calculate_rewards(protocol, max_blocks)
-    # print(sum(rewards))
-    # plot_rewards(times, rewards)
-    #
-    # total_supply, total_time_years = calculate_total_supply_and_duration(protocol)
-    # print(f"Total supply of coins: {total_supply}")
-    # print(f"Total time to distribute all rewards: {total_time_years} years")
+    protocol = Protocol()
+    max_blocks = 10000000  # ограничение на количество блоков для расчетов и графика
+    rewards, times = calculate_rewards(protocol, max_blocks)
+    print(sum(rewards))
+    plot_rewards(times, rewards)
 
+    total_supply, total_time_years = calculate_total_supply_and_duration(protocol)
+    print(f"Total supply of coins: {total_supply}")
+    print(f"Total time to distribute all rewards: {total_time_years} years")
+    exit()
     # Инициализация протокола и адресов
     import secrets
     import time

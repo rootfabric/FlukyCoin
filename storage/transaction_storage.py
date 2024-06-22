@@ -2,7 +2,6 @@ import sqlite3
 import json
 import os
 import zlib
-import datetime
 from core.Transactions import Transaction
 import threading
 

@@ -42,7 +42,7 @@ class WalletApp(tk.Tk):
         self.password = simpledialog.askstring("Пароль", "Введите пароль кошелька:", show='*')
         if self.password:
             try:
-                self.wallet = Wallet(filename=filename, servers=self.server)  # Создаем экземпляр кошелька с указанием файла
+                self.wallet = Wallet(filename=filename, servers=self.server, connect_manager=self.connect_manager)  # Создаем экземпляр кошелька с указанием файла
                 self.wallet.load_from_file(self.password)
                 self.populate_first_address()
                 self.update_balance_info()
@@ -301,7 +301,7 @@ class WalletApp(tk.Tk):
             messagebox.showerror("Ошибка", str(e))
 
 # Инициализация и запуск приложения
-wallet = Wallet()  # Замените этим ваш объект кошелька
-# app = WalletApp(server='192.168.0.26:9334')
-app = WalletApp()
+# wallet = Wallet()
+app = WalletApp(server='192.168.0.26:9334')
+# app = WalletApp()
 app.mainloop()

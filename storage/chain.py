@@ -1,13 +1,10 @@
 import threading
 import datetime
 from core.Block import Block
-import base64
 from storage.transaction_storage import TransactionStorage
 from core.protocol import Protocol
 from core.Transactions import Transaction
 from storage.mempool import Mempool
-import copy
-import time
 from tools.time_sync import NTPTimeSynchronizer
 import os
 import pickle
@@ -98,18 +95,18 @@ class Chain():
         last_block = self.last_block()
         return last_block.timestamp_seconds if last_block else 0
 
-    def save_chain_to_disk(self, filename='blockchain.db'):
-        self.transaction_storage.save_to_disk(self.dir)
-        self._save_difficulty(self.difficulty)
-
-        dir = self.dir.replace(":", "_")
-        base_dir = "node_data"
-        dir_path = os.path.join(base_dir, dir)
-        if not os.path.exists(dir_path):
-            os.makedirs(dir_path)
-        full_path = os.path.join(dir_path, 'block_candidate.pickle')
-        with open(full_path, 'wb') as file:
-            pickle.dump(None if self.block_candidate is None else self.block_candidate.to_json(), file)
+    # def save_chain_to_disk(self, filename='blockchain.db'):
+    #     self.transaction_storage.save_to_disk(self.dir)
+    #     self._save_difficulty(self.difficulty)
+    #
+    #     dir = self.dir.replace(":", "_")
+    #     base_dir = "node_data"
+    #     dir_path = os.path.join(base_dir, dir)
+    #     if not os.path.exists(dir_path):
+    #         os.makedirs(dir_path)
+    #     full_path = os.path.join(dir_path, 'block_candidate.pickle')
+    #     with open(full_path, 'wb') as file:
+    #         pickle.dump(None if self.block_candidate is None else self.block_candidate.to_json(), file)
 
     def _load_difficulty(self):
         with self._get_conn() as conn:
@@ -130,25 +127,25 @@ class Chain():
                 block = Block.from_json(zlib.decompress(row[0]).decode())
                 self.difficulty += self.block_difficulty(block)
 
-    def load_from_disk(self, filename='blockchain.db'):
-        dir = self.dir.replace(":", "_")
-        base_dir = "node_data"
-        dir_path = os.path.join(base_dir, dir)
-        full_path = os.path.join(dir_path, 'block_candidate.pickle')
-        try:
-            with open(full_path, 'rb') as file:
-                block_candidate_json = pickle.load(file)
-                if block_candidate_json is not None:
-                    self.block_candidate = Block.from_json(block_candidate_json)
-        except FileNotFoundError:
-            self.log.error("No block candidate file found.")
-        except Exception as e:
-            self.log.error(f"Failed to load block candidate: {e}")
-
-        self.calculate_difficulty()
-
-        self.log.info(
-            f"Blockchain loaded from disk. {self.blocks_count()} blocks, miners: {len(self.transaction_storage.miners)} all_ratio: {self.difficulty}")
+    # def load_from_disk(self, filename='blockchain.db'):
+    #     dir = self.dir.replace(":", "_")
+    #     base_dir = "node_data"
+    #     dir_path = os.path.join(base_dir, dir)
+    #     full_path = os.path.join(dir_path, 'block_candidate.pickle')
+    #     try:
+    #         with open(full_path, 'rb') as file:
+    #             block_candidate_json = pickle.load(file)
+    #             if block_candidate_json is not None:
+    #                 self.block_candidate = Block.from_json(block_candidate_json)
+    #     except FileNotFoundError:
+    #         self.log.error("No block candidate file found.")
+    #     except Exception as e:
+    #         self.log.error(f"Failed to load block candidate: {e}")
+    #
+    #     self.calculate_difficulty()
+    #
+    #     self.log.info(
+    #         f"Blockchain loaded from disk. {self.blocks_count()} blocks, miners: {len(self.transaction_storage.miners)} all_ratio: {self.difficulty}")
 
     def _add_block(self, block: Block):
         with self._get_conn() as conn:

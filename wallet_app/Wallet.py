@@ -55,7 +55,11 @@ class Wallet:
 
     def info(self, address, transactions_start=0, transactions_end=10):
         """ Информация по адресу кошелька из ноды """
-        channel = grpc.insecure_channel(self.servers if self.connect_manager is None else self.connect_manager.get_peer())
+
+
+        peer = self.servers if self.connect_manager is None else self.connect_manager.get_peer()
+        channel = grpc.insecure_channel(peer)
+        print("info from ", peer)
         stub = network_pb2_grpc.NetworkServiceStub(channel)
 
         address_request = network_pb2.AddressRequest(
@@ -93,7 +97,8 @@ class Wallet:
 
     def send_transaction(self, transaction: Transaction):
         # Создание gRPC канала
-        channel = grpc.insecure_channel(self.servers if self.connect_manager is None else self.connect_manager.get_peer())
+        peer = self.servers if self.connect_manager is None else self.connect_manager.get_peer()
+        channel = grpc.insecure_channel(peer)
         stub = network_pb2_grpc.NetworkServiceStub(channel)
 
         json_data = transaction.to_json()

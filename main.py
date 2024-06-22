@@ -1,9 +1,4 @@
 import argparse
-import faulthandler
-import os
-import yaml
-
-# from node.blockchain_node import BlockchainNode
 from node.node_manager import NodeManager
 from tools.config_loader import ConfigLoader
 from tools.logger import Log

@@ -27,16 +27,22 @@ class ConnectManager():
         self.active_peers = {}
         self.known_peers = known_peers
 
-        self.load_known_peers()
+        self.ping_times = {}  # Словарь для хранения времени пинга пиров: address -> ping_time
 
+        self.load_known_peers()
 
     def ping_peers(self):
         with ThreadPoolExecutor(max_workers=5) as executor:
             futures = {executor.submit(self.check_active, peer): peer for peer in self.known_peers}
-            self.active_peers = {futures[future] for future in as_completed(futures, timeout=5) if
-                                 future.result(timeout=5)}
+            for future in as_completed(futures, timeout=5):
+                peer = futures[future]
+                try:
+                    ping_time = future.result(timeout=5)
+                    if ping_time is not None:
+                        self.active_peers[peer] = ping_time
+                except Exception as e:
+                    self.log.error(f"Error pinging peer {peer}: {e}")
             return self.active_peers
-            # print("active_peers", active_peers)
 
     def check_active(self, address):
         try:
@@ -45,13 +51,15 @@ class ConnectManager():
                 self.peer_channels[address] = network_pb2_grpc.NetworkServiceStub(channel)
 
             stub = self.peer_channels[address]
+            start_time = time.time()
             stub.Ping(network_pb2.Empty(), timeout=2)  # Установка таймаута для пинга
-            return True
+            ping_time = time.time() - start_time
+            self.ping_times[address] = ping_time
+            return ping_time
         except grpc.RpcError as e:
             if address in self.peer_channels:
                 del self.peer_channels[address]
-
-            return False
+            return None
 
     def connect_to_peers(self):
         with ThreadPoolExecutor(max_workers=5) as executor:
@@ -126,8 +134,11 @@ class ConnectManager():
             self.log.info("No known_peers.json file found, starting with initial peers.")
 
     def get_peer(self):
-        """ Выбор пира, в идеале с самым быстрым пингом в будущем """
-        return random.choice(self.active_peers)
+        """Выбор пира с наименьшим пингом"""
+        if not self.active_peers:
+            return None
+        return min(self.active_peers, key=self.active_peers.get)
+
     def start_ping_thread(self):
         ping_thread = threading.Thread(target=self.ping_peers_continuously)
         ping_thread.daemon = True
@@ -137,4 +148,35 @@ class ConnectManager():
         while True:
             self.ping_peers()
             self.connect_to_peers()
+            self.fetch_info_from_peers()
             time.sleep(pause_check)  # Пауза в 60 секунд между пингами
+
+
+    def fetch_info_from_peers(self):
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = {executor.submit(self.fetch_info, peer): peer for peer in self.active_peers}
+            peer_info = {}
+            for future in as_completed(futures, timeout=5):
+                peer = futures[future]
+                try:
+                    peer_info[peer] = future.result(timeout=1)
+                except Exception as e:
+                    # print(f"Failed to fetch info from {peer}: {e}")
+                    """ """
+            self.peer_info = peer_info
+            # return peer_info
+
+    def fetch_info(self, address):
+        if address not in self.peer_channels:
+            channel = grpc.insecure_channel(address)
+            self.peer_channels[address] = network_pb2_grpc.NetworkServiceStub(channel)
+
+        stub = self.peer_channels[address]
+        try:
+            response = stub.GetPeerInfo(network_pb2.Empty(), timeout=2)  # Установка таймаута для получения информации
+            return response
+        except grpc.RpcError as e:
+            if address in self.peer_channels:
+                del self.peer_channels[address]
+            # print(f"Failed to fetch info from {address}: {e}")
+            return None

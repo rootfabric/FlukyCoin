@@ -3,10 +3,8 @@ import datetime
 import time
 import threading
 from tools.logger import Log
-from core.Block import Block
 from core.protocol import Protocol
 from collections import defaultdict
-from net.ConnectManager import ConnectManager
 
 
 class SyncManager:
@@ -141,6 +139,7 @@ class SyncManager:
                         if info.latest_block != self.node_manager.chain.last_block_hash():
                             """ Цепи равны, но при этом разные блоки  """
                             drop_sync_signal = True
+                            self.node_manager.chain.drop_last_block()
 
         if self._synced and drop_sync_signal and self.timer_drop_synced is not None:
             self.timer_drop_synced = time.time()
@@ -199,6 +198,8 @@ class SyncManager:
 
                 if self.count_unsync_block is not None and self.count_unsync_block + 3 < self.node_manager.chain.blocks_count():
                     print("Потеря синхронизации")
+                    # снос последнего блока, для прокачки доминирующей цепи
+                    self.node_manager.chain.drop_last_block()
                     self.set_node_synced(False)
 
     def last_block_time(self):

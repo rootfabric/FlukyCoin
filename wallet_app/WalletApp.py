@@ -3,10 +3,10 @@ from tkinter import ttk, simpledialog, messagebox, filedialog
 from wallet_app.Wallet import Wallet
 import pyperclip
 from core.protocol import Protocol
-
 from net.ConnectManager import ConnectManager
 import os
 import json
+import threading
 
 class WalletApp(tk.Tk):
     def __init__(self, server='5.35.98.126:9333'):
@@ -15,18 +15,14 @@ class WalletApp(tk.Tk):
         self.connect_manager = ConnectManager()
         self.connect_manager.start_ping_thread()
 
-
         self.server = server
-        self.wallet = Wallet(servers=self.server, connect_manager = self.connect_manager)
+        self.wallet = Wallet(servers=self.server, connect_manager=self.connect_manager)
         self.title("Кошелек")
         self.geometry("800x450")  # Увеличил размер для лучшего отображения вкладок
         self.password = None
         self.create_widgets()
         self.current_page = 0
         self.transactions_per_page = 10
-
-
-        # self.request_password_and_load_wallet()
 
     def request_password_and_load_wallet(self, filename=None):
         if filename is None:
@@ -45,22 +41,20 @@ class WalletApp(tk.Tk):
                 self.wallet = Wallet(filename=filename, servers=self.server, connect_manager=self.connect_manager)  # Создаем экземпляр кошелька с указанием файла
                 self.wallet.load_from_file(self.password)
                 self.populate_first_address()
-                self.update_balance_info()
+                self.update_balance_info_async()  # Обновление баланса асинхронно
                 self.update_status("Кошелек успешно загружен.")
             except Exception as e:
                 messagebox.showerror("Ошибка", str(e))
                 self.update_status(f"Ошибка: {str(e)}")  # Вывод сообщения об ошибке в строке состояния
-                # self.quit()
         else:
             self.update_status("Требуется ввод пароля для доступа к кошельку!")
-            # self.quit()
 
     def populate_first_address(self):
         addresses = self.wallet.keys_address()
         if addresses:
             self.combo_address['values'] = addresses
             self.combo_address.current(0)
-            self.update_balance_info()
+            self.update_balance_info_async()  # Обновление баланса асинхронно
 
     def update_balance_info(self, event=None):
         address = self.combo_address.get()
@@ -81,27 +75,27 @@ class WalletApp(tk.Tk):
                     amount = tx_data['amounts'][0] / 10000000
 
                     if tx_type == "IN":
-                        # from_address = f"{tx_data['fromAddress'][:3]}...{tx_data['fromAddress'][-3:]}"
                         from_address = tx_data['fromAddress']
                         self.tree_transactions.insert("", tk.END, values=(tx_type, tx_hash_short, from_address, "", amount))
                     else:
-                        # to_address = f"{tx_data['toAddress'][0][:3]}...{tx_data['toAddress'][0][-3:]}"
                         to_address = tx_data['toAddress']
                         self.tree_transactions.insert("", tk.END, values=(tx_type, tx_hash_short, "", to_address, amount))
 
                 self.update_status(f"Страница {self.current_page + 1}")
             except Exception as e:
-                return  # Возвращаемся, если произошла ошибка, чтобы избежать бесконечного цикла
-        self.after(5000, self.update_balance_info)
+                self.update_status(f"Ошибка при обновлении баланса: {str(e)}")
+
+    def update_balance_info_async(self, event=None):
+        threading.Thread(target=self.update_balance_info).start()
 
     def next_page(self):
         self.current_page += 1
-        self.update_balance_info()
+        self.update_balance_info_async()  # Обновление баланса асинхронно
 
     def previous_page(self):
         if self.current_page > 0:
             self.current_page -= 1
-            self.update_balance_info()
+            self.update_balance_info_async()  # Обновление баланса асинхронно
 
     def create_widgets(self):
         input_width = 70
@@ -131,7 +125,7 @@ class WalletApp(tk.Tk):
         self.lbl_address.grid(row=0, column=0, sticky="e", padx=10, pady=10)
         self.combo_address = ttk.Combobox(self.tab_main, width=input_width)
         self.combo_address.grid(row=0, column=1, sticky="we", padx=(10, 10))
-        self.combo_address.bind('<<ComboboxSelected>>', self.update_balance_info)  # Привязка события выбора к обновлению баланса
+        self.combo_address.bind('<<ComboboxSelected>>', self.update_balance_info_async)  # Привязка события выбора к обновлению баланса
         self.btn_copy = tk.Button(self.tab_main, text="Копировать", command=self.copy_address)
         self.btn_copy.grid(row=0, column=2, padx=(5, 10), pady=10)
         self.lbl_balance = tk.Label(self.tab_main, text="")
@@ -172,8 +166,6 @@ class WalletApp(tk.Tk):
         self.entry_message.grid(row=2, column=1, sticky="we", padx=(10, 10))
         self.btn_send = tk.Button(self.tab_transaction, text="Отправить", command=self.send_transaction)
         self.btn_send.grid(row=3, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
-
-
 
         # Вкладка данных о ключе
         self.lbl_private_key = tk.Label(self.tab_key_info, text="Секретный ключ:")
@@ -255,8 +247,6 @@ class WalletApp(tk.Tk):
     def copy_address(self):
         address = self.combo_address.get()
         pyperclip.copy(address)
-        # messagebox.showinfo("Копирование", "Адрес скопирован в буфер обмена.")
-
 
     def send_transaction(self):
         from_address = self.combo_address.get()
@@ -301,7 +291,5 @@ class WalletApp(tk.Tk):
             messagebox.showerror("Ошибка", str(e))
 
 # Инициализация и запуск приложения
-# wallet = Wallet()
 app = WalletApp(server='192.168.0.26:9334')
-# app = WalletApp()
 app.mainloop()

@@ -17,10 +17,15 @@ class MinerStorage:
         self.load_from_disk(dir=self.dir)
 
         if len(self.keys) == 0 and start_generate:
-            self.generate_keys(100, height=6)
+
+            # по дефолту если нет значения в конфиге, берем небольшие значения
+            miners_storage_size = self.config.get('miners_storage_size', 10)
+            miners_storage_height = self.config.get('miners_storage_height', 5)
+
+            self.generate_keys(miners_storage_size, height=miners_storage_height)
             self.save_storage_to_disk(dir=self.dir)
 
-    def generate_keys(self, size=10, height=1):
+    def generate_keys(self, size=10, height=12):
         """ Генерация заданного количества ключей для майнинга"""
         self.log.info("Генерация ключей")
         start_time = datetime.datetime.now()

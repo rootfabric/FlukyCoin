@@ -292,7 +292,7 @@ class Chain():
 
         return True
 
-    def validate_block(self, block):
+    def validate_block(self, block: Block):
         if block is None:
             return False
 

@@ -144,7 +144,9 @@ class NodeManager:
 
             return block_candidate
 
-        self.miners_storage.generate_keys()
+        miners_storage_size = self.config.get('miners_storage_size', 10)
+        miners_storage_height =  self.config.get('miners_storage_height', 10)
+        self.miners_storage.generate_keys(size = miners_storage_size, height=miners_storage_height)
         return None
 
     def uptime(self):
@@ -185,8 +187,11 @@ class NodeManager:
 
             if self.config.get('is_miner', "False"):
                 last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
-                if self.chain.blocks_count() == 0 or self.chain.time() > last_block_time + Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE:
+                if self.chain.blocks_count() == 0 or self.chain.time() > last_block_time + self.config.get('pause_before_try_block', Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE):
+                    t = datetime.datetime.now()
                     new_block = self.create_block(self.config.get("address_reward"))
+                    if new_block is not None:
+                        self.log.info("Создание своего блока ", datetime.datetime.now() - t)
 
             if self.chain.add_block_candidate(new_block):
                 self.log.info(f"Свой Блок кандидат добавлен", new_block.hash,

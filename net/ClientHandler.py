@@ -5,6 +5,7 @@ from core.Transactions import Transaction
 from core.Block import Block
 import time
 
+
 class ClientHandler:
     def __init__(self, servicer, node_manager):
         self.servicer = servicer
@@ -103,7 +104,8 @@ class ClientHandler:
         # Рассылка новых адресов существующим активным пирам
         for peer in new_peers:
             if peer not in self.sent_addresses:
-                futures = {self.executor.submit(self.connect_to_peer, p): p for p in self.servicer.active_peers if p != peer}
+                futures = {self.executor.submit(self.connect_to_peer, p): p for p in self.servicer.active_peers if
+                           p != peer}
                 for future in as_completed(futures, timeout=10):
                     try:
                         future.result(timeout=5)
@@ -291,12 +293,12 @@ class ClientHandler:
                 # Добавляем в кеш, чтобы в последствии его не запрашивать
                 self.node_manager.chain.add_history_hash(candidate_block)
 
-                if self.node_manager.chain.validate_block(candidate_block):
-                    if self.node_manager.chain.add_block_candidate(candidate_block):
-                        self.log.info(f"Block candidate from peer {peer} added to chain.  {candidate_block.hash_block()}")
+                # if self.node_manager.chain.validate_block(candidate_block):
+                if self.node_manager.chain.add_block_candidate(candidate_block):
+                    self.log.info(f"Block candidate from peer {peer} added to chain.  {candidate_block.hash_block()}")
 
-                        # пересылаем всем кого знаем
-                        self.node_manager.client_handler.distribute_block(candidate_block)
+                    # пересылаем всем кого знаем
+                    self.node_manager.client_handler.distribute_block(candidate_block)
             else:
                 self.log.error(f"No block candidate received from peer {peer}")
 
@@ -311,27 +313,27 @@ class ClientHandler:
 
         while attempt < max_attempts:
             # try:
-                if address not in self.peer_channels:
-                    channel = grpc.insecure_channel(address)
-                    self.peer_channels[address] = network_pb2_grpc.NetworkServiceStub(channel)
+            if address not in self.peer_channels:
+                channel = grpc.insecure_channel(address)
+                self.peer_channels[address] = network_pb2_grpc.NetworkServiceStub(channel)
 
-                stub = self.peer_channels[address]
-                request = network_pb2.BlockRequest(block_number=block_number)
-                response = stub.GetBlockByNumber(request, timeout=5)  # Добавление таймаута
+            stub = self.peer_channels[address]
+            request = network_pb2.BlockRequest(block_number=block_number)
+            response = stub.GetBlockByNumber(request, timeout=5)  # Добавление таймаута
 
-                if response.block_data:
-                    block = Block.from_json(response.block_data)
-                    return block
-                else:
-                    raise Exception("Block not found or error occurred")
-            # except grpc.RpcError as e:
-            #     attempt += 1
-            #     self.log.error(f"Attempt {attempt} failed: {str(e)}")
-            #     if attempt == max_attempts:
-            #         if address in self.peer_channels:
-            #             del self.peer_channels[address]
-            #         self.log.error(f"Max attempts reached. Unable to connect to {address}")
-            #     time.sleep(0.1)  # Добавление задержки перед повторной попыткой
+            if response.block_data:
+                block = Block.from_json(response.block_data)
+                return block
+            else:
+                raise Exception("Block not found or error occurred")
+        # except grpc.RpcError as e:
+        #     attempt += 1
+        #     self.log.error(f"Attempt {attempt} failed: {str(e)}")
+        #     if attempt == max_attempts:
+        #         if address in self.peer_channels:
+        #             del self.peer_channels[address]
+        #         self.log.error(f"Max attempts reached. Unable to connect to {address}")
+        #     time.sleep(0.1)  # Добавление задержки перед повторной попыткой
         return None
 
     def get_block_candidate(self, address):

@@ -278,7 +278,7 @@ class SyncManager:
                 if not self.is_synced():
                     continue
 
-                time.sleep(0.1)
+                time.sleep(1)
             except KeyboardInterrupt:
                 self.running = False
                 exit()

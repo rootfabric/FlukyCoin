@@ -45,6 +45,9 @@ class NodeManager:
         self.sync_manager = SyncManager(self,  log)
 
 
+        # флаг необходимости сделать рассылку нового кандидата
+        self.need_distribute_candidate = False
+
         self.timer_drop_synced = None
         self.running = True
 
@@ -196,9 +199,14 @@ class NodeManager:
             if self.chain.add_block_candidate(new_block):
                 self.log.info(f"Свой Блок кандидат добавлен", new_block.hash,
                               new_block.signer)
-                if self.enable_distribute_block:
-                    # self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
-                    self.client_handler.distribute_block(self.chain.block_candidate)
+                self.need_distribute_candidate = True
+
+            # центральная тока для рассылки кандидата на другие ноды
+            if self.need_distribute_candidate and self.enable_distribute_block:
+
+                    self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
+                    # self.client_handler.distribute_block(self.chain.block_candidate)
+                    self.need_distribute_candidate = False
 
             needClose = self.chain.need_close_block()
             if needClose and self.chain.block_candidate is not None:

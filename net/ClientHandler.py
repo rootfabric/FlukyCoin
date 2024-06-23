@@ -1,8 +1,11 @@
+import random
+
 import grpc
 from protos import network_pb2, network_pb2_grpc
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from core.Transactions import Transaction
 from core.Block import Block
+from core.protocol import Protocol
 import time
 
 
@@ -239,12 +242,18 @@ class ClientHandler:
             # self.log.info(f"RPC failed for {peer}: {str(e)}")
             return False
 
+    def random_active_peers(self, num):
+        """ Случайные активные пиры """
+        return [ random.choice(list(self.servicer.active_peers)) for _ in range(num)]
+
+
     def distribute_block(self, block):
         """Распространение блока среди всех активных пиров."""
         block_hash = block.hash_block()
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = {}
-            for peer in self.servicer.active_peers:
+            # for peer in self.servicer.active_peers:
+            for peer in self.random_active_peers(Protocol.GOSSIP_COUNT_TO_DISTRIBUTE_BLOCK):
                 if peer != self.servicer.local_address:  # Исключаем себя из рассылки
                     futures[executor.submit(self.send_block_hash_to_peer, peer, block_hash)] = peer
 
@@ -268,13 +277,13 @@ class ClientHandler:
         stub = self.peer_channels[peer]
         try:
             block_data = block.to_json()  # Сериализация блока в JSON
-            stub.BroadcastBlock(network_pb2.Block(data=block_data), timeout=2)
+            stub.BroadcastBlock(network_pb2.Block(data=block_data), timeout=5)
             self.log.info(f"Send to {peer} block {block.hash_block()}")
         except grpc.RpcError as e:
             if peer in self.peer_channels:
                 del self.peer_channels[peer]
             self.log.info(f"RPC failed for {peer}: {str(e)}")
-            self.request_block_candidate_from_peer(peer)  # Запрос блока-кандидата при RPC ошибке
+            # self.request_block_candidate_from_peer(peer)  # Запрос блока-кандидата при RPC ошибке
 
     def request_block_candidate_from_peer(self, peer):
         """Запрашивает блок-кандидат у пира."""
@@ -298,7 +307,8 @@ class ClientHandler:
                     self.log.info(f"Block candidate from peer {peer} added to chain.  {candidate_block.hash_block()}")
 
                     # пересылаем всем кого знаем
-                    self.node_manager.client_handler.distribute_block(candidate_block)
+                    # self.node_manager.client_handler.distribute_block(candidate_block)
+                    self.node_manager.need_distribute_candidate = True
             else:
                 self.log.error(f"No block candidate received from peer {peer}")
 

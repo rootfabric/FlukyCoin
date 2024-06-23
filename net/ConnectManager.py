@@ -84,10 +84,10 @@ class ConnectManager():
                 self.peer_status[address] = True  # Устанавливаем статус подключения в True
                 self.log.info(f"Registered on {address}, current peers: {peers}")
 
-                new_peers = set(peers) - self.active_peers
+                new_peers = set(peers) - self.known_peers
 
                 if new_peers:
-                    self.active_peers.update(new_peers)
+                    self.known_peers.update(new_peers)
                 return True
         except grpc.RpcError as e:
             self.peer_status[address] = False  # Устанавливаем статус подключения в False при ошибке

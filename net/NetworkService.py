@@ -205,25 +205,6 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         self.node_manager.add_new_transaction(transaction)
         return network_pb2.Ack(success=True)
 
-    def BroadcastBlock(self, request, context):
-        # Получаем адрес, с которого пришел запрос
-        client_address = context.peer()
-
-        # Логика обработки принятого блока
-        if not self.node_manager.is_synced():
-            # нода не синхронна, блоки не нужны
-            return network_pb2.Ack(success=False)
-
-        block = Block.from_json(request.data)  # Десериализация блока
-        print(f"BroadcastBlock {block.hash_block()} from {client_address}")
-        if self.node_manager.chain.add_block_candidate(block):
-            # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
-            #       block.signer)
-            self.node_manager.client_handler.distribute_block(self.node_manager.chain.block_candidate)
-
-            return network_pb2.Ack(success=True)
-        else:
-            return network_pb2.Ack(success=False)
 
     def GetBlockByNumber(self, request, context):
         try:
@@ -329,3 +310,23 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             return network_pb2.BlockHashResponse(need_block=False)
         else:
             return network_pb2.BlockHashResponse(need_block=True)
+
+    def BroadcastBlock(self, request, context):
+        # Получаем адрес, с которого пришел запрос
+        client_address = context.peer()
+
+        # Логика обработки принятого блока
+        if not self.node_manager.is_synced():
+            # нода не синхронна, блоки не нужны
+            return network_pb2.Ack(success=False)
+
+        block = Block.from_json(request.data)  # Десериализация блока
+        print(f"BroadcastBlock {block.hash_block()} from {client_address}")
+        if self.node_manager.chain.add_block_candidate(block):
+            # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
+            #       block.signer)
+            self.node_manager.need_distribute_candidate = True
+            # self.node_manager.client_handler.distribute_block(self.node_manager.chain.block_candidate)
+            return network_pb2.Ack(success=True)
+        else:
+            return network_pb2.Ack(success=False)

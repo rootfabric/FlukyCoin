@@ -39,6 +39,8 @@ class Chain():
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex()
 
+        # self.recalculate_transactions()
+
     def _init_db(self):
         dir = self.dir.replace(":", "_")
         base_dir = "node_data"
@@ -70,6 +72,18 @@ class Chain():
             if row:
                 return Block.from_json(zlib.decompress(row[0]).decode())
         return None
+
+    # Добавьте этот метод в класс Chain
+    def recalculate_transactions(self):
+        self.log.info("Перерасчет транзакций")
+        self.transaction_storage.clear()
+        block_count = self.blocks_count()
+        for i in range(block_count):
+            self.log.info(f"[{i}/{block_count}]")
+            block = self.block_by_number_from_chain(i)
+            if block:
+                self.transaction_storage.add_block(block)
+        self.log.info("Транзакции пересчитаны на основе блоков")
 
     def blocks_count(self):
         with self._get_conn() as conn:

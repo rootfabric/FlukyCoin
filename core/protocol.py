@@ -68,6 +68,8 @@ class Protocol:
 
     DEFAULT_PORT = 9333
 
+    GOSSIP_COUNT_TO_DISTRIBUTE_BLOCK = 3
+
     @staticmethod
     def find_longest_common_substring(address, block_hash, convert_to_sha256=False):
 

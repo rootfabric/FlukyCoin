@@ -91,7 +91,8 @@ class SyncManager:
                 if info.block_candidate != self.node_manager.chain.block_candidate.hash_block():
                     """ Отличие блока, берем с ноды для проверки """
                     # если блок не хранится в кеше, то делаем запрос
-                    if info.block_candidate is not None and self.node_manager.chain.check_hash(info.block_candidate) is None:
+                    if info.block_candidate is not None and self.node_manager.chain.check_hash(
+                            info.block_candidate) is None and info.block_candidate != "None":
                         self.log.info(f"Get candidate {info.block_candidate} from {address}  ")
                         self.node_manager.client_handler.request_block_candidate_from_peer(address)
 
@@ -127,7 +128,7 @@ class SyncManager:
                         t = datetime.datetime.now()
                         if self.node_manager.chain.validate_and_add_block(block):
                             self.log.info(
-                                f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()} {datetime.datetime.now()-t}")
+                                f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()} {datetime.datetime.now() - t}")
                             # if self.node_manager.chain.blocks_count() % 100 == 0:
                             #     self.log.info("Save chain")
                             #     self.node_manager.chain.save_chain_to_disk()
@@ -196,7 +197,7 @@ class SyncManager:
                 else:
                     self.count_unsync_block = None
 
-                if self.count_unsync_block is not None and self.count_unsync_block + 3 < self.node_manager.chain.blocks_count():
+                if self.count_unsync_block is not None and self.count_unsync_block + 1 < self.node_manager.chain.blocks_count():
                     print("Потеря синхронизации")
                     # снос последнего блока, для прокачки доминирующей цепи
                     self.node_manager.chain.drop_last_block()

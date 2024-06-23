@@ -52,7 +52,7 @@ class Chain():
     def _get_conn(self):
         if not hasattr(self.local, 'conn'):
             self.local.conn = sqlite3.connect(self.db_path)
-            self._create_tables()
+            self._create_tables()  # Убедитесь, что таблицы создаются при каждом новом соединении
         return self.local.conn
 
     def _create_tables(self):
@@ -72,6 +72,19 @@ class Chain():
             if row:
                 return Block.from_json(zlib.decompress(row[0]).decode())
         return None
+
+    def check_integrity(self):
+        block_count = self.blocks_count()
+        for i in range(block_count):
+            block = self.block_by_number_from_chain(i)
+            if block:
+                for transaction in block.transactions:
+                    stored_transaction = self.transaction_storage.get_transaction(transaction.txhash)
+                    if not stored_transaction or stored_transaction.to_json() != transaction.to_json():
+                        self.log.warning(f"Расхождение найдено в блоке {i}, транзакция {transaction.txhash}")
+                        self.recalculate_transactions()
+                        return
+        self.log.info("Целостность данных проверена. Расхождений не найдено.")
 
     # Добавьте этот метод в класс Chain
     def recalculate_transactions(self):
@@ -162,20 +175,28 @@ class Chain():
     #         f"Blockchain loaded from disk. {self.blocks_count()} blocks, miners: {len(self.transaction_storage.miners)} all_ratio: {self.difficulty}")
 
     def _add_block(self, block: Block):
-        with self._get_conn() as conn:
-            conn.execute('INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)',
-                         (f'block_{block.block_number}', zlib.compress(block.to_json().encode())))
+        conn = self._get_conn()
+        try:
+            with conn:
+                conn.execute('BEGIN TRANSACTION')
+                conn.execute('INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)',
+                             (f'block_{block.block_number}', zlib.compress(block.to_json().encode())))
 
-        self.transaction_storage.add_block(block)
+                self.transaction_storage.add_block(block)
+                self.difficulty += self.block_difficulty(block)
+                self._save_difficulty(self.difficulty)
+                # self.add_history_hash(block)
 
-        self.difficulty += self.block_difficulty(block)
+                if self.mempool is not None:
+                    self.mempool.remove_transactions_in_block(block)
 
-        self._save_difficulty(self.difficulty)
-
-        self.add_history_hash(block)
-
-        if self.mempool is not None:
-            self.mempool.remove_transactions_in_block(block)
+                conn.commit()
+        except Exception as e:
+            conn.rollback()
+            self.log.error(f"Ошибка при добавлении блока: {e}")
+            raise e
+        # finally:
+        #     conn.close()
 
     def drop_last_block(self):
         last_block = self.last_block()

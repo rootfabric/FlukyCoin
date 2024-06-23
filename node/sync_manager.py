@@ -91,8 +91,9 @@ class SyncManager:
                 if info.block_candidate != self.node_manager.chain.block_candidate.hash_block():
                     """ Отличие блока, берем с ноды для проверки """
                     # если блок не хранится в кеше, то делаем запрос
-                    if info.block_candidate is not None and self.node_manager.chain.check_hash(
-                            info.block_candidate) is None and info.block_candidate != "None":
+                    if (info.block_candidate is not None
+                            # and self.node_manager.chain.check_hash(info.block_candidate) is None
+                            and info.block_candidate != "None"):
                         self.log.info(f"Get candidate {info.block_candidate} from {address}  ")
                         self.node_manager.client_handler.request_block_candidate_from_peer(address)
 

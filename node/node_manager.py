@@ -48,6 +48,8 @@ class NodeManager:
         # флаг необходимости сделать рассылку нового кандидата
         self.need_distribute_candidate = False
 
+
+        self.timer_last_distribute = 0
         self.timer_drop_synced = None
         self.running = True
 
@@ -202,8 +204,8 @@ class NodeManager:
                 self.need_distribute_candidate = True
 
             # центральная тока для рассылки кандидата на другие ноды
-            if self.need_distribute_candidate and self.enable_distribute_block:
-
+            if self.need_distribute_candidate and self.enable_distribute_block or time.time()>self.timer_last_distribute + 3:
+                    self.timer_last_distribute = time.time()
                     self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
                     # self.client_handler.distribute_block(self.chain.block_candidate)
                     self.need_distribute_candidate = False

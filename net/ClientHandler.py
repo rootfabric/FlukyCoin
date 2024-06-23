@@ -300,7 +300,7 @@ class ClientHandler:
                 candidate_block = Block.from_json(response.block_data)
 
                 # Добавляем в кеш, чтобы в последствии его не запрашивать
-                self.node_manager.chain.add_history_hash(candidate_block)
+                # self.node_manager.chain.add_history_hash(candidate_block)
 
                 # if self.node_manager.chain.validate_block(candidate_block):
                 if self.node_manager.chain.add_block_candidate(candidate_block):

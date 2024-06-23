@@ -306,7 +306,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         print(f"BroadcastBlockHash {block_hash} from {client_address}")
 
         # Проверяем, есть ли блок с таким хешем
-        if block_hash in self.node_manager.chain.history_hash:
+        if block_hash == self.node_manager.chain.block_candidate_hash:
             return network_pb2.BlockHashResponse(need_block=False)
         else:
             return network_pb2.BlockHashResponse(need_block=True)

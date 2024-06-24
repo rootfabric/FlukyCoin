@@ -42,12 +42,10 @@ class NodeManager:
         self.connect_manager = ConnectManager(self.server.get_external_host_ip(), known_peers=set(self.initial_peers))
 
         # синхронизация нод
-        self.sync_manager = SyncManager(self,  log)
-
+        self.sync_manager = SyncManager(self, log)
 
         # флаг необходимости сделать рассылку нового кандидата
         self.need_distribute_candidate = False
-
 
         self.timer_last_distribute = 0
         self.timer_drop_synced = None
@@ -125,7 +123,6 @@ class NodeManager:
             time_candidat = last_block_time + Protocol.BLOCK_TIME_SECONDS
             block_timestamp_seconds = time_candidat if time_candidat > self.chain.time() else self.chain.time()
 
-
             # берутся все транзакции без разбора
             transactions = []
             for tr in list(self.mempool.transactions.values()):
@@ -133,7 +130,6 @@ class NodeManager:
                     transactions.append(tr)
 
                 self.mempool.remove_transaction(tr.txhash)
-
 
             block_candidate = Block.create(self.chain.blocks_count(), self.chain.last_block_hash(),
                                            block_timestamp_seconds, transactions, address_miner=xmss.address,
@@ -150,8 +146,8 @@ class NodeManager:
             return block_candidate
 
         miners_storage_size = self.config.get('miners_storage_size', 10)
-        miners_storage_height =  self.config.get('miners_storage_height', 10)
-        self.miners_storage.generate_keys(size = miners_storage_size, height=miners_storage_height)
+        miners_storage_height = self.config.get('miners_storage_height', 10)
+        self.miners_storage.generate_keys(size=miners_storage_size, height=miners_storage_height)
         return None
 
     def uptime(self):
@@ -166,7 +162,8 @@ class NodeManager:
                     self.log.info(f"enable_load_info {'enabled' if self.enable_load_info else 'disabled'}.")
                 elif command[0] == "2":
                     self.enable_distribute_block = not self.enable_distribute_block
-                    self.log.info(f"enable_distribute_block {'enabled' if self.enable_distribute_block else 'disabled'}.")
+                    self.log.info(
+                        f"enable_distribute_block {'enabled' if self.enable_distribute_block else 'disabled'}.")
                 else:
                     self.log.info(f"No such feature: {command[1]}")
             elif command[0] == "exit":
@@ -192,7 +189,14 @@ class NodeManager:
 
             if self.config.get('is_miner', "False"):
                 last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
-                if self.chain.blocks_count() == 0 or self.chain.time() > last_block_time + self.config.get('pause_before_try_block', Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE):
+
+                if self.chain.blocks_count() == 0 or (
+                        self.chain.time() > last_block_time + self.config.get('pause_before_try_block',
+                                                                              Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE)
+                        and self.chain.time() < last_block_time + self.config.get(
+                    'pause_before_try_block',
+                    Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE) + Protocol.WINDOW_TO_MAKE_BLOCK):
+
                     t = datetime.datetime.now()
                     new_block = self.create_block(self.config.get("address_reward"))
                     if new_block is not None:
@@ -204,11 +208,11 @@ class NodeManager:
                 self.need_distribute_candidate = True
 
             # центральная тока для рассылки кандидата на другие ноды
-            if self.need_distribute_candidate and self.enable_distribute_block or time.time()>self.timer_last_distribute + 3:
-                    self.timer_last_distribute = time.time()
-                    self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
-                    # self.client_handler.distribute_block(self.chain.block_candidate)
-                    self.need_distribute_candidate = False
+            if self.need_distribute_candidate and self.enable_distribute_block or time.time() > self.timer_last_distribute + 3:
+                self.timer_last_distribute = time.time()
+                self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
+                # self.client_handler.distribute_block(self.chain.block_candidate)
+                self.need_distribute_candidate = False
 
             needClose = self.chain.need_close_block()
             if needClose and self.chain.block_candidate is not None:

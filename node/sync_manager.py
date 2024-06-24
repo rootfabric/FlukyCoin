@@ -15,12 +15,16 @@ class SyncManager:
         self.timer_drop_synced = None
         self.running = True
         self.unsync_count = 0
+
         self.shutdown_event = threading.Event()
 
         self.peer_info = {}
 
         # количество блоков в которых нода находится в рассинхроне с основной группой
         self.count_unsync_block = 0
+
+        # время начала рассинхрона
+        self.time_start_unsync_block = 0
 
     def signal_handler(self, signum, frame):
         self.log.info("Signal received, shutting down...")
@@ -192,13 +196,14 @@ class SyncManager:
                 if flag_unsing:
                     if self.count_unsync_block is None:
                         self.count_unsync_block = self.node_manager.chain.blocks_count()
+                        self.time_start_unsync_block = time.time()
 
                     print(
                         f"Нода в рассинхроне {self.node_manager.chain.blocks_count() - self.count_unsync_block} блоков")
                 else:
                     self.count_unsync_block = None
 
-                if self.count_unsync_block is not None and self.count_unsync_block + 1 < self.node_manager.chain.blocks_count():
+                if self.count_unsync_block is not None and (self.count_unsync_block + 1 < self.node_manager.chain.blocks_count() or time.time()>self.time_start_unsync_block+Protocol.BLOCK_TIME_SECONDS*3):
                     print("Потеря синхронизации")
                     # снос последнего блока, для прокачки доминирующей цепи
                     self.node_manager.chain.drop_last_block()

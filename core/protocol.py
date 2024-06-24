@@ -25,8 +25,10 @@ class Protocol:
     # все ноды должны закрыть блок чтобы принять новый кандидат
     BLOCK_TIME_PAUSE_AFTER_CLOSE = 1
 
+    WINDOW_TO_MAKE_BLOCK = 10
+
     # количество секунд перед закрытием, когда прекращаем синхронизации и проверки
-    BLOCK_END_CHECK_PAUSE = 1
+    BLOCK_END_CHECK_PAUSE = 5
 
     # 11 2-4 в день
     KEY_BLOCK_POROG = 11

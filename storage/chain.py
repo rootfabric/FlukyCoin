@@ -401,6 +401,8 @@ class Chain():
         if not self.validate_block(block):
             return False
 
+
+
         if self.last_block() is None and self.block_candidate is None:
             self.block_candidate = Block.from_json(block.to_json())
             self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
@@ -416,10 +418,13 @@ class Chain():
 
         if not self.validate_candidate(block):
             return False
+        self.log.info("TRY New candidate", self.block_candidate.hash, self.block_candidate.signer)
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex() if self.last_block() is None else self.last_block().hash
 
         win_address = self.protocol.winner([self.block_candidate.signer, block.signer], self._previousHash)
+
+        self.log.info(f"winner res: [{self.block_candidate.signer}, {block.signer}] winer: {win_address} hash {self._previousHash}" )
         if win_address == self.block_candidate.signer:
             return False
 

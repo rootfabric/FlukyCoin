@@ -2,7 +2,7 @@ port: 9333
 host: 5.35.98.126
 is_miner: True
 #pause_before_try_block: 20
-miners_storage_size: 10
+miners_storage_size: 10000
 
 initial_peers:
     - "95.154.71.53:9333"

@@ -13,10 +13,6 @@ def parse_arguments():
                         default='node_config.yaml', help="Node host")
                         # default='node_config3.yaml', help="Node host")
                         # default='node_config_off.yaml', help="Node host")
-    # parser.add_argument('--host', '-h', type=str, required=False,
-    #                     default='localhost', help="Node host")
-    # parser.add_argument('--port', '-p', type=str ,required=False,
-    #                     default='5555', help="Node port")
 
     # parser.add_argument('--mining_thread_count', '-m', dest='mining_thread_count', type=int, required=False,
     #                     default=None, help="Number of threads for mining")

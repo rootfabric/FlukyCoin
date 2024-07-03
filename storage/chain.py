@@ -389,6 +389,10 @@ class Chain():
         if block.timestamp_seconds < self.last_block().timestamp_seconds:
             return False
 
+        if Protocol.address_height(block.signer)>Protocol.MAX_HEIGHT_SIGN_KEY:
+            self.log.warning("Ключ подписи не проходит по максимальное высоте")
+            return False
+
         return True
 
     def add_block_candidate(self, block: Block):

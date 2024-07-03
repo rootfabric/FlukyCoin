@@ -3,6 +3,7 @@ import os
 import pickle
 from crypto.xmss import XMSS, keypair_from_json, keypair_to_json, XMSSPublicKey
 from tools.logger import Log
+from core.protocol import Protocol
 
 
 class MinerStorage:
@@ -20,16 +21,18 @@ class MinerStorage:
 
             # по дефолту если нет значения в конфиге, берем небольшие значения
             miners_storage_size = self.config.get('miners_storage_size', 10)
-            miners_storage_height = self.config.get('miners_storage_height', 5)
+            miners_storage_height = self.config.get('miners_storage_height', Protocol.MAX_HEIGHT_SIGN_KEY)
 
             self.generate_keys(miners_storage_size, height=miners_storage_height)
             self.save_storage_to_disk(dir=self.dir)
 
-    def generate_keys(self, size=10, height=12):
+    def generate_keys(self, size=10, height=Protocol.MAX_HEIGHT_SIGN_KEY):
         """ Генерация заданного количества ключей для майнинга"""
         self.log.info("Генерация ключей")
         start_time = datetime.datetime.now()
         count_sign = 0
+        # ограничение на высоту ключа
+        height = min(height, Protocol.MAX_HEIGHT_SIGN_KEY)
         for i in range(size):
             xmss = XMSS.create(height)
             count_sign += xmss.keyPair.PK.max_height()

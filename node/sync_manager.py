@@ -158,7 +158,7 @@ class SyncManager:
         if count_sync > 0 and len(peer_info) > 1 and not drop_sync_signal and not self._synced:
             self.timer_drop_synced = None
             last_block_time = self.last_block_time()
-            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_SECONDS / 2:
+            if self.node_manager.chain.time() > last_block_time + Protocol.BLOCK_START_CHECK_PAUSE:# and self.node_manager.chain.time() < last_block_time + Protocol.BLOCK_TIME_SECONDS / 2:
                 self.log.info("Нода синхронизирована")
                 self.set_node_synced(True)
                 self.count_unsync_block = None
@@ -206,6 +206,8 @@ class SyncManager:
                 if self.count_unsync_block is not None and (self.count_unsync_block + 1 < self.node_manager.chain.blocks_count() or time.time()>self.time_start_unsync_block+Protocol.BLOCK_TIME_SECONDS*3):
                     print("Потеря синхронизации")
                     # снос последнего блока, для прокачки доминирующей цепи
+                    self.node_manager.chain.drop_last_block()
+                    self.node_manager.chain.drop_last_block()
                     self.node_manager.chain.drop_last_block()
                     self.set_node_synced(False)
 

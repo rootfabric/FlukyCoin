@@ -14,7 +14,7 @@ class Protocol:
     # WAIT_ACTIVE_PEERS_BEFORE_START = 10
 
     # BLOCK_TIME_INTERVAL =  30
-    BLOCK_TIME_SECONDS = 30
+    BLOCK_TIME_SECONDS = 60
 
     BLOCK_TIME_INTERVAL_LOG = 1
 
@@ -27,6 +27,10 @@ class Protocol:
 
     WINDOW_TO_MAKE_BLOCK = 10
 
+    # максимальная высота блока для подписи
+    # проверка подписей занимает много времени при большой высоте. Что дает большую нагрузку на сеть.
+    MAX_HEIGHT_SIGN_KEY = 1
+
     # количество секунд перед закрытием, когда прекращаем синхронизации и проверки
     BLOCK_END_CHECK_PAUSE = 5
 
@@ -34,7 +38,7 @@ class Protocol:
     KEY_BLOCK_POROG = 11
 
     # HALVING_INTERVAL = 1500000
-    INITIAL_HALVING_INTERVAL = 1500000
+    INITIAL_HALVING_INTERVAL = 700000
     INITIAL_REWARD = 50000000
     HALVING_FACTOR = 3
 
@@ -70,7 +74,8 @@ class Protocol:
 
     DEFAULT_PORT = 9333
 
-    GOSSIP_COUNT_TO_DISTRIBUTE_BLOCK = 3
+    # на сколько пиров рассылать блок
+    GOSSIP_COUNT_TO_DISTRIBUTE_BLOCK = 5
 
     @staticmethod
     def find_longest_common_substring(address, block_hash, convert_to_sha256=False):

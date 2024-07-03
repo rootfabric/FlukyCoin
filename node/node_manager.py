@@ -58,6 +58,7 @@ class NodeManager:
         self.enable_load_info = True
         self.enable_distribute_block = True
 
+        self.my_block = None
         # для отключения
         self.shutdown_event = threading.Event()
         signal.signal(signal.SIGINT, self.signal_handler)
@@ -143,10 +144,11 @@ class NodeManager:
             else:
                 self.miners_storage.save_storage_to_disk(block_candidate)
 
+            self.my_block = block_candidate
             return block_candidate
 
         miners_storage_size = self.config.get('miners_storage_size', 10)
-        miners_storage_height = self.config.get('miners_storage_height', 10)
+        miners_storage_height = self.config.get('miners_storage_height', Protocol.MAX_HEIGHT_SIGN_KEY)
         self.miners_storage.generate_keys(size=miners_storage_size, height=miners_storage_height)
         return None
 
@@ -192,23 +194,28 @@ class NodeManager:
 
                 if self.chain.blocks_count() == 0 or (
                         self.chain.time() > last_block_time + self.config.get('pause_before_try_block',
-                                                                              Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE)
-                        and self.chain.time() < last_block_time + self.config.get(
-                    'pause_before_try_block',
-                    Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE) + Protocol.WINDOW_TO_MAKE_BLOCK):
+                                                                              Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE)):
+                    #     and self.chain.time() < last_block_time + self.config.get(
+                    # 'pause_before_try_block',
+                    # Protocol.BLOCK_TIME_PAUSE_AFTER_CLOSE) + Protocol.WINDOW_TO_MAKE_BLOCK):
 
                     t = datetime.datetime.now()
-                    new_block = self.create_block(self.config.get("address_reward"))
-                    if new_block is not None:
-                        self.log.info("Создание своего блока ", datetime.datetime.now() - t)
+                    try:
+                        new_block = self.create_block(self.config.get("address_reward"))
+                        # self.executor.submit(self.create_block,self.config.get("address_reward"))
+                        if new_block is not None:
+                            self.log.info("Создание своего блока ", datetime.datetime.now() - t)
+                    except Exception as e:
+                        self.log.error("Ошибка создания своего блока:", e)
+            if self.my_block is not None:
+                if self.chain.add_block_candidate(new_block):
+                    self.log.info(f"Свой Блок кандидат добавлен", new_block.hash,
+                                  new_block.signer)
+                    self.need_distribute_candidate = True
 
-            if self.chain.add_block_candidate(new_block):
-                self.log.info(f"Свой Блок кандидат добавлен", new_block.hash,
-                              new_block.signer)
-                self.need_distribute_candidate = True
-
-            # центральная тока для рассылки кандидата на другие ноды
-            if self.need_distribute_candidate and self.enable_distribute_block or time.time() > self.timer_last_distribute + 3:
+            # центральная точка для рассылки кандидата на другие ноды
+            if self.need_distribute_candidate and self.enable_distribute_block:
+                # or time.time() > self.timer_last_distribute + 3:
                 self.timer_last_distribute = time.time()
                 self.executor.submit(self.client_handler.distribute_block, self.chain.block_candidate)
                 # self.client_handler.distribute_block(self.chain.block_candidate)

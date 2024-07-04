@@ -1,5 +1,6 @@
 # FlukyCoin is Quantum-Resilient Cryptocurrency Project Implemented in Python
 
+I created this blockchain as a hobby project; it was very interesting to delve into the technology. It can be used for familiarization and learning. The project is still developing.
 
 Install:
 ```commandline

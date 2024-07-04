@@ -116,9 +116,9 @@ class NodeManager:
                 continue
 
             xmss = self.miners_storage.keys[miner_address]
-            next_idx = self.chain.next_address_nonce(miner_address)
-            if xmss.keyPair.SK.idx != next_idx - 1:
-                edited_idx = xmss.set_idx(next_idx - 1)
+            # next_idx = self.chain.next_address_nonce(miner_address)
+            # if xmss.keyPair.SK.idx != next_idx - 1:
+            #     edited_idx = xmss.set_idx(next_idx - 1)
 
             last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
             time_candidat = last_block_time + Protocol.BLOCK_TIME_SECONDS
@@ -151,6 +151,7 @@ class NodeManager:
         miners_storage_height = self.config.get('miners_storage_height', Protocol.MAX_HEIGHT_SIGN_KEY)
         self.miners_storage.generate_keys(size=miners_storage_size, height=miners_storage_height)
         return None
+
 
     def uptime(self):
         return time.time() - self.start_time

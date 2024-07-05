@@ -14,7 +14,7 @@ pip install -r requirements.txt
 
 create wallet:
 ```commandline
-python wallet_app/WalletApp.py
+python WalletApp.py
 ```
 
 Make config:

@@ -21,7 +21,7 @@ if __name__ == '__main__':
     # пользователи создают блоки
     t = 1716710000
     xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.address, address_reward=xmss1.address)
-    xmss1_b0.make_sign(xmss1)
+    xmss1_b0.make_sign_before_validation(xmss1)
 
     """ Добавление блоков """
     c1.add_block_candidate(xmss1_b0)
@@ -63,7 +63,7 @@ if __name__ == '__main__':
     # пользователи создают блоки
     t = 1716720000
     xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [tt], address_miner=xmss1.address, address_reward=xmss1.address)
-    xmss1_b1.make_sign(xmss1)
+    xmss1_b1.make_sign_before_validation(xmss1)
 
     """ Добавление блоков """
     c1.add_block_candidate(xmss1_b1)
@@ -85,7 +85,7 @@ if __name__ == '__main__':
     # пользователи создают блоки
     t = 1716730000
     xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.address, address_reward=xmss1.address)
-    xmss1_b1.make_sign(xmss1)
+    xmss1_b1.make_sign_before_validation(xmss1)
 
     """ Добавление блоков """
     c1.add_block_candidate(xmss1_b1)
@@ -100,7 +100,7 @@ if __name__ == '__main__':
     # пользователи создают блоки
     t = 1716740000
     xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss1.address, address_reward=xmss1.address)
-    xmss1_b1.make_sign(xmss1)
+    xmss1_b1.make_sign_before_validation(xmss1)
 
     """ Добавление блоков """
     c1.add_block_candidate(xmss1_b1)

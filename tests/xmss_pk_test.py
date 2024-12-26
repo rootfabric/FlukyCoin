@@ -4,7 +4,7 @@ from crypto.xmss import *
 
 if __name__ == '__main__':
     # Пример использования
-    keys = XMSS.create(1)
+    keys = XMSS.create(6)
 
     PK = keys.keyPair.PK
 
@@ -28,13 +28,13 @@ if __name__ == '__main__':
 
     print(PK2.generate_address())
 
-    print(keys.sign(b"1"))
+    print(keys.sign_before_validation(b"1"))
     print(keys.count_sign())
-    print(keys.sign(b"2"))
+    print(keys.sign_before_validation(b"2"))
     print(keys.count_sign())
-    print(keys.sign(b"3"))
+    print(keys.sign_before_validation(b"3"))
     print(keys.count_sign())
-    print(keys.sign(b"4"))
+    print(keys.sign_before_validation(b"4").to_hex())
     print(keys.count_sign())
-    print(keys.sign(b"4"))
+    print(keys.sign_before_validation(b"4"))
     print(keys.count_sign())

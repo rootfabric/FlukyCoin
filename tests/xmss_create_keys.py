@@ -12,7 +12,7 @@ if __name__ == '__main__':
     print("private key", keys.private_key.hex())
     print("seed_phrase", keys.seed_phrase)
     message = b"123"
-    signature = keys.sign(message=message)
+    signature = keys.sign_before_validation(message=message)
     # print(len(sign.to_str()))
     # print(sign.to_str())
 

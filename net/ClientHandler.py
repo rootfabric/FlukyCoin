@@ -145,7 +145,7 @@ class ClientHandler:
 
     def handle_new_transaction(self, transaction_data):
         # Предполагается, что transaction_data это объект с полем 'hash'
-        transaction_hash = transaction_data.hash
+        transaction_hash = transaction_data.hash_before_validation
         if transaction_hash not in self.servicer.known_transactions:
             channel = grpc.insecure_channel('address_of_node')
             stub = network_pb2_grpc.NetworkServiceStub(channel)
@@ -249,7 +249,7 @@ class ClientHandler:
 
     def distribute_block(self, block):
         """Распространение блока среди всех активных пиров."""
-        block_hash = block.hash_block()
+        block_hash = block.hash_block_before_validation()
         with ThreadPoolExecutor(max_workers=10) as executor:
             futures = {}
             # for peer in self.servicer.active_peers:
@@ -278,7 +278,7 @@ class ClientHandler:
         try:
             block_data = block.to_json()  # Сериализация блока в JSON
             stub.BroadcastBlock(network_pb2.Block(data=block_data), timeout=5)
-            self.log.info(f"Send to {peer} block {block.hash_block()}")
+            self.log.info(f"Send to {peer} block {block.hash_block_before_validation()}")
         except grpc.RpcError as e:
             if peer in self.peer_channels:
                 del self.peer_channels[peer]
@@ -304,7 +304,7 @@ class ClientHandler:
 
                 # if self.node_manager.chain.validate_block(candidate_block):
                 if self.node_manager.chain.add_block_candidate(candidate_block):
-                    self.log.info(f"Block candidate from peer {peer} added to chain.  {candidate_block.hash_block()}")
+                    self.log.info(f"Block candidate from peer {peer} added to chain.  {candidate_block.hash_block_before_validation()}")
 
                     # пересылаем всем кого знаем
                     # self.node_manager.client_handler.distribute_block(candidate_block)

@@ -51,7 +51,7 @@ if __name__ == '__main__':
             b0 : Block = chain.blocks[i-1]
             b1 : Block= chain.blocks[i]
 
-            t = b1.timestamp_seconds - b0.timestamp_seconds
+            t = b1.timestamp_seconds_before_validation - b0.timestamp_seconds_before_validation
             list_time.append(t)
 
             print(i, block.datetime(), block.signer, block.mining_reward()/10000000, block.signer, chain2.next_address_nonce(block.signer))

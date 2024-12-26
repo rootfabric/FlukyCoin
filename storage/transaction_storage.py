@@ -118,6 +118,21 @@ class TransactionStorage:
             conn.execute('INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)',
                          (balance_key, zlib.compress(str(new_balance).encode())))
 
+    def get_reputation_balance(self, address):
+        reputation_key = f"reputation_{address}"
+        with self._get_conn() as conn:
+            cursor = conn.execute('SELECT value FROM kv_store WHERE key=?', (reputation_key,))
+            row = cursor.fetchone()
+            if row:
+                return int(float(zlib.decompress(row[0]).decode()))
+        return 0
+
+    def _update_reputation_balance(self, address, new_balance):
+        reputation_key = f"reputation_{address}"
+        with self._get_conn() as conn:
+            conn.execute('INSERT OR REPLACE INTO kv_store (key, value) VALUES (?, ?)',
+                         (reputation_key, zlib.compress(str(new_balance).encode())))
+
     def get_nonce(self, address):
         nonce_key = f"nonce_{address}"
         with self._get_conn() as conn:
@@ -189,25 +204,46 @@ class TransactionStorage:
         self.pop_nonce_to_address(block.signer)
         self._save_miners()
 
+    # def rollback_transaction(self, transaction: Transaction, address_reward):
+    #     from_address = transaction.fromAddress
+    #     amounts = transaction.all_amounts()
+    #     fee = transaction.fee
+    #     to_address = transaction.toAddress
+    #
+    #     with self._get_conn() as conn:
+    #         conn.execute('DELETE FROM kv_store WHERE key=?', (transaction.txhash,))
+    #
+    #     if transaction.tx_type == 'coinbase':
+    #         for i, address in enumerate(to_address):
+    #             self._update_balance(address, self.get_balance(address) - transaction.amounts[i])
+    #     else:
+    #         self._update_balance(from_address, self.get_balance(from_address) + amounts + fee)
+    #         self._update_balance(address_reward, self.get_balance(address_reward) - fee)
+    #         for i, address in enumerate(to_address):
+    #             self._update_balance(address, self.get_balance(address) - transaction.amounts[i])
+    #
+    #     self.pop_nonce_to_address(from_address)
+
     def rollback_transaction(self, transaction: Transaction, address_reward):
-        from_address = transaction.fromAddress
-        amounts = transaction.all_amounts()
-        fee = transaction.fee
-        to_address = transaction.toAddress
+        if transaction.tx_type == "reputation_token":
+            action_details = transaction.action_details
+            from_address = transaction.fromAddress
+            to_address = transaction.toAddress[0]
 
-        with self._get_conn() as conn:
-            conn.execute('DELETE FROM kv_store WHERE key=?', (transaction.txhash,))
+            if action_details.get("action") == "penalty":
+                penalty = action_details["penalty"]
+                self._update_reputation_balance(from_address, self.get_reputation_balance(from_address) - penalty)
+            elif action_details.get("action") == "reward":
+                reward = action_details["reward"]
+                self._update_reputation_balance(to_address, self.get_reputation_balance(to_address) - reward)
 
-        if transaction.tx_type == 'coinbase':
-            for i, address in enumerate(to_address):
-                self._update_balance(address, self.get_balance(address) - transaction.amounts[i])
-        else:
-            self._update_balance(from_address, self.get_balance(from_address) + amounts + fee)
-            self._update_balance(address_reward, self.get_balance(address_reward) - fee)
-            for i, address in enumerate(to_address):
-                self._update_balance(address, self.get_balance(address) - transaction.amounts[i])
+            # Удаляем транзакцию из хранилища
+            with self._get_conn() as conn:
+                conn.execute('DELETE FROM kv_store WHERE key=?', (transaction.txhash,))
+            return
 
-        self.pop_nonce_to_address(from_address)
+        # Обработка остальных типов транзакций
+        super().rollback_transaction(transaction, address_reward)
 
     def get_transactions_by_address(self, address, transactions_start=0, transactions_end=0):
         filtered_transactions = []

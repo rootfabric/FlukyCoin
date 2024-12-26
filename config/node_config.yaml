@@ -2,14 +2,7 @@ port: 9334
 host: 192.168.0.26
 external_host: 95.154.71.53
 
-is_miner: True
+is_miner: False
 miners_storage_size: 1000
 
-initial_peers:
-    - "5.35.98.126:9333"
-    - "5.35.98.126:9334"
-    - "api.robotsimulator.ru:9333"
-    - "api.robotsimulator.ru:9334"
-    - "95.154.71.53:9334"
-    - "95.154.71.53:9335"
 address_reward: bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm

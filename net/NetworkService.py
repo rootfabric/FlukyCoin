@@ -106,10 +106,10 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def BroadcastTransactionHash(self, request, context):
         # if request.hash not in self.known_transactions:
-        if not self.node_manager.mempool.check_hash_transaction(request.hash):
+        if not self.node_manager.mempool.check_hash_transaction(request.hash_before_validation):
             # если транзакции нет, делаем сразу запрос в ответ, с запросом полной транзакции
             if request.from_host != "":
-                self.request_full_transaction(request.hash, request.from_host)
+                self.request_full_transaction(request.hash_before_validation, request.from_host)
         return network_pb2.Ack(success=True)
 
     def request_full_transaction(self, transaction_hash, source_peer):
@@ -263,8 +263,8 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
         """ Информация о состоянии сети """
         last_block = self.node_manager.chain.last_block()
         difficulty = self.node_manager.chain.difficulty
-        last_block_time = last_block.timestamp_seconds if last_block else 'N/A'
-        last_block_hash = last_block.hash_block() if last_block else 'N/A'
+        last_block_time = last_block.timestamp_seconds_before_validation if last_block else 'N/A'
+        last_block_hash = last_block.hash_block_before_validation() if last_block else 'N/A'
 
         peers_info = []
 
@@ -299,7 +299,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
 
     def BroadcastBlockHash(self, request, context):
         """Обрабатывает отправку хеша блока от другого пира."""
-        block_hash = request.hash
+        block_hash = request.hash_before_validation
         client_address = context.peer()
 
 
@@ -321,7 +321,7 @@ class NetworkService(network_pb2_grpc.NetworkServiceServicer):
             return network_pb2.Ack(success=False)
 
         block = Block.from_json(request.data)  # Десериализация блока
-        print(f"BroadcastBlock {block.hash_block()} from {client_address}")
+        print(f"BroadcastBlock {block.hash_block_before_validation()} from {client_address}")
         if self.node_manager.chain.add_block_candidate(block):
             # print(f"{datetime.datetime.now()} Блок кандидат добавлен из BroadcastBlock", block.hash,
             #       block.signer)

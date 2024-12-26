@@ -120,7 +120,7 @@ class NodeManager:
             # if xmss.keyPair.SK.idx != next_idx - 1:
             #     edited_idx = xmss.set_idx(next_idx - 1)
 
-            last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
+            last_block_time = self.chain.last_block().timestamp_seconds_before_validation if self.chain.last_block() is not None else self.chain.time()
             time_candidat = last_block_time + Protocol.BLOCK_TIME_SECONDS
             block_timestamp_seconds = time_candidat if time_candidat > self.chain.time() else self.chain.time()
 
@@ -136,7 +136,7 @@ class NodeManager:
                                            block_timestamp_seconds, transactions, address_miner=xmss.address,
                                            address_reward=address_reward)
 
-            block_candidate.make_sign(xmss)
+            block_candidate.make_sign_before_validation(xmss)
 
             if not self.chain.validate_block(block_candidate):
                 xmss.set_idx(xmss.idx() - 1)
@@ -191,7 +191,7 @@ class NodeManager:
             new_block = None
 
             if self.config.get('is_miner', "False"):
-                last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
+                last_block_time = self.chain.last_block().timestamp_seconds_before_validation if self.chain.last_block() is not None else self.chain.time()
 
                 if self.chain.blocks_count() == 0 or (
                         self.chain.time() > last_block_time + self.config.get('pause_before_try_block',
@@ -233,7 +233,7 @@ class NodeManager:
                     continue
                 last_block = self.chain.last_block()
                 if last_block is not None:
-                    self.log.info(f"Chain {self.chain.blocks_count()} blocks , последний: ", last_block.hash_block(),
+                    self.log.info(f"Chain {self.chain.blocks_count()} blocks , последний: ", last_block.hash_block_before_validation(),
                                   last_block.signer, self.chain.next_address_nonce(last_block.signer))
 
                 # self.chain.save_chain_to_disk()
@@ -248,7 +248,7 @@ class NodeManager:
 
             text = f"Check: {self.chain.blocks_count()} peers[{len(self.server.servicer.active_peers)}] txs[{self.mempool.size()}] "
             if self.chain.block_candidate is not None:
-                text += f"delta: {self.chain.block_candidate.timestamp_seconds - self.chain.time():0.2f}  {self.chain.block_candidate.hash_block()[:5]}...{self.chain.block_candidate.hash_block()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}"
+                text += f"delta: {self.chain.block_candidate.timestamp_seconds_before_validation - self.chain.time():0.2f}  {self.chain.block_candidate.hash_block_before_validation()[:5]}...{self.chain.block_candidate.hash_block_before_validation()[-5:]}  singer: ...{self.chain.block_candidate.signer[-5:]}"
             self.log.info(text)
 
             time.sleep(Protocol.BLOCK_TIME_INTERVAL_LOG)

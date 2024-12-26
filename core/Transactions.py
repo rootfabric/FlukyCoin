@@ -54,7 +54,6 @@ class Transaction:
 
     @classmethod
     def from_json(cls, json_data):
-        # Создает и возвращает экземпляр класса из строки JSON или словаря
         if isinstance(json_data, str):
             data = json.loads(json_data)
         else:
@@ -67,6 +66,10 @@ class Transaction:
             return SlaveTransaction.from_dict(data)
         elif tx_type == 'coinbase':
             return CoinbaseTransaction.from_dict(data)
+        elif tx_type == 'node_registration':
+            return NodeRegistrationTransaction.from_dict(data)
+        elif tx_type == 'reputation_token':
+            return ReputationTokenTransaction.from_dict(data)
         else:
             raise ValueError(f"Unknown transaction type: {tx_type}")
 
@@ -197,6 +200,91 @@ class CoinbaseTransaction(Transaction):
         # tx.nonce = data.get('nonce')
         tx.txhash = data.get('txhash')
         return tx
+
+
+class NodeRegistrationTransaction(Transaction):
+    def __init__(self, fromAddress, registration_details):
+        super().__init__('node_registration', fromAddress, [], [0], fee=0)
+
+        self.registration_details = registration_details  # Поле для фиксации действия (начисление/штраф)
+
+    def as_dict(self):
+        data = super().as_dict()
+        data.update({'registration_details': self.registration_details})
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        fromAddress = data['fromAddress']
+
+        registration_details = data.get('registration_details', {})
+        fee = data['fee']
+        tx = cls(fromAddress, registration_details)
+        tx.nonce = data.get('nonce')
+        tx.txhash = data.get('txhash')
+        tx.public_key = data.get('public_key')
+        tx.signature = data.get('signature')
+        return tx
+
+class ReputationTokenTransaction(Transaction):
+    def __init__(self, fromAddress, toAddress, amounts, action_details, fee=0):
+        super().__init__('reputation_token', fromAddress, toAddress, amounts, fee)
+        self.action_details = action_details  # Поле для фиксации действия (начисление/штраф)
+
+    def as_dict(self):
+        data = super().as_dict()
+        data.update({'action_details': self.action_details})
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        fromAddress = data['fromAddress']
+        toAddress = data['toAddress']
+        amounts = data['amounts']
+        action_details = data.get('action_details', {})
+        fee = data['fee']
+        tx = cls(fromAddress, toAddress, amounts, action_details, fee)
+        tx.nonce = data.get('nonce')
+        tx.txhash = data.get('txhash')
+        tx.public_key = data.get('public_key')
+        tx.signature = data.get('signature')
+        return tx
+
+
+class ValidationTransaction(Transaction):
+    def __init__(self, fromAddress, block_hash, signature=None, public_key=None, fee=0):
+        super().__init__('validation', fromAddress, [], [], fee)
+        self.block_hash = block_hash
+        self.signature = signature
+        self.public_key = public_key
+
+    def as_dict(self):
+        data = super().as_dict()
+        data.update({
+            'block_hash': self.block_hash,
+            'signature': self.signature,
+            'public_key': self.public_key,
+        })
+        return data
+
+    @classmethod
+    def from_dict(cls, data):
+        tx = cls(
+            fromAddress=data['fromAddress'],
+            block_hash=data['block_hash'],
+            signature=data.get('signature'),
+            public_key=data.get('public_key'),
+            fee=data.get('fee', 0),
+        )
+        tx.txhash = data['txhash']
+        return tx
+
+    def validate_transaction(self):
+        """Проверка подписи и связности транзакции."""
+        if not XMSS_verify(SigXMSS.from_base64(self.signature), bytes.fromhex(self.block_hash), XMSSPublicKey.from_hex(self.public_key)):
+            raise ValueError("Подпись транзакции недействительна.")
+        return True
+
 
 
 if __name__ == '__main__':

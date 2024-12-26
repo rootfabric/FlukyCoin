@@ -220,7 +220,7 @@ class Chain():
 
     @property
     def block_candidate_hash(self):
-        return self.block_candidate.hash_block() if self.block_candidate is not None else None
+        return self.block_candidate.hash_block_before_validation() if self.block_candidate is not None else None
 
     def reset_block_candidat(self):
         self.block_candidate = None
@@ -231,7 +231,7 @@ class Chain():
         return None
 
     def add_history_hash(self, block):
-        self.history_hash[block.hash_block()] = block
+        self.history_hash[block.hash_block_before_validation()] = block
 
     def block_difficulty(self, block: Block):
         ratio, _ = Protocol.find_longest_common_substring(block.signer, block.previousHash, convert_to_sha256=True)
@@ -247,7 +247,7 @@ class Chain():
         if self.last_block() is None:
             return True
 
-        if block.timestamp_seconds <= self.last_block().timestamp_seconds:
+        if block.timestamp_seconds_before_validation <= self.last_block().timestamp_seconds:
             self.log.warning("Блок не проходит валидацию по времени")
             return False
 
@@ -386,7 +386,7 @@ class Chain():
         if block.previousHash != self.last_block().hash_block():
             return False
 
-        if block.timestamp_seconds < self.last_block().timestamp_seconds:
+        if block.timestamp_seconds_before_validation < self.last_block().timestamp_seconds:
             return False
 
         if Protocol.address_height(block.signer)>Protocol.MAX_HEIGHT_SIGN_KEY:
@@ -409,20 +409,20 @@ class Chain():
 
         if self.last_block() is None and self.block_candidate is None:
             self.block_candidate = Block.from_json(block.to_json())
-            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+            self.log.info("New candidate", self.block_candidate.hash_before_validation, self.block_candidate.signer)
             return True
 
         if self.block_candidate is None:
             self.block_candidate = Block.from_json(block.to_json())
-            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+            self.log.info("New candidate", self.block_candidate.hash_before_validation, self.block_candidate.signer)
             return True
 
-        if block.hash_block() == self.block_candidate.hash_block():
+        if block.hash_block_before_validation() == self.block_candidate.hash_block_before_validation():
             return False
 
         if not self.validate_candidate(block):
             return False
-        self.log.info("TRY New candidate", self.block_candidate.hash, self.block_candidate.signer)
+        self.log.info("TRY New candidate", self.block_candidate.hash_before_validation, self.block_candidate.signer)
 
         self._previousHash = Protocol.prev_hash_genesis_block.hex() if self.last_block() is None else self.last_block().hash
 
@@ -433,7 +433,7 @@ class Chain():
             return False
 
         self.block_candidate = Block.from_json(block.to_json())
-        self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
+        self.log.info("New candidate", self.block_candidate.hash_before_validation, self.block_candidate.signer)
 
         return True
 
@@ -471,7 +471,7 @@ class Chain():
             if last_block.timestamp_seconds + Protocol.BLOCK_TIME_SECONDS > self.time():
                 return False
 
-        if self.block_candidate.timestamp_seconds > self.time():
+        if self.block_candidate.timestamp_seconds_before_validation > self.time():
             return False
 
         return True

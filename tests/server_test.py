@@ -1,6 +1,6 @@
 import threading
 import time
-from net.server import Server
+
 
 def handle_request(request):
     if request.get('command') == 'getinfo':

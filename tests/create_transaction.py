@@ -6,7 +6,7 @@ from core.protocol import Protocol
 
 from crypto.xmss import XMSS
 
-from net.client import Client
+
 import random
 if __name__ == '__main__':
     """ """

@@ -7,7 +7,7 @@ from core.protocol import Protocol
 from crypto.xmss import XMSS
 from pprint import pprint
 
-from net.client import Client
+
 import random
 if __name__ == '__main__':
     """ """
@@ -24,10 +24,10 @@ if __name__ == '__main__':
     t = 1716713605.5979075
     block = Block.create(0, None, t, [], address_miner=xmss.address, address_reward="aaaaa")
     print(block.previousHash)
-    print(block.hash)
+    print(block.hash_before_validation)
     print(xmss.address)
 
-    block.make_sign(xmss)
+    block.make_sign_before_validation(xmss)
 
     json_block =block.to_json()
     pprint(json_block)

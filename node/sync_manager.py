@@ -92,7 +92,7 @@ class SyncManager:
                 if info.blocks != self.node_manager.chain.blocks_count():
                     continue
 
-                if info.block_candidate != self.node_manager.chain.block_candidate.hash_block():
+                if info.block_candidate != self.node_manager.chain.block_candidate.hash_block_before_validation():
                     """ Отличие блока, берем с ноды для проверки """
                     # если блок не хранится в кеше, то делаем запрос
                     if (info.block_candidate is not None
@@ -133,7 +133,7 @@ class SyncManager:
                         t = datetime.datetime.now()
                         if self.node_manager.chain.validate_and_add_block(block):
                             self.log.info(
-                                f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block()} {datetime.datetime.now() - t}")
+                                f"Block [{block_number_to_load + 1}/{info.blocks}] added {block.hash_block_before_validation()} {datetime.datetime.now() - t}")
                             # if self.node_manager.chain.blocks_count() % 100 == 0:
                             #     self.log.info("Save chain")
                             #     self.node_manager.chain.save_chain_to_disk()

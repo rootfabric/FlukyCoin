@@ -2,7 +2,8 @@ import datetime
 import hashlib
 import time
 
-from core.Transactions import Transaction, CoinbaseTransaction, TransferTransaction, SlaveTransaction
+from core.Transactions import Transaction, CoinbaseTransaction, TransferTransaction, SlaveTransaction, \
+    ValidationTransaction
 from core.protocol import Protocol
 from core.BlockHeader import BlockHeader
 import os, json
@@ -22,12 +23,19 @@ class Block:
     def __init__(self, previousHash=None):
 
         self.version = Protocol.VERSION
+        self.timestamp_seconds_before_validation = None
         self.timestamp_seconds = None
+
         self.previousHash = "0000000000000000000000000000000000000000000000000000000000000000" if previousHash is None else previousHash
         self.merkle_root = None
+        self.merkle_root_validators = ""
+
+        self.hash_before_validation = None
+        self.hash = ""
+
+        self.sign_before_validation = None
 
         self.sign = None
-        self.hash = None
         self.signer_pk = None
 
         # избыточные параметры
@@ -37,7 +45,9 @@ class Block:
         self.signer = None
 
         self.transactions: [Transaction] = []
-        # self.log = Log()
+
+        # Подписи валидаторов
+        self.validator_signatures: {str: Transaction} = {}
 
     def mining_reward(self):
         for tx in self.transactions:
@@ -57,7 +67,7 @@ class Block:
         block = Block()
         block.block_number = block_number
         block.previousHash = Protocol.prev_hash_genesis_block.hex() if previousHash is None else previousHash
-        block.timestamp_seconds = int(timestamp_seconds)
+        block.timestamp_seconds_before_validation = int(timestamp_seconds)
         block.signer = address_miner
 
         # Process transactions
@@ -111,11 +121,19 @@ class Block:
         #
         # block.set_nonces(dev_config, 0, 0)
 
-        block.hash_block()
+        block.hash_block_before_validation()
 
         return block
 
-    def make_sign(self, xmss: XMSS) -> bytes:
+    def make_sign_before_validation(self, xmss: XMSS) -> bytes:
+        """ Подпись блока """
+        signature = xmss.sign(bytes.fromhex(self.hash_before_validation))
+
+        self.sign_before_validation = signature.to_base64()
+        self.signer_pk = xmss.keyPair.PK.to_hex()
+        # print(f"Подпись размер: {len(self.sign)} ")
+
+    def make_sign_final(self, xmss: XMSS) -> bytes:
         """ Подпись блока """
         signature = xmss.sign(bytes.fromhex(self.hash))
 
@@ -126,14 +144,20 @@ class Block:
     def to_dict(self):
         # Преобразование объекта Block в словарь для последующей сериализации в JSON
         block_dict = {
+            'hash': self.hash,
+            'hash_before_validation': self.hash_before_validation,
             'index': self.block_number,
             'version': self.version,
             'previousHash': self.previousHash,
+            'time_before_validation': self.timestamp_seconds_before_validation,
             'time': self.timestamp_seconds,
             'transactions': [tr.to_dict() for tr in self.transactions],
-            'hash': self.hash,
+            'validators': [tr.to_dict() for tr in self.validator_signatures.values()],
             'signer': self.signer,
             'merkle_root': self.merkle_root,
+            'merkle_root_validators': self.merkle_root_validators,
+            'sign_before_validation': self.sign_before_validation,
+
             'sign': self.sign,
             'signer_pk': self.signer_pk
         }
@@ -150,18 +174,27 @@ class Block:
         block = cls(block_dict['previousHash'])
         block.block_number = block_dict['index']
         block.version = block_dict['version']
+        block.timestamp_seconds_before_validation = block_dict['time_before_validation']
         block.timestamp_seconds = block_dict['time']
         block.merkle_root = block_dict['merkle_root']
         block.transactions = [Transaction.from_json(t) for t in block_dict['transactions']]
+        block.hash_before_validation = block_dict['hash_before_validation']
         block.hash = block_dict['hash']
         block.signer = block_dict['signer']
+        block.sign_before_validation = block_dict['sign_before_validation']
         block.sign = block_dict['sign']
         block.signer_pk = block_dict['signer_pk']
         return block
 
-    def hash_block(self):
+    def hash_block_before_validation(self):
         """ Формирование блока"""
-        if self.hash is None:
+        if self.hash_before_validation is None:
+            self.hash_before_validation = self.calculate_hash()
+        return self.hash_before_validation
+
+    def hash_block_final(self):
+        """ Формирование блока"""
+        if self.hash is None or self.hash == "":
             self.hash = self.calculate_hash()
         return self.hash
 
@@ -172,24 +205,27 @@ class Block:
         version_bytes = self.version.encode()
         previous_hash_bytes = self.previousHash.encode()
         merkle_root_bytes = self.merkle_root.encode()
+        merkle_root_validators_bytes = self.merkle_root_validators.encode()
 
         # Используем 8 байтов для представления временной метки
-        timestamp_bytes = self.timestamp_seconds.to_bytes(8, byteorder='big')
+        timestamp_bytes_before_validation = self.timestamp_seconds_before_validation.to_bytes(8, byteorder='big')
+        timestamp_bytes = self.timestamp_seconds_before_validation.to_bytes(8,
+                                                                            byteorder='big') if self.timestamp_seconds_before_validation is not None else b""
         signer_bytes = self.signer.encode()
-        return version_bytes + previous_hash_bytes + merkle_root_bytes + timestamp_bytes + signer_bytes
+        return version_bytes + previous_hash_bytes + merkle_root_bytes + merkle_root_validators_bytes + timestamp_bytes_before_validation + timestamp_bytes + signer_bytes
 
     def calculate_hash(self):
         result = hashlib.sha256(self.get_block_bytes())
         return result.hexdigest()
 
     def datetime(self):
-        return datetime.datetime.fromtimestamp(self.timestamp_seconds)
+        return datetime.datetime.fromtimestamp(self.timestamp_seconds_before_validation)
 
     def __equal__(self, other):
         return (self.block_number == other.blocks_count and
                 self.timeStamp == other.timestamp and
                 self.previousHash == other._previousHash and
-                self.hash == other.hash and
+                self.hash_before_validation == other.hash_before_validation and
                 self.transactions == other.transaction and
                 self.nonce == other.nonce
                 )
@@ -201,7 +237,7 @@ class Block:
     def validate(self):
         """ Проверка блока """
 
-        old_hash = self.hash
+        old_hash = self.hash_before_validation
         new_hash = self.calculate_hash()
 
         if old_hash != new_hash:
@@ -213,7 +249,7 @@ class Block:
             print("Ошибка валидации блока. не совпадает майнер")
             return False
 
-        signature = SigXMSS.from_base64(self.sign)
+        signature = SigXMSS.from_base64(self.sign_before_validation)
 
         # Верификация подписи
         verf = XMSS_verify(signature, bytes.fromhex(new_hash), PK2)
@@ -239,6 +275,51 @@ class Block:
             return False
 
         return True
+
+    ###########################
+    ### Функции валидации финального блока
+    def add_validator_signature(self, validator_transaction: ValidationTransaction):
+        """
+        Добавить подпись от валидатора.
+        """
+        if validator_transaction.fromAddress in self.validator_signatures:
+            print(f"Валидатор {validator_transaction.fromAddress} уже подписал блок.")
+            return False
+        self.validator_signatures[validator_transaction.fromAddress] = validator_transaction
+        return True
+
+    def is_finalized(self, required_signatures_count=1):
+        """
+        Проверить, можно ли считать блок финализированным.
+        """
+        return len(self.validator_signatures) >= required_signatures_count
+
+    def finalize_block(self, xmss):
+        """
+        Финализировать блок, подписав его повторно.
+        """
+        if not self.is_finalized(len(self.validator_signatures)):
+            print("Недостаточно подписей для финализации блока.")
+            return False
+
+        # Обновить хеш с учетом подписей валидаторов
+        self.hash_before_validation = self.calculate_hash_with_signatures()
+        # Повторная подпись блока
+        self.make_sign_before_validation(xmss)
+        return True
+
+    def calculate_hash_with_signatures(self, time_calculate):
+        """ добавляются транзакции валидаторов и делается финальный hash """
+
+        hashedtransactions_validator = []
+        for tx_validator in self.validator_signatures.values():
+            hashedtransactions_validator.append(tx_validator.txhash)
+
+        self.merkle_root_validators = merkle_tx_hash(hashedtransactions_validator)
+
+        # финальное время подписи
+        self.timestamp_seconds = time_calculate
+        self.hash_block_final()
 
 
 if __name__ == '__main__':

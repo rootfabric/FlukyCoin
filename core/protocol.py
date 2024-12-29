@@ -70,7 +70,7 @@ class Protocol:
     DEFAULT_HASH_FUNCTION_CODE = 1
     DEFAULT_HEIGHT = 10
 
-    MAX_MESSAGE_SIZE = 128
+    MAX_MESSAGE_SIZE = 1024
 
     DEFAULT_PORT = 9333
 
@@ -211,6 +211,69 @@ class Protocol:
                 best_address = sorted_list[0]
 
         return best_address
+
+
+    @staticmethod
+    def ordered_validators(addresses, block_hash):
+        """
+        Возвращает список адресов, упорядоченный по критериям победителя.
+        :param addresses: Список адресов.
+        :param block_hash: Хэш блока для расчета приоритета.
+        :return: Упорядоченный список адресов.
+        """
+        # Создаем список кортежей (адрес, оценка)
+        scores = []
+        for address in addresses:
+            ratio, _ = Protocol.find_longest_common_substring(address, block_hash, convert_to_sha256=True)
+            max_signs = Protocol.address_max_sign(address)
+            scores.append((address, ratio, max_signs))
+
+        # Сортировка по приоритетам: ratio, затем max_signs
+        scores.sort(key=lambda x: (x[1], x[2]), reverse=True)
+
+        # При одинаковых приоритетах, учитываем порядок
+        sorted_addresses = [address for address, _, _ in scores]
+        if Protocol.is_reverse(block_hash):
+            sorted_addresses.reverse()
+
+        return sorted_addresses
+
+    @staticmethod
+    def lider_and_validators(addresses, hash_value, time_block, current_time):
+        """ Определяем текущего лидера и валидаторов """
+
+        """
+               Определение текущего лидера и валидаторов.
+
+               :param addresses: Список адресов доступных валидаторов.
+               :param hash_value: Хэш блока, используемый для очередности.
+               :param time_block: Время создания последнего блока.
+               :param current_time: Текущее время.
+               :return: Кортеж (лидер, список валидаторов).
+               """
+
+        # Лидеру дается BLOCK_TIME_SECONDS секунд чтобы сделать блок,
+        # если прошло больше времени, то право лидера переходит на следующего валидатора
+        # и ему дается право создать блок, с валидаторами следующими по очереди
+
+
+        # Получение очередности валидаторов
+        validators_queue = Protocol.ordered_validators(addresses, hash_value)
+
+        # Определение текущего лидера
+        time_difference = current_time - time_block
+        leader_index = int((time_difference // Protocol.BLOCK_TIME_SECONDS) % len(validators_queue))
+
+        print(f"time_block {time_block}, current_time {current_time},  time_difference {time_difference}, leader_index {leader_index}")
+        # Текущий лидер
+        current_leader = validators_queue[leader_index]
+
+        # Обновление списка валидаторов (лидер исключается)
+        # Учитываем только валидаторов от текущего индекса и далее
+        remaining_validators = validators_queue[leader_index + 1:]
+
+
+        return current_leader, remaining_validators
 
     @staticmethod
     def address_info(address):
@@ -362,83 +425,7 @@ def calculate_total_supply_and_duration(protocol):
     return total_supply_coins, total_time_years
 
 
-if __name__ == '__main__':
-    protocol = Protocol()
-    max_blocks = 10000000  # ограничение на количество блоков для расчетов и графика
-    rewards, times = calculate_rewards(protocol, max_blocks)
-    print(sum(rewards))
-    plot_rewards(times, rewards)
-
-    total_supply, total_time_years = calculate_total_supply_and_duration(protocol)
-    print(f"Total supply of coins: {total_supply}")
-    print(f"Total time to distribute all rewards: {total_time_years} years")
-    exit()
-    # Инициализация протокола и адресов
-    import secrets
-    import time
-
-    # Функция для генерации случайного previous_hash с большей энтропией
-    # def generate_random_hash():
-    #     random_data = secrets.token_hex(32)
-    #     current_time = str(time.time())
-    #     extra_random_data = secrets.token_hex(32)
-    #     combined_data = random_data + current_time + extra_random_data
-    #     return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
-    # def generate_random_hash():
-    #     # Генерация случайных данных с использованием более высокой энтропии
-    #     random_data = secrets.token_hex(32)
-    #
-    #     # Получение текущего времени в миллисекундах для увеличения чувствительности к времени
-    #     current_time = str(int(time.time() * 1000))
-    #
-    #     # Дополнительная случайная порция данных
-    #     extra_random_data = secrets.token_hex(32)
-    #
-    #     # Включение других изменяющихся во времени параметров, таких как показания процессорного времени
-    #     cpu_time = str(time.process_time())
-    #
-    #     # Комбинирование всех данных в одну строку
-    #     combined_data = random_data + current_time + extra_random_data + cpu_time
-    #
-    #     # Генерация хеша с использованием SHA-256
-    #     return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
-    import hashlib
-    import secrets
-    import time
-
-    # def generate_random_hash():
-    #     random_data = secrets.token_hex(32)
-    #     current_time = str(int(time.time() * 1000))
-    #     extra_random_data = secrets.token_hex(32)
-    #     cpu_time = str(time.process_time())
-    #
-    #     combined_data = random_data + current_time + extra_random_data + cpu_time
-    #
-    #     # Использование BLAKE2b вместо SHA-256
-    #     hash_object = hashlib.blake2b()
-    #     hash_object.update(combined_data.encode('utf-8'))
-    #     return hash_object.hexdigest()
-
-    # # Проверка распределения длин подстрок
-    # d = {}
-    # import os
-    #
-    # # a = hashlib.sha256("bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm".encode()).hexdigest()
-    # # a = hashlib.sha256(os.urandom(35)).hexdigest()
-    # random_data = os.urandom(35)
-    # a = random_data.hex()
-    #
-    # for i in range(100000):
-    #     random_data = os.urandom(35)
-    #     sequence = random_data.hex()
-    #     # sequence = hashlib.sha256(random_data).hexdigest()
-    #     # print(sequence, a)
-    #
-    #     r = Protocol.find_longest_common_substring(sequence, a)
-    #     d[r[0]] = d.get(r[0], 0) + 1
-    #
-    # print(d)
-
+def for_file_tests():
     # Инициализация протокола и адресов
     protocol = Protocol()
 
@@ -521,6 +508,74 @@ if __name__ == '__main__':
         avg_length = sum(lengths) / len(lengths)
         print(f"Адрес: {address}, Средняя длина совпадающей подстроки: {avg_length:.2f}")
 
+    # Инициализация протокола и адресов
+    import secrets
+    import time
+
+    # Функция для генерации случайного previous_hash с большей энтропией
+    # def generate_random_hash():
+    #     random_data = secrets.token_hex(32)
+    #     current_time = str(time.time())
+    #     extra_random_data = secrets.token_hex(32)
+    #     combined_data = random_data + current_time + extra_random_data
+    #     return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
+    # def generate_random_hash():
+    #     # Генерация случайных данных с использованием более высокой энтропии
+    #     random_data = secrets.token_hex(32)
+    #
+    #     # Получение текущего времени в миллисекундах для увеличения чувствительности к времени
+    #     current_time = str(int(time.time() * 1000))
+    #
+    #     # Дополнительная случайная порция данных
+    #     extra_random_data = secrets.token_hex(32)
+    #
+    #     # Включение других изменяющихся во времени параметров, таких как показания процессорного времени
+    #     cpu_time = str(time.process_time())
+    #
+    #     # Комбинирование всех данных в одну строку
+    #     combined_data = random_data + current_time + extra_random_data + cpu_time
+    #
+    #     # Генерация хеша с использованием SHA-256
+    #     return hashlib.sha256(combined_data.encode('utf-8')).hexdigest()
+    import hashlib
+    import secrets
+    import time
+
+    # def generate_random_hash():
+    #     random_data = secrets.token_hex(32)
+    #     current_time = str(int(time.time() * 1000))
+    #     extra_random_data = secrets.token_hex(32)
+    #     cpu_time = str(time.process_time())
+    #
+    #     combined_data = random_data + current_time + extra_random_data + cpu_time
+    #
+    #     # Использование BLAKE2b вместо SHA-256
+    #     hash_object = hashlib.blake2b()
+    #     hash_object.update(combined_data.encode('utf-8'))
+    #     return hash_object.hexdigest()
+
+    # # Проверка распределения длин подстрок
+    # d = {}
+    # import os
+    #
+    # # a = hashlib.sha256("bosGxTY8XcWKvR54PM8DVGzu5kz1fTSfEZPxXHybugmjZrNYjAWm".encode()).hexdigest()
+    # # a = hashlib.sha256(os.urandom(35)).hexdigest()
+    # random_data = os.urandom(35)
+    # a = random_data.hex()
+    #
+    # for i in range(100000):
+    #     random_data = os.urandom(35)
+    #     sequence = random_data.hex()
+    #     # sequence = hashlib.sha256(random_data).hexdigest()
+    #     # print(sequence, a)
+    #
+    #     r = Protocol.find_longest_common_substring(sequence, a)
+    #     d[r[0]] = d.get(r[0], 0) + 1
+    #
+    # print(d)
+
+
+
     # Вывод информации о каждом адресе
     # print("\nИнформация о каждом адресе:")
     # for address in addresses:
@@ -534,3 +589,16 @@ if __name__ == '__main__':
     #     print(f"\nАдрес: {address}")
     #     for length, count in freqs.items():
     #         print(f"Длина: {length}, Частота: {count}")
+
+if __name__ == '__main__':
+    protocol = Protocol()
+    # max_blocks = 10000000  # ограничение на количество блоков для расчетов и графика
+    # rewards, times = calculate_rewards(protocol, max_blocks)
+    # print(sum(rewards))
+    # plot_rewards(times, rewards)
+    #
+    # total_supply, total_time_years = calculate_total_supply_and_duration(protocol)
+    # print(f"Total supply of coins: {total_supply}")
+    # print(f"Total time to distribute all rewards: {total_time_years} years")
+    # exit()
+

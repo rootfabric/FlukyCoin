@@ -36,7 +36,7 @@ if __name__ == '__main__':
     block2 = Block.from_json(json_block)
     pprint(block2.to_json())
 
-    if not block2.validate():
+    if not block2.validate_before_validate():
         print("Ошибка валидации")
     else:
         print("валидация ок")

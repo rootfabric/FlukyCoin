@@ -328,7 +328,7 @@ class Chain():
         if block is None:
             return False
 
-        if not block.validate():
+        if not block.validate_final():
             return False
 
         if not self.validate_block_hash(block):

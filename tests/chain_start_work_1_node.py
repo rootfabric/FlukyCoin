@@ -1,3 +1,5 @@
+import time
+
 from storage.chain import Chain
 from core.protocol import Protocol
 from core.Block import Block
@@ -27,56 +29,98 @@ if __name__ == '__main__':
     # print(xmss2.private_key.hex())
     print('xmss2', xmss2.address)
 
+    xmss3 = XMSS.create(key='43bc879a2219e29793f8487782c1ef408dd9d72aee50570a2ac11260cb5588b66e3b7ce4')
+    print('xmss3', xmss3.address)
+
     # первая транзакция, регистрация ноды
-    transaction1 = NodeRegistrationTransaction(xmss1.address, {"address": xmss1.address, "ip": "192.168.0.26", "port": "9334", })
+    transaction1 = NodeRegistrationTransaction(xmss3.address,
+                                               {"address": xmss3.address, "ip": "192.168.0.26", "port": "9334", })
     transaction1.make_hash()
-    transaction1.make_sign(xmss1)
+    transaction1.make_sign(xmss3)
+
+    isValid = transaction1.validate_sign()
+
     print(xmss1.count_sign())
-    
+
     # создание блока генезиса, первый пользователь в цепи
     t = 1716710000
+    t = time.time()
     с = c1.blocks_count()
-    xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [transaction1], address_miner=xmss1.address,
-                            address_reward=xmss1.address)
-    xmss1_b0.make_sign_before_validation(xmss1)
+    xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [transaction1], address_miner=xmss3.address,
+                            address_reward=xmss3.address)
+    xmss1_b0.make_sign_before_validation(xmss3)
 
     import pprint
-
 
     pprint.pprint(xmss1_b0.to_dict())
 
     # Валидатор прверяет блок, и делает свою подпись правильности блока
-    validate_result = xmss1_b0.validate()
+    validate_result = xmss1_b0.validate_before_validate()
     print(f"validate_result {validate_result}")
 
-    vadidation_transaction = ValidationTransaction(xmss1.address, xmss1_b0.hash_before_validation)
+    list_candidats = [
+        # xmss1.address,
+        xmss2.address,
+        xmss3.address
+    ]
+    # определяем текущего лидера и валидаторов
+
+    liders_and_validators = Protocol.lider_and_validators(list_candidats, xmss1_b0.previousHash, t, t + 11)
+    print(liders_and_validators)
+
+    # Валидаторы получают предворительный блок, проверяют его и валидируют
+
+    # EAcsef7kcVXGW15hqho2o3hvXKDc62xTjaTjxW6PLhL4XhwoNVus
+    vadidation_transaction = ValidationTransaction(xmss2.address, xmss1_b0.hash_before_validation)
     vadidation_transaction.make_hash()
-    vadidation_transaction.make_sign(xmss1)
+    vadidation_transaction.make_sign(xmss2)
 
-    vadidation_transaction2 = ValidationTransaction(xmss2.address, xmss1_b0.hash_before_validation)
-    vadidation_transaction2.make_hash()
-    vadidation_transaction2.make_sign(xmss2)
+    # KziK2EjThDUuXU7W4wjxvQgcfyVWbG8WFZhyCakhrpUvrkUH76zt
+    # vadidation_transaction2 = ValidationTransaction(xmss1.address, xmss1_b0.hash_before_validation)
+    # vadidation_transaction2.make_hash()
+    # vadidation_transaction2.make_sign(xmss1)
 
-    pprint.pprint(vadidation_transaction.to_dict())
-    pprint.pprint(len(str(vadidation_transaction.to_dict())))
+    # pprint.pprint(vadidation_transaction.to_dict())
+    # pprint.pprint(len(str(vadidation_transaction.to_dict())))
+    # print(vadidation_transaction.validate_sign())
 
-    xmss1_b0.add_validator_signature(vadidation_transaction2)
+    # Лидер собирает подписи валидации и добавляет их в блок
+
+    # xmss1_b0.add_validator_signature(vadidation_transaction2)
     xmss1_b0.add_validator_signature(vadidation_transaction)
-
 
     print("Блок с валидной транзакцией:")
     pprint.pprint(xmss1_b0.to_dict())
 
-    t = 1716720000
+    t +=10
     xmss1_b0.calculate_hash_with_signatures(t)
 
-    xmss1_b0.make_sign_final(xmss1)
-
+    xmss1_b0.make_sign_final(xmss3)
 
     print("Блок с валидной транзакцией финально подписанный:")
     pprint.pprint(xmss1_b0.to_dict())
 
-    # c1.add_block_candidate(xmss1_b0)
+    print(xmss1_b0.validate_final())
+
+    c1.add_block_candidate(xmss1_b0)
+
+
+    # Блок добавлен в цепь
+    c1.add_block_candidate(xmss1_b0)
+
+
+    print("-------------------")
+    # print(vadidation_transaction.to_dict()['message_data'])
+    # print(xmss1_b0.to_dict()['validators'][0])
+    # pprint.pprint(xmss1_b0.to_dict())
+    # print(xmss1_b0.to_dict()['validators'][0])
+    b = Block.from_json(xmss1_b0.to_json())
+    # pprint.pprint(b.to_dict())
+    # print(b.to_dict()['validators'][0])
+    c1.close_block()
+
+    print(c1.last_block())
+
     #
     # t = 1716710001
     # xmss2_b0 = Block.create(c1.blocks_count(), c2.last_block_hash(), t, [], address_miner=xmss2.address,

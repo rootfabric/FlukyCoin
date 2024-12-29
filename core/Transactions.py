@@ -42,10 +42,12 @@ class Transaction:
 
         d = self.as_dict()
         if for_sign:
-            # данные для подписи. Убираем поля которых не должно быть
+            # данные для подписи. Убираем поля которых не должно быть.
+            # Эти поля появляются когда подпись сделана, но для вычисления хеша они не нужны
             d['public_key'] = None
             d['signature'] = None
             d['txhash'] = None
+            d['nonce'] = None
         return d
 
     def to_json(self, for_sign=False):
@@ -70,6 +72,8 @@ class Transaction:
             return NodeRegistrationTransaction.from_dict(data)
         elif tx_type == 'reputation_token':
             return ReputationTokenTransaction.from_dict(data)
+        elif tx_type == 'validation':
+            return ValidationTransaction.from_dict(data)
         else:
             raise ValueError(f"Unknown transaction type: {tx_type}")
 
@@ -89,7 +93,10 @@ class Transaction:
 
         self.signature = signature.to_base64()
         self.public_key = xmss.keyPair.PK.to_hex()
-        # print(f"Подпись размер: {len(self.signature)} ")
+
+        self.nonce = 2 ** xmss.height - xmss.count_sign()
+
+        print(f"Транзакция nonce: {self.nonce} ")
 
     def all_amounts(self):
         """ вся сумма транзакции """
@@ -206,12 +213,12 @@ class NodeRegistrationTransaction(Transaction):
     def __init__(self, fromAddress, registration_details):
         super().__init__('node_registration', fromAddress, [], [0], fee=0)
 
-        self.registration_details = registration_details  # Поле для фиксации действия (начисление/штраф)
+        self.message_data = json.dumps(registration_details)  # Поле для фиксации действия (начисление/штраф)
 
-    def as_dict(self):
-        data = super().as_dict()
-        data.update({'registration_details': self.registration_details})
-        return data
+    # def as_dict(self):
+    #     data = super().as_dict()
+    #     # data.update({'registration_details': self.registration_details})
+    #     return data
 
     @classmethod
     def from_dict(cls, data):
@@ -224,6 +231,7 @@ class NodeRegistrationTransaction(Transaction):
         tx.txhash = data.get('txhash')
         tx.public_key = data.get('public_key')
         tx.signature = data.get('signature')
+        tx.message_data = data.get('message_data')
         return tx
 
 class ReputationTokenTransaction(Transaction):
@@ -254,36 +262,33 @@ class ReputationTokenTransaction(Transaction):
 class ValidationTransaction(Transaction):
     def __init__(self, fromAddress, block_hash, signature=None, public_key=None, fee=0):
         super().__init__('validation', fromAddress, [], [], fee)
-        self.block_hash = block_hash
-        self.signature = signature
-        self.public_key = public_key
 
-    def as_dict(self):
-        data = super().as_dict()
-        data.update({
-            'block_hash': self.block_hash,
-            'signature': self.signature,
-            'public_key': self.public_key,
-        })
-        return data
+        self.message_data = json.dumps({"block_hash":block_hash})  # Поле для фиксации действия (начисление/штраф)
+
+    # def as_dict(self):
+    #     data = super().as_dict()
+    #     # data.update({'registration_details': self.registration_details})
+    #     return data
 
     @classmethod
     def from_dict(cls, data):
-        tx = cls(
-            fromAddress=data['fromAddress'],
-            block_hash=data['block_hash'],
-            signature=data.get('signature'),
-            public_key=data.get('public_key'),
-            fee=data.get('fee', 0),
-        )
-        tx.txhash = data['txhash']
+        fromAddress = data['fromAddress']
+
+        registration_details = data.get('registration_details', {})
+        fee = data['fee']
+        tx = cls(fromAddress, registration_details)
+        tx.nonce = data.get('nonce')
+        tx.txhash = data.get('txhash')
+        tx.public_key = data.get('public_key')
+        tx.signature = data.get('signature')
+        tx.message_data = data.get('message_data')
         return tx
 
-    def validate_transaction(self):
-        """Проверка подписи и связности транзакции."""
-        if not XMSS_verify(SigXMSS.from_base64(self.signature), bytes.fromhex(self.block_hash), XMSSPublicKey.from_hex(self.public_key)):
-            raise ValueError("Подпись транзакции недействительна.")
-        return True
+    # def validate_transaction(self):
+    #     """Проверка подписи и связности транзакции."""
+    #     if not XMSS_verify(SigXMSS.from_base64(self.signature), bytes.fromhex(self.block_hash), XMSSPublicKey.from_hex(self.public_key)):
+    #         raise ValueError("Подпись транзакции недействительна.")
+    #     return True
 
 
 
@@ -296,25 +301,38 @@ if __name__ == '__main__':
     xmss = XMSS.create()
     print(xmss.address)
 
-    tt = TransferTransaction(xmss.address, ["2"], [100], message_data=["test message"])
-    tt.nonce = 1
-    tt.make_hash()
-    tt.make_sign(xmss)
-    json_transaction = tt.to_json()
-    print(json_transaction)
-    tt.validate_sign()
+    # tt = TransferTransaction(xmss.address, ["2"], [100], message_data=["test message"])
+    # tt.nonce = 1
+    # tt.make_hash()
+    # tt.make_sign(xmss)
+    # json_transaction = tt.to_json()
+    # print(json_transaction)
+    # print(tt.validate_sign())
 
-    tt = TransferTransaction("1", ["2", "3", "4"], [100, 100, 100])
-    tt.nonce = 1
-    tt.make_hash()
-    tt.make_sign(xmss)
-    print(tt.to_json())
+
+    # exit(0)
+    #
+    # tt = TransferTransaction("1", ["2", "3", "4"], [100, 100, 100])
+    # tt.nonce = 1
+    # tt.make_hash()
+    # tt.make_sign(xmss)
+    # print(tt.to_json())
     #
     # st = SlaveTransaction("1", ["slaveAddress123"], ["TRANSFER", "MINING"], 0.01)
     # st.nonce = 1
     # st.make_hash()
     # st.make_sign(xmss)
     # print(st.to_json())
+
+    transaction1 = NodeRegistrationTransaction(xmss.address, {"address": xmss.address, "ip": "192.168.0.26", "port": "9334", })
+    transaction1.make_hash()
+    transaction1.make_sign(xmss)
+
+    json_transaction = transaction1.to_json()
+    print(json_transaction)
+
+    isValid = transaction1.validate_sign()
+    print(isValid)
 
     tt2 = Transaction.from_json(json_transaction)
     print(tt2.to_json())

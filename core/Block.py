@@ -184,6 +184,8 @@ class Block:
         block.sign_before_validation = block_dict['sign_before_validation']
         block.sign = block_dict['sign']
         block.signer_pk = block_dict['signer_pk']
+        block.validator_signatures = {Transaction.from_json(t).fromAddress:Transaction.from_json(t) for t in block_dict['validators']}
+        block.merkle_root_validators = block_dict['merkle_root_validators']
         return block
 
     def hash_block_before_validation(self):
@@ -234,7 +236,7 @@ class Block:
         """ публичный ключ """
         return XMSSPublicKey.from_hex(self.signer_pk)
 
-    def validate(self):
+    def validate_before_validate(self):
         """ Проверка блока """
 
         old_hash = self.hash_before_validation
@@ -278,6 +280,49 @@ class Block:
 
     ###########################
     ### Функции валидации финального блока
+
+    def validate_final(self):
+        """ Проверка блока """
+
+        old_hash = self.hash
+        new_hash = self.calculate_hash()
+
+        if old_hash != new_hash:
+            print("Ошибка валидации блока. не совпадает хеш")
+            return False
+
+        PK2 = self.XMSSPublicKey()
+        if self.signer != PK2.generate_address():
+            print("Ошибка валидации блока. не совпадает майнер")
+            return False
+
+        signature = SigXMSS.from_base64(self.sign)
+
+        # Верификация подписи
+        verf = XMSS_verify(signature, bytes.fromhex(new_hash), PK2)
+        if not verf:
+            print("Ошибка валидации блока. не совпадает подпись")
+            return False
+
+        """
+        дополнительно нужна валидация дерева меркле
+        """
+
+        mt = MerkleTools(hash_type="SHA256")
+
+        for transaction in self.transactions:
+            mt.add_leaf(transaction.txhash)
+        mt.make_tree()
+        if not mt.is_ready:
+            print("Ошибка валидации MerkleTools. is_ready False")
+            return False
+
+        if mt.get_merkle_root() != self.merkle_root:
+            print("Ошибка валидации MerkleTools. Не верный merkle_root")
+            return False
+
+        return True
+
     def add_validator_signature(self, validator_transaction: ValidationTransaction):
         """
         Добавить подпись от валидатора.

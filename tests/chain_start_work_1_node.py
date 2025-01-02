@@ -44,7 +44,7 @@ if __name__ == '__main__':
 
     # создание блока генезиса, первый пользователь в цепи
     t = 1716710000
-    t = time.time()
+    # t = time.time()
     с = c1.blocks_count()
     xmss1_b0 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [transaction1], address_miner=xmss3.address,
                             address_reward=xmss3.address)
@@ -52,7 +52,7 @@ if __name__ == '__main__':
 
     import pprint
 
-    pprint.pprint(xmss1_b0.to_dict())
+    # pprint.pprint(xmss1_b0.to_dict())
 
     # Валидатор прверяет блок, и делает свою подпись правильности блока
     validate_result = xmss1_b0.validate_before_validate()
@@ -90,15 +90,15 @@ if __name__ == '__main__':
     xmss1_b0.add_validator_signature(vadidation_transaction)
 
     print("Блок с валидной транзакцией:")
-    pprint.pprint(xmss1_b0.to_dict())
+    # pprint.pprint(xmss1_b0.to_dict())
 
     t +=10
     xmss1_b0.calculate_hash_with_signatures(t)
 
     xmss1_b0.make_sign_final(xmss3)
 
-    print("Блок с валидной транзакцией финально подписанный:")
-    pprint.pprint(xmss1_b0.to_dict())
+    # print("Блок с валидной транзакцией финально подписанный:")
+    # pprint.pprint(xmss1_b0.to_dict())
 
     print(xmss1_b0.validate_final())
 
@@ -119,7 +119,55 @@ if __name__ == '__main__':
     # print(b.to_dict()['validators'][0])
     c1.close_block()
 
-    print(c1.last_block())
+    # print(c1.last_block())
+
+
+    #################################################################################
+    #  Проверка протокола, добавление второго блока
+
+    t = c1.last_block().timestamp_seconds
+    print("t", t)
+
+    list_candidats = [
+        xmss1.address,
+        xmss2.address,
+        xmss3.address
+    ]
+
+    liders_and_validators = Protocol.lider_and_validators(list_candidats, c1.last_block().hash, t, t + 10)
+    print(liders_and_validators)
+
+    print("c1.last_block_hash()", c1.last_block_hash())
+
+    xmss1_b1 = Block.create(c1.blocks_count(), c1.last_block_hash(), t, [], address_miner=xmss2.address,
+                            address_reward=xmss2.address)
+    xmss1_b1.make_sign_before_validation(xmss2)
+
+    validate_result = xmss1_b1.validate_before_validate()
+    print(f"validate_result {validate_result}")
+
+
+    t+=10
+
+    # Валидатор делает подпись:
+
+    vadidation_transaction2 = ValidationTransaction(xmss3.address, xmss1_b1.hash_before_validation)
+    vadidation_transaction2.make_hash()
+    vadidation_transaction2.make_sign(xmss3)
+
+    t += 10
+    # Лидер собирает подписи валидации и добавляет их в блок
+
+    xmss1_b1.add_validator_signature(vadidation_transaction2)
+    xmss1_b1.calculate_hash_with_signatures(t)
+    xmss1_b1.make_sign_final(xmss2)
+
+
+    print(xmss1_b1.validate_final())
+    # Блок добавлен в цепь
+    print("add_block_candidate")
+    c1.add_block_candidate(xmss1_b1)
+
 
     #
     # t = 1716710001

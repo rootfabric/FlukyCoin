@@ -116,7 +116,7 @@ class Chain():
 
     def last_block_hash(self):
         last_block = self.last_block()
-        return last_block.hash_block() if last_block else Protocol.prev_hash_genesis_block.hex()
+        return last_block.hash if last_block else Protocol.prev_hash_genesis_block.hex()
 
     def last_block_time(self):
         last_block = self.last_block()
@@ -247,7 +247,7 @@ class Chain():
         if self.last_block() is None:
             return True
 
-        if block.timestamp_seconds_before_validation <= self.last_block().timestamp_seconds:
+        if block.timestamp_seconds <= self.last_block().timestamp_seconds:
             self.log.warning("Блок не проходит валидацию по времени")
             return False
 
@@ -383,15 +383,15 @@ class Chain():
         if self.last_block() is None:
             return True
 
-        if block.previousHash != self.last_block().hash_block():
+        if block.previousHash != self.last_block().hash:
             return False
 
         if block.timestamp_seconds_before_validation < self.last_block().timestamp_seconds:
             return False
 
-        if Protocol.address_height(block.signer)>Protocol.MAX_HEIGHT_SIGN_KEY:
-            self.log.warning("Ключ подписи не проходит по максимальное высоте")
-            return False
+        # if Protocol.address_height(block.signer)>Protocol.MAX_HEIGHT_SIGN_KEY:
+        #     self.log.warning("Ключ подписи не проходит по максимальное высоте")
+        #     return False
 
         return True
 

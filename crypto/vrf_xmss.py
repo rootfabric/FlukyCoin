@@ -63,21 +63,21 @@ class ValidatorVRF_XMSS:
             return False
 
 
+if __name__ == '__main__':
+    # --- Тестирование работы VRF на базе XMSS ---
 
-# --- Тестирование работы VRF на базе XMSS ---
+    # Генерируем ключи ноды
+    node = ValidatorVRF_XMSS()
+    print(f"🔑 Публичный ключ ноды: {node.get_public_key()}")
 
-# Генерируем ключи ноды
-node = ValidatorVRF_XMSS()
-print(f"🔑 Публичный ключ ноды: {node.get_public_key()}")
+    # Исходный хеш предыдущего блока
+    prev_block_hash = "abc123def4567890"
 
-# Исходный хеш предыдущего блока
-prev_block_hash = "abc123def4567890"
+    # Генерация VRF
+    vrf_data = node.generate_vrf(prev_block_hash)
+    print(f"🎲 VRF Output: {vrf_data['vrf_output']}")
+    print(f"✅ VRF Proof: {vrf_data['vrf_proof']}")
 
-# Генерация VRF
-vrf_data = node.generate_vrf(prev_block_hash)
-print(f"🎲 VRF Output: {vrf_data['vrf_output']}")
-print(f"✅ VRF Proof: {vrf_data['vrf_proof']}")
-
-# Верификация VRF
-is_valid = ValidatorVRF_XMSS.verify_vrf(vrf_data["public_key"], prev_block_hash, vrf_data["vrf_output"], vrf_data["vrf_proof"])
-print(f"🔍 Верификация VRF: {is_valid}")
+    # Верификация VRF
+    is_valid = ValidatorVRF_XMSS.verify_vrf(vrf_data["public_key"], prev_block_hash, vrf_data["vrf_output"], vrf_data["vrf_proof"])
+    print(f"🔍 Верификация VRF: {is_valid}")

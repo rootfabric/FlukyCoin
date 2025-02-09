@@ -1,7 +1,10 @@
 import base64
 import hashlib
+import random
 from hashlib import sha256
 from crypto.xmss2 import XMSS, XMSS_verify, XMSSPublicKey, SigXMSS, XMSS_keyGen_from_private_key
+
+THRESHOLD_99P = int((2 ** 256) * 0.99)
 
 class ValidatorVRF_XMSS:
     def __init__(self, keypair, extended_key_hex: str):
@@ -75,6 +78,30 @@ def select_validators(validators, prev_block_hash):
     sorted_validators = sorted(selected, key=lambda x: x["vrf_value"], reverse=True)
     return sorted_validators
 
+
+def select_leader_90p(validators, prev_block_hash):
+    """
+    Выбирает первого валидатора, чье VRF-значение меньше 90% от максимума (2^256).
+    """
+    selected = []
+    for validator in validators:
+        vrf_data = validator["instance"].generate_vrf(prev_block_hash)
+        vrf_output_bytes = base64.b64decode(vrf_data["vrf_output"])
+        vrf_value = int.from_bytes(vrf_output_bytes, byteorder="big")
+
+        # Проверяем, не меньше ли vrf_value заданного порога
+        if vrf_value > THRESHOLD_99P:
+            selected.append({
+                "address": validator["address"],
+                "instance": validator["instance"],
+                "vrf_data": vrf_data,
+                "vrf_value": vrf_value
+            })
+
+    # Сортировка по убыванию VRF-значения
+    sorted_validators = sorted(selected, key=lambda x: x["vrf_value"], reverse=True)
+    return sorted_validators
+
 def verify_selection(sorted_validators, prev_block_hash):
     """
     Проверяет корректность VRF для каждого валидатора в списке.
@@ -126,10 +153,13 @@ if __name__ == '__main__':
         {"address": address3, "instance": validator3}
     ]
 
-    prev_block_hash = "abc123def4567890"
+    prev_block_hash = "abc123def4567890"+str(random.random())
 
     # Выбор валидаторов на основе VRF
-    sorted_validators = select_validators(validators_list, prev_block_hash)
+    # sorted_validators = select_validators(validators_list, prev_block_hash)
+
+    sorted_validators = select_leader_90p(validators_list, prev_block_hash)
+    print(sorted_validators)
 
     print("\n🔹 Порядок валидаторов (первый — лидер):")
     for i, validator in enumerate(sorted_validators, start=1):

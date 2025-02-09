@@ -590,15 +590,15 @@ def XMSS_sign(message: bytearray, SK: XMSSPrivateKey, n: int, w: int, address: A
     len_1, len_2, len_all = compute_lengths(n, w)
     idx_sig = SK.idx
     SK.idx += 1
-    print(f"🔹 Подписываем сообщение: {message.hex()} (длина {len(message)} байт)")
-    print(f"🔹 Используем SK.SEED: {SK.SEED.hex()}")
-    print(f"🔹 Используем SK.SK_PRF: {SK.SK_PRF.hex()}")
+    # print(f"🔹 Подписываем сообщение: {message.hex()} (длина {len(message)} байт)")
+    # print(f"🔹 Используем SK.SEED: {SK.SEED.hex()}")
+    # print(f"🔹 Используем SK.SK_PRF: {SK.SK_PRF.hex()}")
     r = PRF_XMSS(SK.SK_PRF, to_byte(idx_sig, 4), len_1)
     arrayOfBytes = bytearray(r)
     arrayOfBytes.extend(SK.root_value)
     arrayOfBytes.extend(bytearray(int_to_bytes(idx_sig, n)))
     M2 = H_msg(arrayOfBytes, message, len_1)
-    print(f"🔹 Хешированное сообщение (M2): {M2.hex()}")
+    # print(f"🔹 Хешированное сообщение (M2): {M2.hex()}")
     sig = treeSig(M2, SK, address, w, len_all, idx_sig, h, n)
     return SigXMSS(idx_sig, r, sig.sig_ots, sig.auth)
 

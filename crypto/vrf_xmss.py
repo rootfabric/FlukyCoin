@@ -114,6 +114,42 @@ def verify_selection(sorted_validators, prev_block_hash):
         else:
             print(f"✅ VRF проверка пройдена для адреса: {validator['address']}")
 
+
+def select_validators_by_proximity(validators, prev_block_hash):
+    """
+    Выбирает валидаторов по правилу: чем меньше абсолютная разность между числовым значением VRF и
+    числом, полученным из хеша блока, тем выше приоритет.
+
+    Алгоритм:
+    - Вычисляем числовой эквивалент хеша блока (применяя sha256 к prev_block_hash).
+    - Для каждого валидатора генерируем VRF-значение и преобразуем его в число.
+    - Вычисляем модуль разности: abs(vrf_value - block_hash_value).
+    - Сортируем валидаторов по возрастанию этой разности.
+    """
+    # Преобразуем prev_block_hash в 256-битное число, используя sha256
+    block_hash_value = int(sha256(prev_block_hash.encode()).hexdigest(), 16)
+
+    selected = []
+    for validator in validators:
+        vrf_data = validator["instance"].generate_vrf(prev_block_hash)
+        vrf_output_bytes = base64.b64decode(vrf_data["vrf_output"])
+        vrf_value = int.from_bytes(vrf_output_bytes, byteorder="big")
+
+        # Вычисляем модуль разности
+        diff = abs(vrf_value - block_hash_value)
+        selected.append({
+            "address": validator["address"],
+            "instance": validator["instance"],
+            "vrf_data": vrf_data,
+            "vrf_value": vrf_value,
+            "difference": diff
+        })
+
+    # Многоключевая сортировка: сначала по разнице, затем по VRF-значению, потом по адресу
+    sorted_validators = sorted(selected, key=lambda x: (x["difference"], x["vrf_value"], x["address"]))
+
+    return sorted_validators
+
 if __name__ == '__main__':
     # Используем реальные приватные ключи для генерации XMSS
     # Для validator1
@@ -153,17 +189,22 @@ if __name__ == '__main__':
         {"address": address3, "instance": validator3}
     ]
 
-    prev_block_hash = "abc123def4567890"+str(random.random())
+    # prev_block_hash = "abc123def4567890"+str(random.random())
+    prev_block_hash = "abc123def4567890"
 
     # Выбор валидаторов на основе VRF
     sorted_validators = select_validators(validators_list, prev_block_hash)
 
     # sorted_validators = select_leader_90p(validators_list, prev_block_hash)
+
+    # Выбор валидаторов на основе близости VRF-числа к числу хеша блока
+    sorted_validators = select_validators_by_proximity(validators_list, prev_block_hash)
+
     print(sorted_validators)
 
     print("\n🔹 Порядок валидаторов (первый — лидер):")
     for i, validator in enumerate(sorted_validators, start=1):
-        print(f"{i}. {validator['address']} - VRF value: {validator['vrf_value']}")
+        print(f"{i}. {validator['address']} - VRF value: {validator['vrf_value']} {validator['difference']}")
 
     print("\n🔍 Проверка корректности VRF для каждого валидатора:")
     verify_selection(sorted_validators, prev_block_hash)

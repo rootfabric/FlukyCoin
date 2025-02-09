@@ -90,37 +90,33 @@ def verify_selection(sorted_validators, prev_block_hash):
 if __name__ == '__main__':
     # Используем реальные приватные ключи для генерации XMSS
     # Для validator1
-    keypair1 = XMSS_keyGen_from_private_key(
-        "45be862faf6e0dd0ec3d4b9da8f8e12b3e4e130f8ba5c7ce67d8b1894b80c1a7e4d9c29d",
-        4, 32, 16
-    )
+    xmss1 = XMSS.create(key="45be862faf6e0dd0ec3d4b9da8f8e12b3e4e130f8ba5c7ce67d8b1894b80c1a7e4d9c29d")
+
     validator1 = ValidatorVRF_XMSS(
-        keypair=keypair1,
-        extended_key_hex="45be862faf6e0dd0ec3d4b9da8f8e12b3e4e130f8ba5c7ce67d8b1894b80c1a7e4d9c29d"
+        keypair=xmss1.keyPair,
+        extended_key_hex=xmss1.private_key_hex()
     )
-    address1 = keypair1.PK.generate_address()
+    address1 = xmss1.address
 
     # Для validator2
-    keypair2 = XMSS_keyGen_from_private_key(
-        "45f82094df93616c349d2cbb587bea590e8396a44e457f99ce11324bc11d5e190c9bb9e9",
-        4, 32, 16
-    )
+    xmss2 = XMSS.create(key="45f82094df93616c349d2cbb587bea590e8396a44e457f99ce11324bc11d5e190c9bb9e9")
+
     validator2 = ValidatorVRF_XMSS(
-        keypair=keypair2,
-        extended_key_hex="45f82094df93616c349d2cbb587bea590e8396a44e457f99ce11324bc11d5e190c9bb9e9"
+        keypair=xmss2.keyPair,
+        extended_key_hex=xmss2.private_key_hex()
     )
-    address2 = keypair2.PK.generate_address()
+    address2 = xmss2.address
+
+
 
     # Для validator3
-    keypair3 = XMSS_keyGen_from_private_key(
-        "43bc879a2219e29793f8487782c1ef408dd9d72aee50570a2ac11260cb5588b66e3b7ce4",
-        4, 32, 16
-    )
+    xmss3 = XMSS.create(key="43bc879a2219e29793f8487782c1ef408dd9d72aee50570a2ac11260cb5588b66e3b7ce4")
+
     validator3 = ValidatorVRF_XMSS(
-        keypair=keypair3,
-        extended_key_hex="43bc879a2219e29793f8487782c1ef408dd9d72aee50570a2ac11260cb5588b66e3b7ce4"
+        keypair=xmss3.keyPair,
+        extended_key_hex=xmss3.private_key_hex()
     )
-    address3 = keypair3.PK.generate_address()
+    address3 = xmss3.address
 
 
     # Собираем валидаторов в список

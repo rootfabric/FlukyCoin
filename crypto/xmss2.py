@@ -767,6 +767,9 @@ class XMSS:
         return self.keyPair.SK.idx
     def idx(self):
         return self.keyPair.SK.idx
+    def private_key_hex(self):
+        return self.private_key.hex()
+
 
 def private_key_hex_to_seed_phrase(private_key_hex: str) -> str:
     private_key_bytes = bytes.fromhex(private_key_hex)

@@ -9,6 +9,7 @@ class Node:
         self.name = name
         self.reputation_tokens = 0
         self.vrf_value = int(sha256(name.encode()).hexdigest(), 16)
+        self.balance = 0
 
     def generate_vrf_output(self, last_block_hash):
         """Вычисляем VRF-выход на основе last_block_hash и имени узла (упрощенно)."""
@@ -28,8 +29,8 @@ def select_validators_by_proximity(validators, block_hash_value):
 
 
 class ReputationSimulator:
-    LEADER_THRESHOLD = 1000  # порог репутации для лидерства
-    VALIDATOR_THRESHOLD = 50  # порог репутации для валидатора
+    # LEADER_THRESHOLD = 1000  # порог репутации для лидерства
+    # VALIDATOR_THRESHOLD = 50  # порог репутации для валидатора
     nodes_count = 0
     nodes = []
     reputation_history = {}
@@ -62,17 +63,22 @@ class ReputationSimulator:
 
         # Динамические пороги (с запасом на начальном этапе)
         self.VALIDATOR_THRESHOLD = max(10, avg_reputation * 0.5)
-        self.LEADER_THRESHOLD = max(100, avg_reputation * 1.5)
+        self.LEADER_THRESHOLD = max(50, avg_reputation * 0.9)
+
+        print(avg_reputation, self.VALIDATOR_THRESHOLD, self.LEADER_THRESHOLD)
 
         sorted_nodes = select_validators_by_proximity(self.nodes, last_block_hash)
         leader, validators = self.select_leader_and_validators(sorted_nodes)
+        # print(leader, validators)
+
+        leader.balance+=1
 
         # Раздача репутационных токенов
         LEADER_REWARD = 1
         VALIDATOR_REWARD = 0.1
-        PING_REWARD = 1
-        PING_PROBABILITY = 1 / 100
-        MAX_REPUTATION_TOKEN = 300
+        PING_REWARD = 10
+        PING_PROBABILITY = 1 / 1000
+        MAX_REPUTATION_TOKEN = 500
 
         leader.reputation_tokens = min(leader.reputation_tokens + LEADER_REWARD, MAX_REPUTATION_TOKEN)
         for v in validators:
@@ -85,7 +91,7 @@ class ReputationSimulator:
         LEADER_PENALTY_PROBABILITY = 1 / 500  # Лидер получает штраф раз в 500 блоков
         VALIDATOR_PENALTY_PROBABILITY = 1 / 300  # Валидаторы получают штраф раз в 300 блоков
 
-        LEADER_PENALTY_AMOUNT = 50  # Штраф для лидера
+        LEADER_PENALTY_AMOUNT = 100  # Штраф для лидера
         VALIDATOR_PENALTY_AMOUNT = 10  # Штраф для валидаторов
 
         # Штраф для лидера
@@ -131,31 +137,38 @@ class ReputationSimulator:
             self.step()
 
     def report(self):
-        for node in self.nodes:
-            print(f"{node.name} {node.reputation_tokens}")
+        sorted_nodes = sorted(self.nodes, key=lambda node: node.balance, reverse=True)
+        for node in sorted_nodes:
+            print(f"{node.name} {node.reputation_tokens} {node.balance}")
 
 
 if __name__ == '__main__':
     # Имитируем сеть из нескольких узлов
-    sim = ReputationSimulator(num_nodes=50)
+    sim = ReputationSimulator(num_nodes=2)
 
     sim.run_simulation(num_blocks=10000)
 
-    sim.add_nodes(1)
+    sim.add_nodes(100)
 
-    sim.run_simulation(num_blocks=10000)
+    sim.run_simulation(num_blocks=30000)
 
-    sim.add_nodes(1)
+    sim.add_nodes(500)
 
-    sim.run_simulation(num_blocks=10000)
+    sim.run_simulation(num_blocks=30000)
+    #
+    # sim.run_simulation(num_blocks=100000)
+    #
+    # sim.add_nodes(1)
 
-    sim.add_nodes(1)
+    # sim.run_simulation(num_blocks=10000)
+    #
+    # sim.add_nodes(1)
+    #
+    # sim.run_simulation(num_blocks=10000)
+    #
+    # sim.add_nodes(1)
 
-    sim.run_simulation(num_blocks=10000)
-
-    sim.add_nodes(1)
-
-    sim.run_simulation(num_blocks=10000)
+    # sim.run_simulation(num_blocks=100000)
 
     sim.report()
 

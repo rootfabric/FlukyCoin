@@ -132,7 +132,8 @@ class Wallet:
 
 if __name__ == '__main__':
 
-    wallet = Wallet(filename ="keys.dat", servers='192.168.0.26:9334')
+    wallet = Wallet(filename ="keys.dat", servers='5.35.98.126:9333')
+    # wallet = Wallet(filename ="keys.dat")
 
     # password = input("пароль:")
     # wallet.load_from_file(password)

@@ -17,8 +17,8 @@ from wallet_app.Wallet import Wallet
 app = Flask(__name__)
 wallet = Wallet()
 
-# node_addresses = '192.168.0.26:9334'
-node_addresses = '5.35.98.126:9333'
+node_addresses = '192.168.0.26:9334'
+# node_addresses = '5.35.98.126:9333'
 
 
 @app.route('/', methods=['GET', 'POST'])

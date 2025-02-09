@@ -39,6 +39,7 @@ class NodeSimulate():
         vadidation_transaction.make_hash()
         vadidation_transaction.make_sign(self.xmss)
 
+        ##################
         block_genesis.add_validator_signature(vadidation_transaction)
 
         block_genesis.calculate_hash_with_signatures(time)

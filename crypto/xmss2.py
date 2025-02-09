@@ -861,3 +861,6 @@ if __name__ == '__main__':
     print("OTS idx:", signature.idx_sig)
     verification_result = XMSS_verify(signature, message_client1, PK, n, w)
     print(f"Результат верификации подписи: {'Подпись верна' if verification_result else 'Подпись неверна'}")
+
+
+    x = XMSS()

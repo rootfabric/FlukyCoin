@@ -1,29 +1,23 @@
-import hashlib
 import base64
-# from pyspx.xmss import XMSS_SHA2_10_256 as XMSS
 import hashlib
-import base64
-import base58
 from hashlib import sha256
-from datetime import datetime
+from crypto.xmss2 import XMSS, XMSS_verify, XMSSPublicKey, SigXMSS, XMSS_keyGen_from_private_key
 
-from crypto.xmss2 import XMSS, XMSS_verify, XMSSPublicKey, SigXMSS
 class ValidatorVRF_XMSS:
-    def __init__(self, keypair=None):
+    def __init__(self, keypair, extended_key_hex: str):
         """
-        Инициализация валидатора. Если ключи не заданы, создаем новые.
+        Инициализация валидатора с переданной парой ключей XMSS.
+        Параметр extended_key_hex – это исходный extended key (36 байт в hex-представлении),
+        использованный для генерации пары ключей.
         """
-        if keypair:
-            self.xmss = keypair  # Переданный экземпляр XMSS
-        else:
-            self.xmss = XMSS.create(height=5)  # Генерируем новую пару ключей
+        self.xmss = XMSS.create(height=keypair.height, key=extended_key_hex)  # Используем правильный extended key
 
     def get_public_key(self):
-        """Возвращает публичный ключ в base64."""
+        """Возвращает публичный ключ в hex-представлении."""
         return self.xmss.keyPair.PK.to_hex()
 
     def get_private_key(self):
-        """Возвращает приватный ключ в base64 (для хранения нодой)."""
+        """Возвращает приватный ключ в hex-представлении."""
         return self.xmss.private_key.hex()
 
     def generate_vrf(self, prev_block_hash: str):
@@ -33,7 +27,6 @@ class ValidatorVRF_XMSS:
         input_data = prev_block_hash.encode()
         signature = self.xmss.sign(input_data)
         vrf_output = sha256(signature.to_bytes()).digest()
-
         return {
             "vrf_output": base64.b64encode(vrf_output).decode(),
             "vrf_proof": signature.to_base64(),
@@ -51,33 +44,100 @@ class ValidatorVRF_XMSS:
             proof_bytes = SigXMSS.from_base64(vrf_proof)
             output_bytes = base64.b64decode(vrf_output)
 
-            # Передаём дополнительные параметры n и w из публичного ключа
+            # Верифицируем подпись
             verification_result = XMSS_verify(proof_bytes, input_data, pk_xmss, pk_xmss.n, pk_xmss.w)
-
-            # Повторно вычисляем хеш доказательства и сравниваем с предоставленным VRF-значением
             expected_vrf_output = sha256(proof_bytes.to_bytes()).digest()
             return verification_result and (expected_vrf_output == output_bytes)
-
         except Exception as e:
             print(f"Ошибка верификации VRF: {e}")
             return False
 
+def select_validators(validators, prev_block_hash):
+    """
+    Выбирает валидаторов на основе VRF.
+    - Генерирует VRF-значение для каждого валидатора.
+    - Преобразует VRF-значение в число.
+    - Сортирует список по убыванию VRF-значений.
+    """
+    selected = []
+    for validator in validators:
+        vrf_data = validator["instance"].generate_vrf(prev_block_hash)
+        vrf_output_bytes = base64.b64decode(vrf_data["vrf_output"])
+        vrf_value = int.from_bytes(vrf_output_bytes, byteorder="big")
+        selected.append({
+            "address": validator["address"],
+            "instance": validator["instance"],
+            "vrf_data": vrf_data,
+            "vrf_value": vrf_value
+        })
+
+    # Сортировка по убыванию VRF-значения
+    sorted_validators = sorted(selected, key=lambda x: x["vrf_value"], reverse=True)
+    return sorted_validators
+
+def verify_selection(sorted_validators, prev_block_hash):
+    """
+    Проверяет корректность VRF для каждого валидатора в списке.
+    """
+    for validator in sorted_validators:
+        vrf = validator["vrf_data"]
+        valid = ValidatorVRF_XMSS.verify_vrf(vrf["public_key"], prev_block_hash, vrf["vrf_output"], vrf["vrf_proof"])
+        if not valid:
+            print(f"❌ VRF проверка НЕ пройдена для адреса: {validator['address']}")
+        else:
+            print(f"✅ VRF проверка пройдена для адреса: {validator['address']}")
 
 if __name__ == '__main__':
-    # --- Тестирование работы VRF на базе XMSS ---
+    # Используем реальные приватные ключи для генерации XMSS
+    # Для validator1
+    keypair1 = XMSS_keyGen_from_private_key(
+        "45be862faf6e0dd0ec3d4b9da8f8e12b3e4e130f8ba5c7ce67d8b1894b80c1a7e4d9c29d",
+        4, 32, 16
+    )
+    validator1 = ValidatorVRF_XMSS(
+        keypair=keypair1,
+        extended_key_hex="45be862faf6e0dd0ec3d4b9da8f8e12b3e4e130f8ba5c7ce67d8b1894b80c1a7e4d9c29d"
+    )
+    address1 = keypair1.PK.generate_address()
 
-    # Генерируем ключи ноды
-    node = ValidatorVRF_XMSS()
-    print(f"🔑 Публичный ключ ноды: {node.get_public_key()}")
+    # Для validator2
+    keypair2 = XMSS_keyGen_from_private_key(
+        "45f82094df93616c349d2cbb587bea590e8396a44e457f99ce11324bc11d5e190c9bb9e9",
+        4, 32, 16
+    )
+    validator2 = ValidatorVRF_XMSS(
+        keypair=keypair2,
+        extended_key_hex="45f82094df93616c349d2cbb587bea590e8396a44e457f99ce11324bc11d5e190c9bb9e9"
+    )
+    address2 = keypair2.PK.generate_address()
 
-    # Исходный хеш предыдущего блока
+    # Для validator3
+    keypair3 = XMSS_keyGen_from_private_key(
+        "43bc879a2219e29793f8487782c1ef408dd9d72aee50570a2ac11260cb5588b66e3b7ce4",
+        4, 32, 16
+    )
+    validator3 = ValidatorVRF_XMSS(
+        keypair=keypair3,
+        extended_key_hex="43bc879a2219e29793f8487782c1ef408dd9d72aee50570a2ac11260cb5588b66e3b7ce4"
+    )
+    address3 = keypair3.PK.generate_address()
+
+
+    # Собираем валидаторов в список
+    validators_list = [
+        {"address": address1, "instance": validator1},
+        {"address": address2, "instance": validator2},
+        {"address": address3, "instance": validator3}
+    ]
+
     prev_block_hash = "abc123def4567890"
 
-    # Генерация VRF
-    vrf_data = node.generate_vrf(prev_block_hash)
-    print(f"🎲 VRF Output: {vrf_data['vrf_output']}")
-    print(f"✅ VRF Proof: {vrf_data['vrf_proof']}")
+    # Выбор валидаторов на основе VRF
+    sorted_validators = select_validators(validators_list, prev_block_hash)
 
-    # Верификация VRF
-    is_valid = ValidatorVRF_XMSS.verify_vrf(vrf_data["public_key"], prev_block_hash, vrf_data["vrf_output"], vrf_data["vrf_proof"])
-    print(f"🔍 Верификация VRF: {is_valid}")
+    print("\n🔹 Порядок валидаторов (первый — лидер):")
+    for i, validator in enumerate(sorted_validators, start=1):
+        print(f"{i}. {validator['address']} - VRF value: {validator['vrf_value']}")
+
+    print("\n🔍 Проверка корректности VRF для каждого валидатора:")
+    verify_selection(sorted_validators, prev_block_hash)

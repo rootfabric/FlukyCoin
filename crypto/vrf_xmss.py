@@ -156,9 +156,9 @@ if __name__ == '__main__':
     prev_block_hash = "abc123def4567890"+str(random.random())
 
     # Выбор валидаторов на основе VRF
-    # sorted_validators = select_validators(validators_list, prev_block_hash)
+    sorted_validators = select_validators(validators_list, prev_block_hash)
 
-    sorted_validators = select_leader_90p(validators_list, prev_block_hash)
+    # sorted_validators = select_leader_90p(validators_list, prev_block_hash)
     print(sorted_validators)
 
     print("\n🔹 Порядок валидаторов (первый — лидер):")

@@ -2,8 +2,10 @@ import threading
 import datetime
 from core.Block import Block
 from storage.transaction_storage import TransactionStorage
+from storage.stake_registry import StakeRegistry
 from core.protocol import Protocol
 from core.Transactions import Transaction
+from core.validator_selection import StakeWeightedSelector
 from storage.mempool import Mempool
 from tools.time_sync import NTPTimeSynchronizer
 import os
@@ -21,6 +23,7 @@ class Chain():
             self.dir = node_dir_base
 
         self.transaction_storage = TransactionStorage(dir=self.dir)
+        self.stake_registry = StakeRegistry(dir=self.dir)
         self.mempool: Mempool = mempool
         self.protocol = Protocol()
         self.log = log
@@ -64,6 +67,7 @@ class Chain():
         with self._get_conn() as conn:
             conn.execute('DELETE FROM kv_store')
         self._save_difficulty(0)
+        self.stake_registry.clear()
 
     def block_by_number_from_chain(self, num):
         with self._get_conn() as conn:
@@ -183,6 +187,7 @@ class Chain():
                              (f'block_{block.block_number}', zlib.compress(block.to_json().encode())))
 
                 self.transaction_storage.add_block(block)
+                self.stake_registry.apply_block(block)
                 self.difficulty += self.block_difficulty(block)
                 self._save_difficulty(self.difficulty)
                 # self.add_history_hash(block)
@@ -204,6 +209,7 @@ class Chain():
             return False
 
         self.transaction_storage.rollback_block(last_block)
+        self.stake_registry.rollback_block(last_block)
 
         with self._get_conn() as conn:
             conn.execute('DELETE FROM kv_store WHERE key=?', (f'block_{last_block.block_number}',))
@@ -237,6 +243,20 @@ class Chain():
         ratio, _ = Protocol.find_longest_common_substring(block.signer, block.previousHash, convert_to_sha256=True)
         address_height = Protocol.address_height(block.signer)
         return ratio * address_height
+
+    def validators(self):
+        return self.stake_registry.all_validators()
+
+    def select_validator_for_height(self, height=None, previous_hash=None):
+        if height is None:
+            height = self.blocks_count()
+
+        if previous_hash is None:
+            previous_hash = self.last_block_hash()
+
+        seed = f"{previous_hash}:{height}".encode()
+        selected = StakeWeightedSelector.choose(self.validators(), seed)
+        return selected["address"] if selected is not None else None
 
     def validate_block_hash(self, block: Block):
         if block.previousHash != self.last_block_hash():
@@ -324,6 +344,27 @@ class Chain():
 
         return True
 
+    def validate_validator_choice(self, block: Block):
+        if block.block_number == 0:
+            return True
+
+        expected = self.select_validator_for_height(
+            height=block.block_number,
+            previous_hash=block.previousHash
+        )
+
+        if expected is None:
+            self.log.warning("Не найдены валидаторы для выбора")
+            return False
+
+        if block.signer != expected:
+            self.log.warning(
+                f"Блок отклонён: валидатор {block.signer} не выбран. Ожидался {expected}"
+            )
+            return False
+
+        return True
+
     def validate_block(self, block: Block):
         if block is None:
             return False
@@ -360,6 +401,8 @@ class Chain():
 
         if count_coinbase != 1:
             self.log.warning(f"Неверно количество coinbase транзакций: {count_coinbase} шт")
+            return False
+        if not self.validate_validator_choice(block):
             return False
 
         return True
@@ -405,50 +448,16 @@ class Chain():
         if not self.validate_block(block):
             return False
 
-
-
-        if self.last_block() is None and self.block_candidate is None:
-            self.block_candidate = Block.from_json(block.to_json())
-            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
-            return True
-
-        if self.block_candidate is None:
-            self.block_candidate = Block.from_json(block.to_json())
-            self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
-            return True
-
-        if block.hash_block() == self.block_candidate.hash_block():
-            return False
-
-        if not self.validate_candidate(block):
-            return False
-        self.log.info("TRY New candidate", self.block_candidate.hash, self.block_candidate.signer)
-
-        self._previousHash = Protocol.prev_hash_genesis_block.hex() if self.last_block() is None else self.last_block().hash
-
-        win_address = self.protocol.winner([self.block_candidate.signer, block.signer], self._previousHash)
-
-        self.log.info(f"winner res: [{self.block_candidate.signer}, {block.signer}] winer: {win_address} hash {self._previousHash}" )
-        if win_address == self.block_candidate.signer:
+        if self.block_candidate is not None and block.hash_block() == self.block_candidate.hash_block():
             return False
 
         self.block_candidate = Block.from_json(block.to_json())
         self.log.info("New candidate", self.block_candidate.hash, self.block_candidate.signer)
-
         return True
 
     def try_address_candidate(self, address_candidate, candidate_signer):
-        if address_candidate == candidate_signer:
-            return False
-
-        self._previousHash = Protocol.prev_hash_genesis_block.hex() if self.last_block() is None else self.last_block().hash
-
-        win_address = self.protocol.winner([candidate_signer, address_candidate], self._previousHash)
-
-        if win_address == candidate_signer:
-            return False
-
-        return True
+        expected = self.select_validator_for_height()
+        return candidate_signer == expected
 
     def close_block(self):
         if self.block_candidate is None:

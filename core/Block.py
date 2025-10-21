@@ -37,6 +37,7 @@ class Block:
         self.signer = None
 
         self.transactions: [Transaction] = []
+        self.validators = []
         # self.log = Log()
 
     def mining_reward(self):
@@ -51,7 +52,8 @@ class Block:
             timestamp_seconds: int,
             transactions: list,
             address_miner,
-            address_reward
+            address_reward,
+            validators=None
     ):
 
         block = Block()
@@ -111,9 +113,57 @@ class Block:
         #
         # block.set_nonces(dev_config, 0, 0)
 
+        if validators is not None:
+            if block_number != 0:
+                raise ValueError("Validators can be attached only to the genesis block")
+            block.validators = Block._normalize_validators(validators)
+        else:
+            block.validators = []
+
         block.hash_block()
 
         return block
+
+    @staticmethod
+    def _normalize_validators(validators):
+        if validators is None:
+            return []
+
+        normalized = []
+
+        for entry in validators:
+            if isinstance(entry, dict):
+                address = entry.get('address')
+                stake = entry.get('stake', 0)
+                public_key = entry.get('public_key') if entry.get('public_key') is not None else None
+            elif isinstance(entry, (list, tuple)):
+                if len(entry) < 2:
+                    raise ValueError('Validator entry must contain at least address and stake')
+                address, stake = entry[0], entry[1]
+                public_key = entry[2] if len(entry) > 2 else None
+            else:
+                raise TypeError('Validator entry must be a dict, list or tuple')
+
+            if address is None:
+                raise ValueError('Validator address is required')
+
+            try:
+                stake_value = int(stake)
+            except (TypeError, ValueError):
+                raise ValueError(f'Invalid stake value for validator {address}')
+
+            validator_data = {
+                'address': address,
+                'stake': stake_value
+            }
+
+            if public_key is not None:
+                validator_data['public_key'] = public_key
+
+            normalized.append(validator_data)
+
+        normalized.sort(key=lambda item: item['address'])
+        return normalized
 
     def make_sign(self, xmss: XMSS) -> bytes:
         """ Подпись блока """
@@ -135,7 +185,8 @@ class Block:
             'signer': self.signer,
             'merkle_root': self.merkle_root,
             'sign': self.sign,
-            'signer_pk': self.signer_pk
+            'signer_pk': self.signer_pk,
+            'validators': self.validators
         }
         return block_dict
 
@@ -157,6 +208,7 @@ class Block:
         block.signer = block_dict['signer']
         block.sign = block_dict['sign']
         block.signer_pk = block_dict['signer_pk']
+        block.validators = Block._normalize_validators(block_dict.get('validators', []))
         return block
 
     def hash_block(self):
@@ -169,14 +221,16 @@ class Block:
         self.transactions.append(transaction)
 
     def get_block_bytes(self):
-        version_bytes = self.version.encode()
-        previous_hash_bytes = self.previousHash.encode()
-        merkle_root_bytes = self.merkle_root.encode()
+        version_bytes = (self.version or "").encode()
+        previous_hash_bytes = (self.previousHash or "").encode()
+        merkle_root_bytes = (self.merkle_root or "").encode()
 
         # Используем 8 байтов для представления временной метки
-        timestamp_bytes = self.timestamp_seconds.to_bytes(8, byteorder='big')
-        signer_bytes = self.signer.encode()
-        return version_bytes + previous_hash_bytes + merkle_root_bytes + timestamp_bytes + signer_bytes
+        timestamp = int(self.timestamp_seconds or 0)
+        timestamp_bytes = timestamp.to_bytes(8, byteorder='big', signed=False)
+        signer_bytes = (self.signer or "").encode()
+        validators_bytes = json.dumps(self.validators, sort_keys=True).encode()
+        return version_bytes + previous_hash_bytes + merkle_root_bytes + timestamp_bytes + signer_bytes + validators_bytes
 
     def calculate_hash(self):
         result = hashlib.sha256(self.get_block_bytes())

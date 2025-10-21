@@ -92,65 +92,50 @@ class NodeManager:
             self.log.info("New transaction added and hash distributed.")
 
     def create_block(self, address_reward=None):
-        last_block = self.chain.block_candidate
-        if last_block is not None and last_block.signer in self.miners_storage.keys:
+        if self.chain.block_candidate is not None:
             return None
 
-        for miner_address in list(self.miners_storage.keys.keys()):
-            for address_miner in self.miners_storage.keys.keys():
-                if self.chain.try_address_candidate(address_miner, miner_address):
-                    miner_address = address_miner
+        selected_validator = self.chain.select_validator_for_height()
+        if selected_validator is None:
+            return None
 
-            if last_block is not None:
-                if self.chain.try_address_candidate(last_block.signer, miner_address):
-                    return None
+        xmss = self.miners_storage.keys.get(selected_validator)
+        if xmss is None:
+            return None
 
-            if last_block is not None and miner_address == last_block.signer:
-                return None
+        if xmss.count_sign() <= 0:
+            self.miners_storage.close_key(selected_validator)
+            return None
 
-            if miner_address in self.miners_storage.keys and self.miners_storage.keys[miner_address].count_sign() <= 0:
-                self.miners_storage.close_key(miner_address)
-                continue
+        last_block = self.chain.last_block()
+        last_block_time = last_block.timestamp_seconds if last_block is not None else self.chain.time()
+        time_candidate = last_block_time + Protocol.BLOCK_TIME_SECONDS
+        block_timestamp_seconds = time_candidate if time_candidate > self.chain.time() else self.chain.time()
 
-            if miner_address not in self.miners_storage.keys:
-                continue
+        transactions = []
+        for tr in list(self.mempool.transactions.values()):
+            if self.chain.validate_transaction(tr):
+                transactions.append(tr)
+            self.mempool.remove_transaction(tr.txhash)
 
-            xmss = self.miners_storage.keys[miner_address]
-            # next_idx = self.chain.next_address_nonce(miner_address)
-            # if xmss.keyPair.SK.idx != next_idx - 1:
-            #     edited_idx = xmss.set_idx(next_idx - 1)
+        block_candidate = Block.create(
+            self.chain.blocks_count(),
+            self.chain.last_block_hash(),
+            block_timestamp_seconds,
+            transactions,
+            address_miner=xmss.address,
+            address_reward=address_reward
+        )
 
-            last_block_time = self.chain.last_block().timestamp_seconds if self.chain.last_block() is not None else self.chain.time()
-            time_candidat = last_block_time + Protocol.BLOCK_TIME_SECONDS
-            block_timestamp_seconds = time_candidat if time_candidat > self.chain.time() else self.chain.time()
+        block_candidate.make_sign(xmss)
 
-            # берутся все транзакции без разбора
-            transactions = []
-            for tr in list(self.mempool.transactions.values()):
-                if self.chain.validate_transaction(tr):
-                    transactions.append(tr)
+        if not self.chain.validate_block(block_candidate):
+            xmss.set_idx(xmss.idx() - 1)
+            return None
 
-                self.mempool.remove_transaction(tr.txhash)
-
-            block_candidate = Block.create(self.chain.blocks_count(), self.chain.last_block_hash(),
-                                           block_timestamp_seconds, transactions, address_miner=xmss.address,
-                                           address_reward=address_reward)
-
-            block_candidate.make_sign(xmss)
-
-            if not self.chain.validate_block(block_candidate):
-                xmss.set_idx(xmss.idx() - 1)
-                block_candidate = None
-            else:
-                self.miners_storage.save_storage_to_disk(block_candidate)
-
-            self.my_block = block_candidate
-            return block_candidate
-
-        miners_storage_size = self.config.get('miners_storage_size', 10)
-        miners_storage_height = self.config.get('miners_storage_height', Protocol.MAX_HEIGHT_SIGN_KEY)
-        self.miners_storage.generate_keys(size=miners_storage_size, height=miners_storage_height)
-        return None
+        self.miners_storage.save_storage_to_disk(block_candidate)
+        self.my_block = block_candidate
+        return block_candidate
 
 
     def uptime(self):
